@@ -142,3 +142,90 @@ def test_the_result_reports_its_own_field_of_view():
                                inliers=10, segments=20, median_residual=1.0)
     assert result.fov_degrees == pytest.approx(70.0, abs=1e-6)
     assert result.inlier_fraction == pytest.approx(0.5)
+
+
+def test_the_coarse_cap_does_not_move_the_answer():
+    """The coarse sweep sees only the longest segments, for speed.
+
+    That is only legitimate if it changes nothing. Short segments are added here
+    as noise in random directions, exactly the population the cap discards.
+    """
+    camera = _camera(23.0, -14.0, 70.0)
+    real = _lattice_segments(camera)
+    rng = np.random.default_rng(3)
+    midpoints = rng.uniform([0, 0], [WIDTH, HEIGHT], size=(400, 2))
+    angles = rng.uniform(0.0, np.pi, size=400)
+    arms = np.stack([np.cos(angles), np.sin(angles)], axis=1) * 22.0
+    noise = np.concatenate([midpoints - arms, midpoints + arms], axis=1)
+    mixed = np.vstack([real, noise])
+
+    capped = estimate_camera(np.zeros((HEIGHT, WIDTH), np.uint8),
+                             segments=mixed, coarse_segments=300)
+    uncapped = estimate_camera(np.zeros((HEIGHT, WIDTH), np.uint8),
+                               segments=mixed, coarse_segments=len(mixed))
+    assert capped is not None and uncapped is not None
+    assert capped.yaw_degrees == pytest.approx(uncapped.yaw_degrees, abs=1e-9)
+    assert capped.pitch_degrees == pytest.approx(uncapped.pitch_degrees, abs=1e-9)
+    assert capped.focal_pixels == pytest.approx(uncapped.focal_pixels, rel=1e-9)
+
+
+def test_the_axis_directions_are_orthonormal():
+    # They come from the shared world-to-camera transform, which must be a
+    # rotation; a scale or skew creeping in would silently bias every estimate.
+    axes = axis_directions(41.0, -23.0)
+    assert np.allclose(axes @ axes.T, np.eye(3), atol=1e-12)
+
+
+def test_the_contract_adapter_never_invents_a_position():
+    """A fabricated position is indistinguishable from a measured one downstream.
+
+    Vanishing points give orientation and focal length, not translation, so the
+    adapter reports the frame as unresolved rather than filling in an origin.
+    This is the project's standing rule about not passing off inference as
+    observation, applied to camera state.
+    """
+    from mc_photogrammetry.reconstruction.calibration import to_camera_solution
+
+    result = CalibrationResult(focal_pixels=_focal(70.0), yaw_degrees=14.0,
+                               pitch_degrees=17.0, width=WIDTH, height=HEIGHT,
+                               inliers=200, segments=250, median_residual=0.4)
+    solution = to_camera_solution({"a.png": result})
+    estimate = solution.cameras["a.png"]
+    assert estimate.pose is None, "the adapter invented a pose it cannot know"
+    assert not solution.scale_known
+    assert any("position" in note for note in solution.unresolved)
+    assert estimate.intrinsics.principal_point_pixels == (WIDTH / 2.0, HEIGHT / 2.0)
+    assert estimate.intrinsics.focal_length_pixels[0] == pytest.approx(_focal(70.0))
+    assert estimate.confidence == pytest.approx(0.8)
+
+
+def test_a_session_shares_one_focal_length_and_the_median_sets_it():
+    """Field of view is a game setting, so it is a session quantity, not a view one.
+
+    One view here is given segments that fit a different camera; the session
+    median must ignore that outlier rather than average it in, and the outlier
+    view must come back refitted at the shared focal.
+    """
+    import mc_photogrammetry.reconstruction.calibration as module
+
+    good = _lattice_segments(_camera(23.0, -14.0, 70.0))
+    odd = _lattice_segments(_camera(40.0, 5.0, 40.0))
+    # Each frame carries a distinct fill value so the stub can tell them apart.
+    frames = {name: np.full((HEIGHT, WIDTH), value, np.uint8)
+              for name, value in (("a.png", 1), ("b.png", 2), ("c.png", 3))}
+    supplied = {1: good, 2: good, 3: odd}
+
+    original_detect, original_enhance = module.detect_segments, module.enhance
+    # `enhance` runs first and rewrites the pixel values, so it is stubbed too.
+    module.enhance = lambda grey: grey
+    module.detect_segments = lambda grey, **kw: supplied[int(grey[0, 0])]
+    try:
+        results = module.estimate_session(frames)
+    finally:
+        module.detect_segments, module.enhance = original_detect, original_enhance
+
+    assert set(results) == {"a.png", "b.png", "c.png"}
+    focals = {round(r.focal_pixels, 6) for r in results.values()}
+    assert len(focals) == 1, "every view in a session must end on one focal length"
+    assert focals.pop() == pytest.approx(_focal(70.0), rel=0.02)
+    assert any("session median" in note for note in results["c.png"].notes)

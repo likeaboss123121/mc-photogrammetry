@@ -1,0 +1,57 @@
+{
+  "frame": "2026-09-04_20.03.32.png",
+  "width": 2560,
+  "height": 1369,
+  "settings": {
+    "minimum_length_px": 40.0,
+    "inlier_px": 3.0,
+    "scales": [
+      1.0,
+      0.5
+    ],
+    "gamma": 0.45,
+    "clahe_clip": 3.0,
+    "clahe_grid": 16,
+    "fov_search_deg": [
+      30.0,
+      120.0
+    ]
+  },
+  "estimate": {
+    "focal_pixels": 479.29205990454636,
+    "yaw_degrees": 14.000000000000005,
+    "pitch_degrees": 17.099999999999994,
+    "width": 2560,
+    "height": 1369,
+    "inliers": 2029,
+    "segments": 2151,
+    "median_residual": 0.09588278934298694,
+    "per_axis_inliers": [
+      602,
+      265,
+      1162
+    ],
+    "notes": [
+      "yaw is modulo 90 degrees: one view cannot name the horizontal axes"
+    ]
+  },
+  "estimate_hud_masked": {
+    "focal_pixels": 479.29205990454636,
+    "yaw_degrees": 14.000000000000005,
+    "pitch_degrees": 17.099999999999994,
+    "width": 2560,
+    "height": 1369,
+    "inliers": 1105,
+    "segments": 1209,
+    "median_residual": 0.09056399393958306,
+    "per_axis_inliers": [
+      359,
+      105,
+      641
+    ],
+    "notes": [
+      "yaw is modulo 90 degrees: one view cannot name the horizontal axes"
+    ]
+  },
+  "manifest_read": false
+}

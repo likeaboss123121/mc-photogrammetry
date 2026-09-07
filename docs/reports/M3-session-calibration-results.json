@@ -1,0 +1,983 @@
+[
+  {
+    "fixture": "templates 2",
+    "frame": "2026-09-02_13.22.14.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000142,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9768414281119331
+  },
+  {
+    "fixture": "templates 2",
+    "frame": "2026-09-02_13.24.24.png",
+    "passed": true,
+    "pitch_error": 0.15000000000000213,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.976271186440678
+  },
+  {
+    "fixture": "templates 2",
+    "frame": "2026-09-02_13.24.33.png",
+    "passed": true,
+    "pitch_error": 0.099999999999973,
+    "yaw_error": 0.04999999999999716,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9589442815249267
+  },
+  {
+    "fixture": "templates 6",
+    "frame": "2026-09-05_18.01.09.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 0.14999999999997726,
+    "focal_error": 0.0016765371649750981,
+    "inlier_fraction": 0.9380108991825613
+  },
+  {
+    "fixture": "templates 6",
+    "frame": "2026-09-05_18.01.14.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999787,
+    "yaw_error": 0.049999999999968736,
+    "focal_error": 0.0016765371649750981,
+    "inlier_fraction": 0.83984375
+  },
+  {
+    "fixture": "templates 6",
+    "frame": "2026-09-05_18.01.18.png",
+    "passed": true,
+    "pitch_error": -8.881784197001252e-16,
+    "yaw_error": 0.0,
+    "focal_error": 0.0016765371649750981,
+    "inlier_fraction": 0.9271327014218009
+  },
+  {
+    "fixture": "templates 6",
+    "frame": "2026-09-05_18.01.22.png",
+    "passed": true,
+    "pitch_error": -2.1316282072803006e-14,
+    "yaw_error": -0.04999999999998295,
+    "focal_error": 0.0016765371649750981,
+    "inlier_fraction": 0.8904244817374136
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.03.32.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999432,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9432821943282195
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.03.38.png",
+    "passed": true,
+    "pitch_error": 0.04999999999997584,
+    "yaw_error": -1.4210854715202004e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9420644634842922
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.03.42.png",
+    "passed": true,
+    "pitch_error": -2.1316282072803006e-14,
+    "yaw_error": 0.0999999999999801,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9147526501766784
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.03.47.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000053,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9445324881141046
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.03.52.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000604,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9423697556477639
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.03.55.png",
+    "passed": true,
+    "pitch_error": 3.552713678800501e-15,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9522661523625844
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.03.58.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.931679925128685
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.03.png",
+    "passed": true,
+    "pitch_error": 0.04999999999997584,
+    "yaw_error": 0.0999999999999659,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9472551130247578
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.06.png",
+    "passed": true,
+    "pitch_error": 3.552713678800501e-15,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9424379232505643
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.10.png",
+    "passed": true,
+    "pitch_error": 0.09999999999998721,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9614758545849159
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.18.png",
+    "passed": true,
+    "pitch_error": -1.3322676295501878e-15,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9309849029475198
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.25.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999432,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9367088607594937
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.37.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999787,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9624167459562322
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.41.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 0.10000000000002274,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9313953488372093
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.47.png",
+    "passed": true,
+    "pitch_error": 3.552713678800501e-15,
+    "yaw_error": -2.1316282072803006e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9096739711384286
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.53.png",
+    "passed": true,
+    "pitch_error": 0.04999999999998295,
+    "yaw_error": 0.04999999999999716,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.929636533084809
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.04.56.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9188370684433677
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.08.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000249,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9349157733537519
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.13.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999432,
+    "yaw_error": 0.10000000000002274,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9399766899766899
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.19.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000071,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9375835934016942
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.23.png",
+    "passed": true,
+    "pitch_error": 5.329070518200751e-15,
+    "yaw_error": 0.10000000000000853,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9365874009178139
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.27.png",
+    "passed": true,
+    "pitch_error": 0.04999999999997584,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.937046004842615
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.32.png",
+    "passed": true,
+    "pitch_error": 0.049999999999993605,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9206833435021354
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.37.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000604,
+    "yaw_error": 0.09999999999999432,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9230046948356807
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.40.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000675,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.938449240607514
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.42.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9450679267572357
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.46.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": -2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9365244536940687
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.05.49.png",
+    "passed": true,
+    "pitch_error": 0.04999999999997584,
+    "yaw_error": 0.049999999999968736,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9445859872611465
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.08.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000071,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9496402877697842
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.18.png",
+    "passed": true,
+    "pitch_error": 0.049999999999998934,
+    "yaw_error": -1.4210854715202004e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9395134779750164
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.32.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000853,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9376163873370578
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.38.png",
+    "passed": true,
+    "pitch_error": 0.049999999999993605,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9421407907425265
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.40.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999787,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9506933744221879
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.44.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000053,
+    "yaw_error": -2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9517857142857142
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.48.png",
+    "passed": true,
+    "pitch_error": -0.04999999999999716,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9580777096114519
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.52.png",
+    "passed": true,
+    "pitch_error": 3.552713678800501e-15,
+    "yaw_error": 0.04999999999997584,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9281345565749235
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.55.png",
+    "passed": true,
+    "pitch_error": 0.04999999999998295,
+    "yaw_error": 0.19999999999998863,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9484653277756726
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.06.59.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999005,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9547038327526133
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.07.26.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000497,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9400527009222661
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.07.29.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000497,
+    "yaw_error": 0.0999999999999801,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9385763490241102
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.07.35.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000426,
+    "yaw_error": 0.04999999999997584,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9454081632653061
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.08.08.png",
+    "passed": true,
+    "pitch_error": -3.552713678800501e-15,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9251533742331288
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.08.13.png",
+    "passed": true,
+    "pitch_error": -3.552713678800501e-15,
+    "yaw_error": 0.04999999999997584,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9267973856209151
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.08.15.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9455984174085065
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.08.18.png",
+    "passed": false,
+    "pitch_error": -0.7000000000000028,
+    "yaw_error": 1.1999999999999744,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9298375184638109
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.08.21.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000071,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9312146277753591
+  },
+  {
+    "fixture": "templates 3",
+    "frame": "2026-09-04_20.08.23.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9444444444444444
+  },
+  {
+    "fixture": "templates 4",
+    "frame": "2026-09-04_20.26.34.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999982,
+    "yaw_error": 0.0999999999999659,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8962962962962963
+  },
+  {
+    "fixture": "templates 4",
+    "frame": "2026-09-04_20.26.39.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000426,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9301310043668122
+  },
+  {
+    "fixture": "templates 4",
+    "frame": "2026-09-04_20.26.42.png",
+    "passed": true,
+    "pitch_error": 0.04999999999997584,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9084249084249084
+  },
+  {
+    "fixture": "templates 4",
+    "frame": "2026-09-04_20.26.46.png",
+    "passed": true,
+    "pitch_error": 0.15000000000000008,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9484808454425363
+  },
+  {
+    "fixture": "templates 4",
+    "frame": "2026-09-04_20.26.49.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999787,
+    "yaw_error": -2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9322147651006711
+  },
+  {
+    "fixture": "templates 4",
+    "frame": "2026-09-04_20.26.52.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000249,
+    "yaw_error": 7.105427357601002e-15,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9249812453113279
+  },
+  {
+    "fixture": "templates 4",
+    "frame": "2026-09-04_20.26.56.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999849,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9128065395095368
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.33.33.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999432,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8926852743022137
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.33.39.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": -2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9122340425531915
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.33.46.png",
+    "passed": true,
+    "pitch_error": -3.552713678800501e-15,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8998682476943346
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.33.53.png",
+    "passed": true,
+    "pitch_error": 0.04999999999998295,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9032786885245901
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.33.56.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000071,
+    "yaw_error": 2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8912655971479501
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.02.png",
+    "passed": true,
+    "pitch_error": -3.552713678800501e-15,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9015842534805569
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.07.png",
+    "passed": true,
+    "pitch_error": -2.1316282072803006e-14,
+    "yaw_error": 0.049999999999954525,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9243156199677939
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.11.png",
+    "passed": true,
+    "pitch_error": -0.14999999999999858,
+    "yaw_error": 0.4499999999999744,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8622628250175686
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.15.png",
+    "passed": true,
+    "pitch_error": -8.881784197001252e-16,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9206868356500408
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.19.png",
+    "passed": true,
+    "pitch_error": -3.552713678800501e-15,
+    "yaw_error": -0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.927360774818402
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.27.png",
+    "passed": true,
+    "pitch_error": -0.05000000000000071,
+    "yaw_error": -1.4210854715202004e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.933240611961057
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.29.png",
+    "passed": true,
+    "pitch_error": 0.049999999999993605,
+    "yaw_error": -1.4210854715202004e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9494344644045243
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.34.png",
+    "passed": true,
+    "pitch_error": 0.049999999999993605,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9441301272984441
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.36.png",
+    "passed": true,
+    "pitch_error": 0.099999999999973,
+    "yaw_error": -0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.94536525475752
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.51.png",
+    "passed": true,
+    "pitch_error": -0.04999999999999988,
+    "yaw_error": 0.04999999999999716,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9413616686343959
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.34.56.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000497,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9564782391195598
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.01.png",
+    "passed": true,
+    "pitch_error": 3.552713678800501e-15,
+    "yaw_error": 0.04999999999999716,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9320987654320988
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.06.png",
+    "passed": true,
+    "pitch_error": 0.04999999999998295,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9443269908386187
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.08.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999938,
+    "yaw_error": 0.04999999999999005,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9500870574579222
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.11.png",
+    "passed": false,
+    "pitch_error": -0.20000000000000284,
+    "yaw_error": 0.6499999999999773,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9569012547735952
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.19.png",
+    "passed": true,
+    "pitch_error": 0.10000000000000853,
+    "yaw_error": -1.4210854715202004e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9352850539291218
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.23.png",
+    "passed": true,
+    "pitch_error": 0.09999999999998721,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9703632887189293
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.27.png",
+    "passed": true,
+    "pitch_error": 0.0999999999999801,
+    "yaw_error": -2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9687128712871287
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.31.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000426,
+    "yaw_error": 0.09999999999999432,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9189497716894978
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.35.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000604,
+    "yaw_error": 0.04999999999999716,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9526411657559198
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.40.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999787,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9563577586206896
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.44.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000604,
+    "yaw_error": -2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9491094147582697
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.49.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000249,
+    "yaw_error": 0.14999999999998437,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9093036863662961
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.55.png",
+    "passed": true,
+    "pitch_error": 0.04999999999998295,
+    "yaw_error": 0.04999999999997584,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9706227967097533
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.35.58.png",
+    "passed": true,
+    "pitch_error": 0.0500000000000016,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9596814335490294
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.06.png",
+    "passed": true,
+    "pitch_error": 7.105427357601002e-15,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9630252100840336
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.09.png",
+    "passed": true,
+    "pitch_error": 0.05000000000000071,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9706227967097533
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.12.png",
+    "passed": true,
+    "pitch_error": 0.0999999999999801,
+    "yaw_error": -2.1316282072803006e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9665653495440729
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.16.png",
+    "passed": true,
+    "pitch_error": 0.0999999999999801,
+    "yaw_error": 0.0,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9653600729261622
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.20.png",
+    "passed": false,
+    "pitch_error": 90.10000000000001,
+    "yaw_error": 2.9499999999999886,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9676739283204497
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.22.png",
+    "passed": false,
+    "pitch_error": 90.1,
+    "yaw_error": 2.5999999999999943,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9750768180266303
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.27.png",
+    "passed": true,
+    "pitch_error": -0.04999999999999716,
+    "yaw_error": -2.842170943040401e-14,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9197994987468672
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.31.png",
+    "passed": true,
+    "pitch_error": -7.105427357601002e-15,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9293381037567084
+  },
+  {
+    "fixture": "templates 5",
+    "frame": "2026-09-05_10.36.32.png",
+    "passed": true,
+    "pitch_error": 0.0,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9277003484320557
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.15.png",
+    "passed": false,
+    "pitch_error": -90.44999999999999,
+    "yaw_error": -0.8000000000000114,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8861131520940485
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.19.png",
+    "passed": true,
+    "pitch_error": 0.15000000000000568,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9218158890290038
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.22.png",
+    "passed": true,
+    "pitch_error": 0.09999999999999787,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9170779861796644
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.28.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999849,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9235982747997535
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.31.png",
+    "passed": false,
+    "pitch_error": -8.881784197001252e-16,
+    "yaw_error": 30.049999999999983,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.9331210191082803
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.36.png",
+    "passed": true,
+    "pitch_error": 5.329070518200751e-15,
+    "yaw_error": -0.15000000000000568,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8629156010230179
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.38.png",
+    "passed": false,
+    "pitch_error": -90.1,
+    "yaw_error": -0.4000000000000057,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.936931473620376
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.42.png",
+    "passed": true,
+    "pitch_error": 5.329070518200751e-15,
+    "yaw_error": 0.05000000000001137,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8485540334855404
+  },
+  {
+    "fixture": "templates",
+    "frame": "2026-09-02_12.17.45.png",
+    "passed": true,
+    "pitch_error": 0.04999999999999716,
+    "yaw_error": 0.04999999999998295,
+    "focal_error": 0.0,
+    "inlier_fraction": 0.8530120481927711
+  }
+]

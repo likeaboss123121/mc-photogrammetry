@@ -19,6 +19,7 @@ templates/
 templates */
 theoretical_max/
 benchmark_*.txt
+pytest_*.txt
 probe*.txt
 verification.txt
 mismatch_probe.json
