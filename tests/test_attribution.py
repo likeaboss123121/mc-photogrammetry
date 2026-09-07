@@ -24,6 +24,7 @@ from mc_photogrammetry.export.attribution import (
     render_volume,
 )
 from mc_photogrammetry.reconstruction.camera import CameraModel
+from mc_photogrammetry.reconstruction.camera import project_points
 from mc_photogrammetry.reconstruction.facade import PaletteColor
 from mc_photogrammetry.reconstruction.scene import SceneTransform
 
@@ -128,6 +129,23 @@ def test_a_carpet_is_drawn_as_a_carpet_and_not_as_a_cube():
     _box, box_owner, _bi, _bd = render_volume(blocks, scene, camera, 120, 120,
                                               colours, shapes)
     assert (cube_owner >= 0).sum() > (box_owner >= 0).sum()
+
+
+def test_depth_buffer_keeps_the_nearer_surface_at_an_overlapping_pixel():
+    scene = _scene()
+    camera = _camera()
+    colours = face_colours(_palette())
+    near = (3, 2, 4)
+    far = (3, 2, 6)
+    _canvas, owner, index, depth = render_volume(
+        {near: WHITE, far: BLACK}, scene, camera, 120, 120, colours, scale=1.0
+    )
+    centre = np.asarray(scene.to_world(near), dtype=float) + 0.5
+    pixels = project_points(centre + box_face_corners((0, 0, 0), (1, 1, 1), "north"), camera, width=120, height=120)
+    column, row = (int(round(value)) for value in np.mean([[pixel[0], pixel[1]] for pixel in pixels], axis=0))
+    assert owner[row, column] >= 0
+    assert index[owner[row, column]][0] == near
+    assert depth[row, column] == pytest.approx(10.0, abs=0.1)
 
 
 def test_a_box_face_lies_in_its_own_plane():

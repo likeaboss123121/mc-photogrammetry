@@ -208,23 +208,40 @@ def render_volume(
                 if ambient:
                     shade *= ambient_occlusion(coordinate, slot, occupied)
                 faces.append((
-                    float(np.mean([point[2] for point in projected])),
-                    quad, np.asarray(colour, dtype=float) * shade,
+                    quad,
+                    np.asarray([point[2] for point in projected], dtype=np.float64),
+                    np.asarray(colour, dtype=float) * shade,
                     (coordinate, slot),
                 ))
 
     # Each entry is (cell, slot): the residual pass needs the face's own normal to
     # know which way to propose, and a cell alone cannot say.
     index: list[tuple[BlockCoordinate, str]] = []
-    for depth, quad, colour, owned in sorted(faces, key=lambda entry: -entry[0]):
+    for quad, depths, colour, owned in faces:
         stamp = np.zeros((rows, columns), dtype=np.uint8)
         cv2.fillConvexPoly(stamp, quad.astype(np.int32), 1)
         mask = stamp.astype(bool)
         if not mask.any():
             continue
-        canvas[mask] = colour
-        owner[mask] = len(index)
-        depth_buffer[mask] = depth
+        pixel_rows, pixel_columns = np.nonzero(mask)
+        # A face is planar, so inverse depth is affine in screen space. This is
+        # exact perspective depth at the raster sample and avoids the painter's
+        # mean-depth failure where two slanted quads overlap.
+        matrix = np.column_stack((quad[:3, 0], quad[:3, 1], np.ones(3)))
+        try:
+            plane = np.linalg.solve(matrix, 1.0 / np.maximum(depths[:3], 1e-6))
+            inverse_depth = plane[0] * pixel_columns + plane[1] * pixel_rows + plane[2]
+            pixel_depth = np.divide(
+                1.0, inverse_depth, out=np.full_like(inverse_depth, np.inf), where=inverse_depth > 1e-9
+            )
+        except np.linalg.LinAlgError:
+            pixel_depth = np.full(pixel_rows.shape, float(depths.mean()), dtype=np.float64)
+        nearer = pixel_depth < depth_buffer[pixel_rows, pixel_columns]
+        if nearer.any():
+            chosen_rows, chosen_columns = pixel_rows[nearer], pixel_columns[nearer]
+            canvas[chosen_rows, chosen_columns] = colour
+            owner[chosen_rows, chosen_columns] = len(index)
+            depth_buffer[chosen_rows, chosen_columns] = pixel_depth[nearer]
         index.append(owned)
     return canvas, owner, index, depth_buffer
 
