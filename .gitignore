@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.pyright/
+*.pyc
+*.mcscan
+*.litematic
+models/
+assets/
+*.mc-textures.json
+scans/
+outputs/
+exports/*
+!exports/.gitkeep
+
+# Local fixture media, ground truth, and generated investigation artifacts.
+templates/
+templates */
+theoretical_max/
+benchmark_*.txt
+probe*.txt
+verification.txt
+mismatch_probe.json
+tmp_*.py
+tmp_*.txt

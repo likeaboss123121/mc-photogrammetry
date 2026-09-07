@@ -1,0 +1,456 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from mc_photogrammetry.domain.models import ScanProject
+from mc_photogrammetry.export.anvil import AnvilExporter
+from mc_photogrammetry.export.litematic import LitematicExporter
+from mc_photogrammetry.export.compare import (
+    _add,
+    compare_litematics,
+    load_litematic,
+)
+from mc_photogrammetry.export.validation import validate_litematic
+from mc_photogrammetry.input.image import load_image
+from mc_photogrammetry.input.media import discover_media
+from mc_photogrammetry.project.store import load_project, save_project
+from mc_photogrammetry.reconstruction.facade import DEFAULT_PALETTE, reconstruct_facade
+from mc_photogrammetry.blocks.textures import VanillaJarTextureProvider
+from mc_photogrammetry.reconstruction.sfm import SfmSettings, reconstruct_from_calibrated_views
+from mc_photogrammetry.reconstruction.multiview import reconstruct_visible_surfaces
+from mc_photogrammetry.reconstruction.raycast import (
+    ADJACENCY_STRENGTH,
+    reconstruct_scene_surfaces,
+)
+from mc_photogrammetry.reconstruction.camera import load_camera_manifest
+from mc_photogrammetry.reconstruction.scene import load_scene_transform
+from mc_photogrammetry.vision.gui_mask import create_gui_mask
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="mc-photogrammetry")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    init = commands.add_parser("init", help="create an empty scan project")
+    init.add_argument("path", type=Path)
+
+    inspect = commands.add_parser("inspect", help="show scan project metadata")
+    inspect.add_argument("path", type=Path)
+
+    scan = commands.add_parser("scan", help="create a project from source media")
+    scan.add_argument("output", type=Path)
+    scan.add_argument("sources", type=Path, nargs="+")
+    scan.add_argument("--recursive", action="store_true")
+
+    reconstruct = commands.add_parser(
+        "reconstruct", help="build a baseline façade from one still image"
+    )
+    reconstruct.add_argument("image", type=Path)
+    reconstruct.add_argument("output", type=Path, nargs="?")
+    reconstruct.add_argument("--project", type=Path)
+    reconstruct.add_argument("--columns", type=int, default=32)
+    reconstruct.add_argument("--rows", type=int, default=32)
+    reconstruct.add_argument(
+        "--depth-layers",
+        type=int,
+        default=8,
+        help="maximum estimated camera-ray depth for visible surface blocks",
+    )
+    reconstruct.add_argument("--horizon", type=float, help="override normalized perspective horizon")
+    reconstruct.add_argument("--camera-manifest", type=Path, help="camera JSON keyed by image filename")
+    reconstruct.add_argument("--scene", type=Path, help="scene JSON for local/world coordinate conversion")
+    reconstruct.add_argument("--minecraft-jar", type=Path, help="local Minecraft client JAR for texture palette")
+
+    validate = commands.add_parser("validate", help="validate a litematic file")
+    validate.add_argument("path", type=Path)
+
+    multiview = commands.add_parser(
+        "reconstruct-multiview", help="reconstruct a sparse 3D shell from calibrated screenshots"
+    )
+    multiview.add_argument("sources", type=Path)
+    multiview.add_argument("output", type=Path, nargs="?")
+    multiview.add_argument("--cameras", type=Path, default=Path("templates/cameras.json"))
+    multiview.add_argument("--scene", type=Path, default=Path("templates/scene.json"))
+    multiview.add_argument("--max-reprojection-error", type=float, default=8.0)
+    multiview.add_argument("--max-features", type=int, default=1600)
+
+    surfaces = commands.add_parser(
+        "reconstruct-visible-multiview",
+        help="merge visible calibrated surface blocks from multiple screenshots",
+    )
+    surfaces.add_argument("sources", type=Path)
+    surfaces.add_argument("output", type=Path, nargs="?")
+    surfaces.add_argument("--cameras", type=Path, required=True)
+    surfaces.add_argument("--scene", type=Path, required=True)
+    surfaces.add_argument("--columns", type=int, default=36)
+    surfaces.add_argument("--rows", type=int, default=48)
+    surfaces.add_argument("--depth-layers", type=int, default=8)
+    surfaces.add_argument("--min-views", type=int, default=1)
+    surfaces.add_argument("--max-color-distance", type=float, default=140.0)
+    surfaces.add_argument("--min-palette-margin", type=float, default=0.0)
+    surfaces.add_argument("--min-state-agreement", type=float, default=0.0)
+    surfaces.add_argument("--min-surface-contrast", type=float, default=0.0)
+    surfaces.add_argument("--include-enclosed", action="store_true")
+    surfaces.add_argument("--adjacency-strength", type=float,
+                          default=ADJACENCY_STRENGTH)
+    surfaces.add_argument("--adjacency-min-neighbors", type=int, default=3)
+    surfaces.add_argument("--minecraft-jar", type=Path, help="local Minecraft client JAR for texture palette")
+
+    compare = commands.add_parser("compare", help="compare a candidate to a reference litematic")
+    compare.add_argument("reference", type=Path)
+    compare.add_argument("candidate", type=Path)
+    compare.add_argument(
+        "--cameras", type=Path,
+        help="camera manifest, so surface scores count only air a camera reached",
+    )
+    compare.add_argument("--scene", type=Path, help="scene manifest, with --cameras")
+    compare.add_argument(
+        "--attribute", action="store_true",
+        help="say where the visible error is and why, by rendering both volumes "
+             "(needs --cameras, --scene and --minecraft-jar)",
+    )
+    compare.add_argument("--minecraft-jar", type=Path, help="palette source for --attribute")
+
+    export = commands.add_parser("export", help="export a saved project as litematic or world")
+    export.add_argument("project", type=Path)
+    export.add_argument("output", type=Path, nargs="?")
+    export.add_argument(
+        "--format",
+        choices=("litematic", "world"),
+        default="litematic",
+        help="litematic needs a mod to view; world writes a save you can open directly",
+    )
+    export.add_argument(
+        "--origin",
+        type=int,
+        nargs=3,
+        metavar=("X", "Y", "Z"),
+        default=(0, 0, 0),
+        help="world position to place the reconstruction at",
+    )
+
+    visibility = commands.add_parser(
+        "visibility",
+        help="write a theoretical-maximum litematic: the reference restricted to "
+             "the blocks some camera could actually see",
+    )
+    visibility.add_argument("reference", type=Path)
+    visibility.add_argument("output", type=Path)
+    visibility.add_argument("--cameras", type=Path, required=True)
+    visibility.add_argument("--scene", type=Path, required=True)
+    visibility.add_argument("--minecraft-jar", type=Path, required=True,
+                            help="palette source, for block shapes")
+    visibility.add_argument(
+        "--min-pixels", type=int, default=1,
+        help="pixels a block must win before it counts as reachable (default 1)",
+    )
+
+    commands.add_parser("desktop", help="launch the optional desktop shell")
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    if args.command == "init":
+        save_project(ScanProject(), args.path)
+        print(f"Created {args.path}")
+        return 0
+
+    if args.command == "visibility":
+        from PIL import Image
+
+        from mc_photogrammetry.domain.models import BlockObservation, BlockVolume
+        from mc_photogrammetry.export.compare import load_litematic
+        from mc_photogrammetry.export.visibility import (
+            full_cube_keys,
+            shape_table,
+            theoretical_maximum,
+            visible_cells,
+        )
+        from mc_photogrammetry.input.media import discover_media
+        from mc_photogrammetry.reconstruction.camera import load_camera_manifest
+        from mc_photogrammetry.reconstruction.scene import load_scene_transform
+
+        provider = VanillaJarTextureProvider()
+        if not provider.load_jar(args.minecraft_jar):
+            print("Cannot compute visibility without a readable Minecraft jar")
+            return 2
+        palette = provider.complete_palette()
+        reference = load_litematic(args.reference)
+        scene = load_scene_transform(args.scene)
+        cameras = load_camera_manifest(args.cameras)
+        resolutions = {
+            Path(frame.source_path).name: Image.open(frame.source_path).size
+            for frame in discover_media([args.cameras.parent]).image_frames
+        }
+        counts = visible_cells(reference.blocks, scene, cameras, resolutions,
+                               full_cubes=full_cube_keys(palette),
+                               shapes=shape_table(palette))
+        kept = theoretical_maximum(reference.blocks, counts,
+                                   minimum_pixels=args.min_pixels)
+        if not kept:
+            print("No block was reached by any camera; nothing to write")
+            return 1
+        volume = BlockVolume()
+        for coordinate, state in kept.items():
+            volume.set(coordinate, BlockObservation(state=state, confidence=1.0))
+        LitematicExporter().export(volume, args.output, name=args.output.stem,
+                                   description="camera-reachable subset of the reference")
+        total = len(reference.blocks)
+        print(f"Reference: {total} blocks")
+        print(f"Reachable: {len(kept)} ({len(kept) / total:.2%}) "
+              f"at >= {args.min_pixels} pixel(s)")
+        print(f"Unreachable: {total - len(kept)} blocks no camera can see")
+        print(f"Wrote {args.output}")
+        return 0
+
+    if args.command == "desktop":
+        from mc_photogrammetry.ui.main_window import run_desktop
+
+        return run_desktop()
+
+    if args.command == "scan":
+        manifest = discover_media(args.sources, recursive=args.recursive)
+        if not manifest.frames:
+            raise SystemExit("No supported image or video files were found.")
+        project = ScanProject(source_paths=[frame.source_path for frame in manifest.frames])
+        save_project(project, args.output)
+        print(f"Created {args.output} with {len(manifest.frames)} source(s)")
+        return 0
+
+    if args.command == "reconstruct":
+        export_directory = Path.cwd() / "exports"
+        output_path = args.output or export_directory / f"{args.image.stem}.litematic"
+        image = load_image(args.image)
+        mask = create_gui_mask(image.shape[0], image.shape[1])
+        camera = None
+        scene_transform = None
+        if args.camera_manifest:
+            cameras = load_camera_manifest(args.camera_manifest)
+            camera = cameras.get(args.image.name)
+            if camera is None:
+                raise SystemExit(f"No camera pose found for {args.image.name}")
+        if args.scene:
+            scene_transform = load_scene_transform(args.scene)
+        palette = DEFAULT_PALETTE
+        if args.minecraft_jar:
+            provider = VanillaJarTextureProvider()
+            count = provider.load_jar(args.minecraft_jar)
+            if count:
+                palette = provider.palette()
+            else:
+                print("Warning: local Minecraft jar palette is unavailable; falling back to the default palette.")
+            print(f"Loaded {count} local vanilla texture samples")
+        volume = reconstruct_facade(
+            image,
+            mask,
+            columns=args.columns,
+            rows=args.rows,
+            depth_layers=args.depth_layers,
+            max_color_distance=args.max_color_distance,
+            min_palette_margin=args.min_palette_margin,
+            min_state_agreement=args.min_state_agreement,
+            min_surface_contrast=args.min_surface_contrast,
+            horizon=args.horizon,
+            camera=camera,
+            scene_transform=scene_transform,
+            palette=palette,
+        )
+        if not volume.blocks:
+            raise SystemExit("No visible blocks were inferred from the image.")
+        project = ScanProject(name=args.image.stem, source_paths=[str(args.image.resolve())], volume=volume)
+        project_path = args.project or output_path.with_suffix(".mcscan")
+        save_project(project, project_path)
+        LitematicExporter().export(
+            volume,
+            output_path,
+            name=args.image.stem,
+            description="Visible surface blocks with estimated depth; hidden geometry omitted",
+        )
+        print(f"Created {output_path} with {len(volume.blocks)} block(s)")
+        print("Visible-surface mode: depth estimated per visible block; hidden geometry omitted.")
+        print(f"Saved project {project_path}")
+        return 0
+
+    if args.command == "reconstruct-multiview":
+        manifest = discover_media([args.sources])
+        image_frames = [frame for frame in manifest.image_frames]
+        if len(image_frames) < 2:
+            raise SystemExit("At least two still images are required for multiview reconstruction.")
+        frames = {Path(frame.source_path).name: load_image(frame.source_path) for frame in image_frames}
+        cameras = load_camera_manifest(args.cameras)
+        scene = load_scene_transform(args.scene)
+        volume = reconstruct_from_calibrated_views(
+            frames,
+            cameras,
+            scene=scene,
+            settings=SfmSettings(
+                max_features=args.max_features,
+                max_reprojection_error=args.max_reprojection_error,
+            ),
+            palette=tuple((item.state, item.rgb) for item in DEFAULT_PALETTE),
+        )
+        if not volume.blocks:
+            raise SystemExit("No stable 3D block observations were reconstructed.")
+        output_path = args.output or Path.cwd() / "exports" / f"{args.sources.name}.litematic"
+        project_path = output_path.with_suffix(".mcscan")
+        project = ScanProject(name=args.sources.name, source_paths=[frame.source_path for frame in image_frames], volume=volume)
+        save_project(project, project_path)
+        LitematicExporter().export(
+            volume,
+            output_path,
+            name=args.sources.name,
+            description="Calibrated multi-view sparse 3D reconstruction; low-confidence shell",
+        )
+        print(f"Created {output_path} with {len(volume.blocks)} reconstructed block(s)")
+        print(f"Saved project {project_path}")
+        return 0
+
+    if args.command == "reconstruct-visible-multiview":
+        manifest = discover_media([args.sources])
+        image_frames = list(manifest.image_frames)
+        cameras = load_camera_manifest(args.cameras)
+        missing = [Path(frame.source_path).name for frame in image_frames if Path(frame.source_path).name not in cameras]
+        if len(image_frames) < 2:
+            raise SystemExit("At least two still images are required for visible multiview reconstruction.")
+        if missing:
+            raise SystemExit(f"No camera pose found for: {', '.join(missing)}")
+        frames = {Path(frame.source_path).name: load_image(frame.source_path) for frame in image_frames}
+        scene = load_scene_transform(args.scene)
+        palette = DEFAULT_PALETTE
+        if args.minecraft_jar:
+            provider = VanillaJarTextureProvider()
+            count = provider.load_jar(args.minecraft_jar)
+            if count:
+                palette = provider.palette()
+            else:
+                print("Warning: local Minecraft jar palette is unavailable; falling back to the default palette.")
+            print(f"Loaded {count} local vanilla texture samples")
+        volume = reconstruct_scene_surfaces(
+            frames,
+            cameras,
+            scene=scene,
+            palette=palette,
+            min_views=args.min_views,
+            columns=args.columns,
+            rows=args.rows,
+            depth_layers=args.depth_layers,
+            surface_only=not args.include_enclosed,
+            adjacency_strength=args.adjacency_strength,
+            adjacency_min_neighbors=args.adjacency_min_neighbors,
+        )
+        if not volume.blocks:
+            raise SystemExit("No visible surface blocks landed inside the calibrated scene.")
+        output_path = args.output or Path.cwd() / "exports" / f"{args.sources.name}-visible.litematic"
+        project_path = output_path.with_suffix(".mcscan")
+        project = ScanProject(name=args.sources.name, source_paths=[frame.source_path for frame in image_frames], volume=volume)
+        save_project(project, project_path)
+        LitematicExporter().export(
+            volume,
+            output_path,
+            name=args.sources.name,
+            description="Calibrated visible surfaces only; hidden geometry omitted",
+        )
+        print(f"Created {output_path} with {len(volume.blocks)} visible block(s)")
+        print(f"Saved project {project_path}")
+        return 0
+
+    if args.command == "validate":
+        result = validate_litematic(args.path)
+        print(f"Valid litematic: {args.path}")
+        print(f"Dimensions: {result['dimensions']}")
+        print(f"Palette entries: {result['palette_size']}")
+        return 0
+
+    if args.command == "compare":
+        camera_cells = None
+        if args.cameras and args.scene:
+            import numpy as np
+
+            from mc_photogrammetry.reconstruction.camera import load_camera_manifest
+            from mc_photogrammetry.reconstruction.scene import load_scene_transform
+
+            scene = load_scene_transform(args.scene)
+            camera_cells = []
+            for camera in load_camera_manifest(args.cameras).values():
+                eye = np.asarray(camera.position, dtype=float) + np.asarray(
+                    [0.0, camera.eye_height, 0.0]
+                )
+                camera_cells.append(
+                    tuple(int(v) for v in np.floor(scene.to_local(tuple(eye))))
+                )
+        result = compare_litematics(
+            args.reference, args.candidate, camera_cells=camera_cells
+        )
+        print(f"Reference: {result.reference.size}, {result.reference.non_air_count} non-air blocks")
+        print(f"Candidate: {result.candidate.size}, {result.candidate.non_air_count} non-air blocks")
+        print(f"Coordinate overlap: {result.exact_coordinate_matches} ({result.coordinate_recall:.2%})")
+        print(f"Coordinate precision: {result.coordinate_precision:.2%}, F1: {result.coordinate_f1:.2%}")
+        print(f"Direct coordinate overlap: {result.direct_coordinate_matches} ({result.direct_coordinate_recall:.2%})")
+        print(f"Surface F1: {result.surface_f1:.2%} "
+              f"(precision {result.surface_precision:.2%}, recall {result.surface_recall:.2%}, "
+              f"{result.reference_exposed} seeable)")
+        print(f"State matches: {result.exact_state_matches} ({result.state_accuracy:.2%})")
+        print(f"Best translation: {result.best_translation}")
+        print(f"Palette name overlap: {result.candidate_palette_matches}/{len(result.candidate.palette)}")
+        if args.attribute:
+            if not (args.cameras and args.scene and args.minecraft_jar):
+                print("--attribute needs --cameras, --scene and --minecraft-jar")
+                return 2
+            from mc_photogrammetry.export.attribution import attribute_error
+            from mc_photogrammetry.input.media import discover_media
+
+            provider = VanillaJarTextureProvider()
+            if not provider.load_jar(args.minecraft_jar):
+                print("Cannot attribute error without a readable Minecraft jar")
+                return 2
+            folder = args.cameras.parent
+            frames = {
+                Path(frame.source_path).name: load_image(frame.source_path)
+                for frame in discover_media([folder]).image_frames
+            }
+            reference = load_litematic(args.reference)
+            candidate = load_litematic(args.candidate)
+            shifted = {
+                _add(coordinate, result.best_translation): state
+                for coordinate, state in candidate.blocks.items()
+            }
+            report = attribute_error(
+                reference.blocks, shifted, load_scene_transform(args.scene),
+                load_camera_manifest(args.cameras), frames,
+                provider.complete_palette(),
+            )
+            print()
+            print("Visible error by cause:")
+            for cause, share in report.share().items():
+                print(f"  {cause:11} {share:6.1%}  ({report.pixels.get(cause, 0)} px)")
+            print("Worst blocks:")
+            for name, share in report.worst_blocks():
+                print(f"  {share:6.1%}  {name}")
+            print("Worst confusions:")
+            for wanted, obtained, share in report.worst_confusions():
+                print(f"  {share:6.1%}  {wanted} -> {obtained}")
+        return 0
+
+    if args.command == "export":
+        project = load_project(args.project)
+        if args.format == "world":
+            output_path = args.output or Path.cwd() / "exports" / f"{args.project.stem}.zip"
+            AnvilExporter().export(
+                project.volume, output_path, name=project.name, origin=tuple(args.origin)
+            )
+            print(f"Created {output_path}")
+            print("Unzip it into your saves folder and open it from the world list.")
+            return 0
+        output_path = args.output or Path.cwd() / "exports" / f"{args.project.stem}.litematic"
+        LitematicExporter().export(project.volume, output_path, name=project.name)
+        print(f"Created {output_path}")
+        return 0
+
+    project = load_project(args.path)
+    print(f"Name: {project.name}")
+    print(f"Minecraft: {project.minecraft_version}")
+    print(f"Sources: {len(project.source_paths)}")
+    print(f"Blocks: {len(project.volume.blocks)}")
+    return 0
