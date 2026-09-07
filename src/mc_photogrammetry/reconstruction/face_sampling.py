@@ -99,7 +99,13 @@ def rectify_face(image: np.ndarray, quad: np.ndarray, size: int = PATCH_SIZE) ->
         [[0.0, 0.0], [native, 0.0], [native, native], [0.0, native]], dtype=np.float32
     )
     transform = cv2.getPerspectiveTransform(quad.astype(np.float32), destination)
-    warped = cv2.warpPerspective(image, transform, (native, native), flags=cv2.INTER_LINEAR)
+    # A face can extend outside the screenshot while still leaving a useful
+    # interior patch. Replicating the nearest surviving edge is preferable to
+    # OpenCV's black fill, which would otherwise manufacture a dark material.
+    warped = cv2.warpPerspective(
+        image, transform, (native, native), flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
     if native != size:
         warped = cv2.resize(warped, (size, size), interpolation=cv2.INTER_AREA)
     return warped.astype(np.float32)
@@ -256,16 +262,17 @@ def sample_visible_faces(
         if area < minimum_area:
             reject("minimum_area")
             continue
-        if (
-            quad[:, 0].min() < 1
-            or quad[:, 0].max() >= width - 1
-            or quad[:, 1].min() < 1
-            or quad[:, 1].max() >= height - 1
-        ):
+        visible = float((buffer == index).sum()) / (depth_scale * depth_scale)
+        # The raster buffer already clips to the frame. Compare surviving pixels
+        # with the in-frame footprint, not the original face area, so an edge
+        # face can still contribute its unobscured portion.
+        footprint = np.zeros((height, width), dtype=np.uint8)
+        cv2.fillConvexPoly(footprint, quad.astype(np.int32), 1)
+        in_frame_area = float(footprint.sum())
+        if in_frame_area == 0.0:
             reject("off_frame")
             continue
-        visible = float((buffer == index).sum()) / (depth_scale * depth_scale)
-        if visible < minimum_visible_fraction * area:
+        if visible < minimum_visible_fraction * in_frame_area:
             reject("visible_fraction")
             continue
         if gui_mask is not None and gui_mask.any():
