@@ -2,6 +2,8 @@ import pytest
 
 from mc_photogrammetry.reconstruction.camera import (
     CameraModel,
+    camera_projection_matrix,
+    camera_space_points,
     load_camera_manifest,
     project_points,
     unproject_pixel,
@@ -21,6 +23,26 @@ def test_camera_projection_round_trips_a_world_point():
     recovered = unproject_pixel(pixel[0], pixel[1], camera, width=1920, height=1080, depth=pixel[2])
 
     assert recovered == pytest.approx(point)
+
+
+@pytest.mark.parametrize("width,height", [(1920, 1080), (1080, 1920), (2560, 1369)])
+def test_sfm_projection_matrix_matches_the_shared_camera_projection(width, height):
+    camera = CameraModel((2.0, 4.0, -3.0), yaw_degrees=-37.0, pitch_degrees=22.0)
+    points = [(5.0, 5.0, 11.0), (-2.0, 1.0, 8.0)]
+    matrix = camera_projection_matrix(camera, width=width, height=height)
+
+    for point, direct in zip(points, project_points(points, camera, width=width, height=height)):
+        assert direct is not None
+        projected = matrix @ (*point, 1.0)
+        assert projected[0] / projected[2] == pytest.approx(direct[0])
+        assert projected[1] / projected[2] == pytest.approx(direct[1])
+        assert projected[2] == pytest.approx(direct[2])
+
+
+def test_camera_space_uses_positive_depth_for_a_point_in_front_of_the_camera():
+    camera = CameraModel((0.0, 0.0, 0.0), 0.0, 0.0, eye_height=0.0)
+    view = camera_space_points([(0.0, 0.0, 5.0)], camera)
+    assert tuple(view[0]) == pytest.approx((0.0, 0.0, 5.0))
 
 
 def test_camera_rejects_invalid_fov():

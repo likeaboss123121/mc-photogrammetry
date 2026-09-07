@@ -7,7 +7,7 @@ from typing import Mapping
 import numpy as np
 
 from mc_photogrammetry.domain.models import BlockObservation, BlockState, BlockVolume, ObservationKind
-from .camera import CameraModel
+from .camera import CameraModel, camera_projection_matrix
 from .scene import SceneTransform
 
 
@@ -159,21 +159,7 @@ def _triangulate(
 
 
 def _projection_matrix(camera: CameraModel, width: int, height: int) -> np.ndarray:
-    import math
-
-    yaw = math.radians(camera.yaw_degrees)
-    pitch = math.radians(camera.pitch_degrees)
-    cy, sy = math.cos(yaw), math.sin(yaw)
-    cp, sp = math.cos(pitch), math.sin(pitch)
-    rotation = np.array(
-        [[cy, 0.0, sy], [sp * sy, -cp, -sp * cy], [-cp * sy, -sp, cp * cy]],
-        dtype=np.float64,
-    )
-    eye = np.asarray(camera.position, dtype=np.float64) + np.array([0.0, camera.eye_height, 0.0])
-    translation = -(rotation @ eye).reshape(3, 1)
-    focal = (width / 2.0) / math.tan(math.radians(camera.fov_degrees) / 2.0)
-    intrinsics = np.array([[focal, 0.0, width / 2.0], [0.0, focal, height / 2.0], [0.0, 0.0, 1.0]])
-    return intrinsics @ np.hstack((rotation, translation))
+    return camera_projection_matrix(camera, width=width, height=height)
 
 
 def _reprojection_error(

@@ -75,6 +75,62 @@ def _focal_length(fov_degrees: float, height: int) -> float:
     return (height / 2.0) / math.tan(math.radians(fov_degrees) / 2.0)
 
 
+def camera_space_points(
+    points: Iterable[tuple[float, float, float]], camera: CameraModel
+) -> np.ndarray:
+    """Transform world points into the shared Minecraft camera convention.
+
+    Columns are screen-right, screen-up, and positive depth.  Keeping this
+    transform separate from raster projection makes SfM, ray casting, and the
+    renderer use the same handedness.
+    """
+    values = np.asarray(list(points), dtype=np.float64)
+    if values.size == 0:
+        return np.empty((0, 3), dtype=np.float64)
+    values = values.reshape(-1, 3)
+    yaw = math.radians(camera.yaw_degrees)
+    pitch = math.radians(camera.pitch_degrees)
+    cos_yaw, sin_yaw = math.cos(yaw), math.sin(yaw)
+    cos_pitch, sin_pitch = math.cos(pitch), math.sin(pitch)
+    eye = np.asarray(camera.position, dtype=np.float64) + np.asarray([0.0, camera.eye_height, 0.0])
+    dx, dy, dz = (values - eye).T
+    horizontal = -dx * sin_yaw + dz * cos_yaw
+    return np.stack(
+        (
+            -(dx * cos_yaw + dz * sin_yaw),
+            dy * cos_pitch + horizontal * sin_pitch,
+            horizontal * cos_pitch - dy * sin_pitch,
+        ),
+        axis=1,
+    )
+
+
+def camera_projection_matrix(camera: CameraModel, *, width: int, height: int) -> np.ndarray:
+    """Return a homogeneous matrix that exactly matches :func:`project_points`."""
+    if width <= 0 or height <= 0:
+        raise ValueError("image dimensions must be positive")
+    yaw = math.radians(camera.yaw_degrees)
+    pitch = math.radians(camera.pitch_degrees)
+    cos_yaw, sin_yaw = math.cos(yaw), math.sin(yaw)
+    cos_pitch, sin_pitch = math.cos(pitch), math.sin(pitch)
+    rotation = np.asarray(
+        (
+            (-cos_yaw, 0.0, -sin_yaw),
+            (-sin_pitch * sin_yaw, cos_pitch, sin_pitch * cos_yaw),
+            (-cos_pitch * sin_yaw, -sin_pitch, cos_pitch * cos_yaw),
+        ),
+        dtype=np.float64,
+    )
+    eye = np.asarray(camera.position, dtype=np.float64) + np.asarray([0.0, camera.eye_height, 0.0])
+    extrinsics = np.hstack((rotation, (-(rotation @ eye)).reshape(3, 1)))
+    focal = _focal_length(camera.fov_degrees, height)
+    intrinsics = np.asarray(
+        ((focal, 0.0, width / 2.0), (0.0, -focal, height / 2.0), (0.0, 0.0, 1.0)),
+        dtype=np.float64,
+    )
+    return intrinsics @ extrinsics
+
+
 def project_points(
     points: Iterable[tuple[float, float, float]],
     camera: CameraModel,
@@ -86,23 +142,8 @@ def project_points(
     if width <= 0 or height <= 0:
         raise ValueError("image dimensions must be positive")
     focal = _focal_length(camera.fov_degrees, height)
-    yaw = math.radians(camera.yaw_degrees)
-    pitch = math.radians(camera.pitch_degrees)
-    cos_yaw, sin_yaw = math.cos(yaw), math.sin(yaw)
-    cos_pitch, sin_pitch = math.cos(pitch), math.sin(pitch)
     projected: list[tuple[float, float, float] | None] = []
-    camera_x, camera_feet_y, camera_z = camera.position
-    camera_y = camera_feet_y + camera.eye_height
-    for point_x, point_y, point_z in points:
-        dx, dy, dz = point_x - camera_x, point_y - camera_y, point_z - camera_z
-        # Minecraft yaw 0 looks toward positive Z; yaw -90 looks toward positive X,
-        # so forward is (-sin, 0, cos). Screen right is forward x up, which is
-        # (-cos, 0, -sin): facing south (+Z) puts west (-X) on the right of frame.
-        # Dropping that sign mirrors the whole render left to right.
-        view_x = -(dx * cos_yaw + dz * sin_yaw)
-        horizontal_depth = -dx * sin_yaw + dz * cos_yaw
-        rotated_y = dy * cos_pitch + horizontal_depth * sin_pitch
-        depth = horizontal_depth * cos_pitch - dy * sin_pitch
+    for view_x, rotated_y, depth in camera_space_points(points, camera):
         if depth <= 1e-6:
             projected.append(None)
             continue
