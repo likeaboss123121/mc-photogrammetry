@@ -4,6 +4,7 @@ import pytest
 from mc_photogrammetry.reconstruction.camera import CameraModel
 from mc_photogrammetry.reconstruction.face_sampling import (
     PATCH_SIZE,
+    DEPTH_SCALE,
     default_face_corners,
     quad_area,
     rectify_face,
@@ -33,6 +34,10 @@ def test_rectify_face_area_averages_instead_of_point_sampling():
     assert patch.shape == (PATCH_SIZE, PATCH_SIZE, 3)
     assert 100.0 < float(patch.mean()) < 160.0
     assert float(patch.std()) < 40.0
+
+
+def test_face_sampling_defaults_to_source_pixel_depth_ownership():
+    assert DEPTH_SCALE == 1.0
 
 
 def test_rectify_face_preserves_a_pattern_it_can_resolve():

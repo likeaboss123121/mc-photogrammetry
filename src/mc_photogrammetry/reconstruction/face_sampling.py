@@ -19,14 +19,13 @@ from .camera import CameraModel, project_points
 from .scene import SceneTransform
 
 PATCH_SIZE = 16
-DEPTH_SCALE = 0.25
+DEPTH_SCALE = 1.0
 """Resolution of the visibility buffer, as a fraction of the frame.
 
-Depth is compared per pixel of this buffer whatever its size, so ordering is
-correct at any scale; the scale only sets how finely a face's visible share
-is measured. One rasterises at the frame's own resolution and is the more
-accurate setting, but on Template 2 it costs three thinly-seen log faces and
-three seconds, so the cheaper grid is the default.
+Sampling and residual rendering must agree on which source pixels survive.
+The former quarter-resolution default quantised thin faces into a few pixels,
+which could both reject a visible face and disagree with the renderer. Callers
+may still request a lower scale for an explicitly labelled preview.
 """
 
 OPPOSITE_SLOT = {
