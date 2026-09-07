@@ -20,6 +20,7 @@ from mc_photogrammetry.export.attribution import (
     attribute_error,
     box_face_corners,
     face_colours,
+    face_occluding_slots,
     face_shapes,
     render_volume,
 )
@@ -129,6 +130,12 @@ def test_a_carpet_is_drawn_as_a_carpet_and_not_as_a_cube():
     _box, box_owner, _bi, _bd = render_volume(blocks, scene, camera, 120, 120,
                                               colours, shapes)
     assert (cube_owner >= 0).sum() > (box_owner >= 0).sum()
+
+
+def test_a_carpet_does_not_cull_the_floor_face_below_it():
+    palette = _palette()
+    covered = face_occluding_slots(palette)
+    assert "down" not in covered[CARPET]
 
 
 def test_depth_buffer_keeps_the_nearer_surface_at_an_overlapping_pixel():

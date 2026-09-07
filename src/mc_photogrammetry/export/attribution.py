@@ -52,6 +52,10 @@ _AXIS_WALL = {
     "west": (0, 0, 0.0), "south": (2, 1, 1.0), "north": (2, 0, 0.0),
 }
 
+_OPPOSITE_SLOT = {
+    "up": "down", "down": "up", "east": "west", "west": "east", "north": "south", "south": "north",
+}
+
 
 @dataclass(frozen=True)
 class ErrorReport:
@@ -85,30 +89,40 @@ class ErrorReport:
         return [(want, got, value / total) for (want, got), value in ranked[:limit]]
 
 
-def face_colours(palette: Sequence) -> dict[str, dict[str, np.ndarray]]:
+def face_colours(palette: Sequence) -> dict[object, dict[str, np.ndarray]]:
     """Per-state, per-slot RGB, taken from the palette the run already has."""
-    table: dict[str, dict[str, np.ndarray]] = {}
+    table: dict[object, dict[str, np.ndarray]] = {}
     for item in palette:
-        name = item.state.name
-        if name in table:
-            continue
+        state = item.state
         mapping = dict(getattr(item, "face_map", ()) or ())
         default = np.asarray(item.rgb, dtype=float)
-        table[name] = {
+        colours = {
             slot: np.asarray(mapping.get(slot, item.rgb), dtype=float)
             for slot in FACE_SLOTS
         } if mapping else {slot: default for slot in FACE_SLOTS}
+        table[state] = colours
+        table.setdefault(state.name, colours)
     return table
 
 
-def face_shapes(palette: Sequence) -> dict[str, tuple]:
+def face_shapes(palette: Sequence) -> dict[object, tuple]:
     """Per-state model boxes, so a carpet is drawn as a carpet."""
-    shapes: dict[str, tuple] = {}
+    shapes: dict[object, tuple] = {}
     for item in palette:
-        name = item.state.name
-        if name not in shapes:
-            shapes[name] = tuple(getattr(item, "shape_boxes", ()) or CUBE)
+        boxes = tuple(getattr(item, "shape_boxes", ()) or CUBE)
+        shapes[item.state] = boxes
+        shapes.setdefault(item.state.name, boxes)
     return shapes
+
+
+def face_occluding_slots(palette: Sequence) -> dict[object, frozenset[str]]:
+    """Faces that actually close a cell boundary, keyed by exact block state."""
+    slots: dict[object, frozenset[str]] = {}
+    for item in palette:
+        covered = frozenset(getattr(item, "covered_slots", ()) or ())
+        slots[item.state] = covered
+        slots.setdefault(item.state.name, covered)
+    return slots
 
 
 def box_face_corners(low: Sequence[float], high: Sequence[float], slot: str) -> np.ndarray:
@@ -144,10 +158,11 @@ def render_volume(
     camera: CameraModel,
     width: int,
     height: int,
-    colours: Mapping[str, Mapping[str, np.ndarray]],
-    shapes: Mapping[str, tuple] | None = None,
+    colours: Mapping[object, Mapping[str, np.ndarray]],
+    shapes: Mapping[object, tuple] | None = None,
     scale: float = RENDER_SCALE,
     ambient: bool = False,
+    occluding_slots: Mapping[object, frozenset[str]] | None = None,
 ):
     """Painter render, with the cell and depth behind every pixel.
 
@@ -177,7 +192,7 @@ def render_volume(
     faces = []
     for coordinate, state in blocks.items():
         centre = np.asarray(scene.to_world(coordinate), dtype=float) + 0.5
-        boxes = CUBE if shapes is None else shapes.get(state.name, CUBE)
+        boxes = CUBE if shapes is None else shapes.get(state, shapes.get(state.name, CUBE))
         for low, high in boxes:
             for slot in FACE_SLOTS:
                 normal = np.asarray(FACE_BASIS[slot][0], dtype=float)
@@ -189,7 +204,13 @@ def render_volume(
                         coordinate[1] + int(normal[1]),
                         coordinate[2] + int(normal[2]),
                     )
-                    if neighbour in occupied:
+                    neighbour_state = blocks.get(neighbour)
+                    if neighbour_state is not None and (
+                        occluding_slots is None
+                        or _OPPOSITE_SLOT[slot] in occluding_slots.get(
+                            neighbour_state, occluding_slots.get(neighbour_state.name, frozenset())
+                        )
+                    ):
                         continue
                 projected = project_points(
                     [tuple(point) for point in centre + box_face_corners(low, high, slot)],
@@ -201,7 +222,7 @@ def render_volume(
                     [[point[0] * scale, point[1] * scale] for point in projected],
                     dtype=np.float32,
                 )
-                colour = colours.get(state.name, {}).get(slot)
+                colour = colours.get(state, colours.get(state.name, {})).get(slot)
                 if colour is None:
                     colour = np.asarray((128.0, 128.0, 128.0))
                 shade = FACE_SHADE.get(slot, 0.8)
@@ -261,6 +282,7 @@ def attribute_error(
     """Where the reconstruction visibly differs from the reference, and why."""
     colours = face_colours(palette)
     shapes = face_shapes(palette)
+    occluding_slots = face_occluding_slots(palette)
     energy: dict[str, float] = defaultdict(float)
     pixels: dict[str, int] = defaultdict(int)
     blamed: dict[str, float] = defaultdict(float)
@@ -272,9 +294,9 @@ def attribute_error(
             continue
         height, width = image.shape[:2]
         want, want_owner, want_index, want_depth = render_volume(
-            reference, scene, camera, width, height, colours, shapes, scale)
+            reference, scene, camera, width, height, colours, shapes, scale, occluding_slots=occluding_slots)
         got, got_owner, got_index, got_depth = render_volume(
-            candidate, scene, camera, width, height, colours, shapes, scale)
+            candidate, scene, camera, width, height, colours, shapes, scale, occluding_slots=occluding_slots)
         difference = np.linalg.norm(want - got, axis=2)
         for row, column in zip(*np.nonzero(difference > threshold)):
             here = int(want_owner[row, column])
