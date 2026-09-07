@@ -6,6 +6,7 @@ from mc_photogrammetry.reconstruction.camera import (
     camera_space_points,
     load_camera_manifest,
     project_points,
+    project_clipped_polygon,
     unproject_pixel,
 )
 from mc_photogrammetry.domain.models import BlockObservation, BlockState, BlockVolume
@@ -43,6 +44,16 @@ def test_camera_space_uses_positive_depth_for_a_point_in_front_of_the_camera():
     camera = CameraModel((0.0, 0.0, 0.0), 0.0, 0.0, eye_height=0.0)
     view = camera_space_points([(0.0, 0.0, 5.0)], camera)
     assert tuple(view[0]) == pytest.approx((0.0, 0.0, 5.0))
+
+
+def test_clipped_polygon_keeps_the_front_part_of_a_near_plane_crossing_face():
+    camera = CameraModel((0.0, 0.0, 0.0), 0.0, 0.0, eye_height=0.0)
+    polygon = project_clipped_polygon(
+        [(-1.0, -1.0, -1.0), (1.0, -1.0, 2.0), (1.0, 1.0, 2.0), (-1.0, 1.0, -1.0)],
+        camera, width=256, height=256,
+    )
+    assert polygon.shape[0] >= 3
+    assert float(polygon[:, 2].min()) >= 1e-3 - 1e-12
 
 
 def test_camera_rejects_invalid_fov():

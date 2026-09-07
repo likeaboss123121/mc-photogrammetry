@@ -26,7 +26,7 @@ import numpy as np
 
 from mc_photogrammetry.blocks.model_atlas import FACE_BASIS, FACE_SHADE, FACE_SLOTS
 from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
-from mc_photogrammetry.reconstruction.camera import CameraModel, project_points
+from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped_polygon
 from mc_photogrammetry.reconstruction.lighting import ambient_occlusion
 from mc_photogrammetry.reconstruction.scene import SceneTransform
 
@@ -212,16 +212,12 @@ def render_volume(
                         )
                     ):
                         continue
-                projected = project_points(
-                    [tuple(point) for point in centre + box_face_corners(low, high, slot)],
-                    camera, width=width, height=height,
+                projected = project_clipped_polygon(
+                    centre + box_face_corners(low, high, slot), camera, width=width, height=height,
                 )
-                if any(point is None for point in projected):
+                if len(projected) < 3:
                     continue
-                quad = np.asarray(
-                    [[point[0] * scale, point[1] * scale] for point in projected],
-                    dtype=np.float32,
-                )
+                quad = projected[:, :2].astype(np.float32) * scale
                 colour = colours.get(state, colours.get(state.name, {})).get(slot)
                 if colour is None:
                     colour = np.asarray((128.0, 128.0, 128.0))
@@ -230,7 +226,7 @@ def render_volume(
                     shade *= ambient_occlusion(coordinate, slot, occupied)
                 faces.append((
                     quad,
-                    np.asarray([point[2] for point in projected], dtype=np.float64),
+                    projected[:, 2],
                     np.asarray(colour, dtype=float) * shade,
                     (coordinate, slot),
                 ))

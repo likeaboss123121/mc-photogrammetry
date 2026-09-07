@@ -131,6 +131,46 @@ def camera_projection_matrix(camera: CameraModel, *, width: int, height: int) ->
     return intrinsics @ extrinsics
 
 
+def project_clipped_polygon(
+    points: Iterable[tuple[float, float, float]],
+    camera: CameraModel,
+    *,
+    width: int,
+    height: int,
+    near_clip: float = 1e-3,
+) -> np.ndarray:
+    """Project the part of a convex world polygon in front of the near plane.
+
+    Returning a polygon instead of dropping a face with one vertex behind the
+    lens prevents foreground walls from leaking the far geometry into a renderer.
+    Each returned row is ``(pixel_x, pixel_y, camera_depth)``.
+    """
+    if near_clip <= 0:
+        raise ValueError("near_clip must be positive")
+    polygon = camera_space_points(points, camera)
+    if len(polygon) < 3:
+        return np.empty((0, 3), dtype=np.float64)
+    kept: list[np.ndarray] = []
+    for index, current in enumerate(polygon):
+        following = polygon[(index + 1) % len(polygon)]
+        here = current[2] >= near_clip
+        there = following[2] >= near_clip
+        if here:
+            kept.append(current)
+        if here != there:
+            fraction = (near_clip - current[2]) / (following[2] - current[2])
+            kept.append(current + fraction * (following - current))
+    if len(kept) < 3:
+        return np.empty((0, 3), dtype=np.float64)
+    values = np.asarray(kept, dtype=np.float64)
+    focal = _focal_length(camera.fov_degrees, height)
+    return np.column_stack((
+        width / 2.0 + values[:, 0] * focal / values[:, 2],
+        height / 2.0 - values[:, 1] * focal / values[:, 2],
+        values[:, 2],
+    ))
+
+
 def project_points(
     points: Iterable[tuple[float, float, float]],
     camera: CameraModel,
