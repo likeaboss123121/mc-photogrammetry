@@ -29,6 +29,7 @@ from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
 from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped_polygon
 from mc_photogrammetry.reconstruction.lighting import ambient_occlusion
 from mc_photogrammetry.reconstruction.scene import SceneTransform
+from mc_photogrammetry.pipeline.contracts import RenderResult
 
 RENDER_SCALE = 0.35
 """Fraction of the source resolution the diagnostic renders at."""
@@ -261,6 +262,19 @@ def render_volume(
             depth_buffer[chosen_rows, chosen_columns] = pixel_depth[nearer]
         index.append(owned)
     return canvas, owner, index, depth_buffer
+
+
+def render_result(
+    blocks: Mapping[BlockCoordinate, BlockState], scene: SceneTransform, camera: CameraModel,
+    width: int, height: int, colours: Mapping[object, Mapping[str, np.ndarray]],
+    shapes: Mapping[object, tuple] | None = None, scale: float = RENDER_SCALE,
+    ambient: bool = False, occluding_slots: Mapping[object, frozenset[str]] | None = None,
+) -> tuple[RenderResult, list[tuple[BlockCoordinate, str]]]:
+    """Contract-shaped rendering result plus the face table used by ownership IDs."""
+    colour, ownership, index, depth = render_volume(
+        blocks, scene, camera, width, height, colours, shapes, scale, ambient, occluding_slots
+    )
+    return RenderResult(colour=colour, depth=depth, ownership=ownership, valid_pixels=ownership >= 0), index
 
 
 def attribute_error(

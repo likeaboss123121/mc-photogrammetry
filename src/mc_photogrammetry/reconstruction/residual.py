@@ -28,7 +28,7 @@ from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
 from mc_photogrammetry.export.attribution import (
     face_colours,
     face_shapes,
-    render_volume,
+    render_result,
 )
 from mc_photogrammetry.reconstruction.camera import CameraModel
 from mc_photogrammetry.reconstruction.scene import SceneTransform
@@ -78,8 +78,9 @@ def face_residuals(
         if camera is None:
             continue
         height, width = image.shape[:2]
-        canvas, owner, index, _depth = render_volume(
+        rendered, index = render_result(
             blocks, scene, camera, width, height, colours, shapes, scale, ambient=True)
+        canvas, owner = rendered.colour, rendered.ownership
         seen = owner >= 0
         if not seen.any():
             continue

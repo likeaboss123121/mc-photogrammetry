@@ -23,6 +23,7 @@ from mc_photogrammetry.export.attribution import (
     face_occluding_slots,
     face_shapes,
     render_volume,
+    render_result,
 )
 from mc_photogrammetry.reconstruction.camera import CameraModel
 from mc_photogrammetry.reconstruction.camera import project_points
@@ -169,6 +170,13 @@ def test_an_unknown_face_slot_is_refused():
 def test_a_bad_scale_is_refused():
     with pytest.raises(ValueError):
         render_volume({}, _scene(), _camera(), 120, 120, {}, None, 0.0)
+
+
+def test_contract_result_exposes_the_renderer_buffers():
+    result, index = render_result(_wall(WHITE), _scene(), _camera(), 120, 120, face_colours(_palette()))
+    assert result.colour.shape[:2] == result.depth.shape == result.ownership.shape
+    assert result.valid_pixels is not None
+    assert len(index) > 0
 
 
 def test_a_frame_without_a_camera_is_skipped():
