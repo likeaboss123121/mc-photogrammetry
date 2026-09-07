@@ -1,7 +1,7 @@
 # Agent Handoff — MC Photogrammetry
 
 Updated: 2026-09-07 by GPT-6 Astra, project lead.
-Status: reconstruction plan approved; its seven implementation milestones are **PLANNED**, not completed.
+Status: M1 measurement/contracts is **COMPLETE**; M2 and M3 are in progress. M4-M7 remain **PLANNED**.
 This file is the current working specification. Update its sections instead of appending a chronology.
 The lead reviews and plans; Claude Opus and GPT-5.6 Terra perform implementation coding.
 Historical recommendations in [the archived handoff](docs/archive/AGENT_HANDOFF-2026-09-07.md)
@@ -46,7 +46,14 @@ and [PLAN.md](PLAN.md) are superseded by this specification.
 Read-only code review and test execution on 2026-09-07 established the following.
 These findings describe the code before implementing the seven milestones, not projected results.
 
-- **238 tests passed** with `.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider`.
+- **252 tests passed** with `.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider` after M1.
+- M1 created local Git baseline `65d2a16`; fixture media, reference litematics, local assets,
+  environments, generated output, and scratch artifacts are excluded. See [M1 baseline](docs/m1-baseline.md).
+- The maintained benchmark now requires explicit reference/camera/scene paths, labels its mode,
+  records hashes, dependencies, cache schema, effective settings, timing, peak Python heap, observed/
+  inferred counts, and visible metrics. It rejects unsupported image-only scoring rather than passing
+  supplied camera data as production input. Template 2 and 6 supplied-camera diagnostics are recorded
+  in the M1 report and do not qualify for promotion.
 - Working foundations: media discovery/image loading/video decoding, masks, local-JAR texture loading,
   model/partial-geometry extraction, texture classification, multiview evidence fusion, sparse volumes,
   project persistence, litematic validation/comparison, and both litematic and world ZIP export.
@@ -89,9 +96,9 @@ These findings describe the code before implementing the seven milestones, not p
 - Use PowerShell-compatible commands and explicit UTF-8 for documents/reports. Do not use Bash heredocs
   that can leave Python reading stdin interactively. Verify artifacts instead of trusting stale terminal logs.
 
-## 3. Approved implementation plan — all milestones PLANNED
+## 3. Approved implementation plan
 
-### M1. Measurements and contracts — Terra; lead reviews baseline
+### M1. Measurements and contracts — Terra; **COMPLETE 2026-09-07**
 
 - Snapshot current source/environment and establish excluded local version control before source changes.
 - Upgrade the maintained benchmark: explicit reference selection, visible metrics, per-state errors,
@@ -102,9 +109,10 @@ These findings describe the code before implementing the seven milestones, not p
 - Freeze current results using corrected metrics; retain old percentages with their original denominators.
   A denominator correction is not an algorithm improvement.
 - Freeze section 4 contracts before parallel integration. Keep calibrated commands as regression tools.
-- Deliverable: reproducible baseline reports, metric definitions, and agreed interfaces.
+- Deliverable: reproducible baseline reports, metric definitions, and agreed interfaces. Evidence:
+  [M1 baseline](docs/m1-baseline.md), reports under `exports/baselines/`, and 252 passing tests.
 
-### M2. Consistent projection and rendering — Terra; Claude reviews conventions
+### M2. Consistent projection and rendering — Terra; **IN PROGRESS**; Claude reviews conventions
 
 - Share camera transforms and projection utilities. Fix SfM handedness and horizontal/vertical FOV drift.
 - Represent intrinsics, principal point, and image dimensions explicitly; transform them with crop/resize.
