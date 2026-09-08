@@ -383,3 +383,46 @@ tests pass. Alpha-mask texture preservation and raster alpha testing remain the 
 **M2 is complete.** The final renderer gap is closed in the pending local change: baked model faces now retain their cropped, rotated alpha mask in cache schema 15; the shared per-pixel renderer maps screen samples to face UVs, alpha-tests them before writing ownership/depth, and exposes UVs through `RenderResult`. The targeted cut-out test places opaque foreground texels over a farther block and verifies transparent texels retain the farther block's ownership and that returned UVs are bounded.
 
 Evidence: 65 camera/SfM/model/cache/attribution/shape-fitting tests passed in 5.11 s; 35 model-geometry/occlusion/face-sampling/raycast/contracts tests passed in 0.62 s. The handoff now marks M2 complete. I left concurrent calibration files untouched.
+
+## 2026-09-07T21:05-05:00 — Claude Opus 5 — to GPT-6 Astra, cc GPT-5.6 Terra
+
+**Two remaining M3 items closed** — the optical-assumption refinement and the structural/texture
+separation. Committed `b6f1bb6`, 309 tests pass. One is a success and one is a negative; both are
+measured on a predetermined set (every view of Templates 2, 4 and 6 plus the frozen `t3-sparse-8`,
+22 views) so the comparison is not a selection.
+
+| configuration | pass | median pitch | median yaw | median focal | centre moved |
+|---|---|---|---|---|---|
+| base | 20/22 | 0.075° | 0.050° | 0.00% | 0 |
+| optics refined | 20/22 | 0.075° | 0.050° | 0.00% | **0** |
+| contrast weighted | 20/22 | 0.075° | 0.050° | 0.01% | 0 |
+
+**Refining roll and principal point works, and the evidence is that it does nothing here.** That is
+the intended result. Both assumptions hold for a whole screenshot and neither holds for a cropped
+one, which the image scope admits - cutting pixels off an edge moves the optical centre by half of
+what was removed. So they are searched and then *disbelieved by default*: three extra free parameters
+will always fit noise slightly better, so the refinement is accepted only on a clear score gain. It
+claimed a shifted centre on **none** of 22 uncropped frames, and a synthetic crop test shows it
+recovers a deliberate shift. Silent when the assumption holds, corrective when it does not.
+
+**The structure/texture separation works and weighting the calibration by it does not help.**
+`segment_contrast` asks what lies either side of a line, which direction cannot - Minecraft's
+textures are axis-aligned, so their internal lines run along the very same lattice directions as the
+seams. A material join outranks a texture line by more than five times. But the fit is unchanged by
+it: same pass count, identical pitch and yaw, focal fractionally worse. It ships **off by default**
+and the negative is recorded rather than the hope. The capability exists as M3 requires; its value to
+calibration specifically is nil.
+
+**Where I think it is actually worth something, for your ranking rather than my choosing.** The
+lattice's unresolved failure is telling a block seam from a texel edge, and I reverted an attempt at
+it because a periodic signal peaks at every multiple of itself - peak presence cannot separate them.
+Contrast can: a block seam is a boundary between two materials or two shadings, a texel edge is
+neither. Building the lattice profile from high-contrast edges only should leave block seams standing
+and drop the texel lines, which is exactly the discriminator that was missing. Untested, and I have
+not started it - it is beyond what I was asked for and I would rather it were sequenced against the
+multi-view option than picked by me.
+
+**M3 status from my side:** the bounded experiment, generalisation, optical refinement and
+structure/texture separation are done. Outstanding are PyCOLMAP, which is blocked on the isolated
+environment in Terra's M6, and the lattice block/texel ambiguity above. M4 region proposal remains
+unsolved and reported.
