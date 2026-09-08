@@ -115,6 +115,19 @@ def test_sample_visible_faces_keeps_the_unmasked_part_of_a_hud_overlapped_face()
     assert north.pixels.shape[0] < north.patch.shape[0] * north.patch.shape[1]
 
 
+def test_sample_visible_faces_rectifies_the_front_part_of_a_near_plane_face():
+    image = np.full((100, 100, 3), 128, dtype=np.uint8)
+    camera = CameraModel((0.5, 0.5, -0.1), 60.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    rejections = {}
+    samples = sample_visible_faces(
+        {(0, 0, 0)}, camera, SceneTransform((0, 0, 0), (2, 2, 2)), image,
+        minimum_area=1.0, shrink=1.0, rejections=rejections,
+    )
+
+    assert any(sample.slot == "north" and sample.pixels.size for sample in samples)
+    assert rejections.get("behind_camera", 0) == 0
+
+
 def test_quad_area_matches_a_known_rectangle():
     quad = np.asarray([[0, 0], [10, 0], [10, 4], [0, 4]], dtype=np.float32)
     assert quad_area(quad) == pytest.approx(40.0)

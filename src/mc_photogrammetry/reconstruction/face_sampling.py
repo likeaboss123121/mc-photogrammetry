@@ -15,7 +15,7 @@ import numpy as np
 
 from mc_photogrammetry.blocks.model_atlas import FACE_BASIS, FACE_SLOTS
 from mc_photogrammetry.domain.models import BlockCoordinate
-from .camera import CameraModel, project_points
+from .camera import CameraModel, camera_space_points, intrinsics_for, project_clipped_polygon_uv
 from .scene import SceneTransform
 
 PATCH_SIZE = 16
@@ -179,7 +179,7 @@ def _hidden_by(
 
 
 def _nearest_surface(
-    quads: list[tuple[float, np.ndarray, np.ndarray, BlockCoordinate, str, float]],
+    quads: list[tuple[float, np.ndarray, np.ndarray, BlockCoordinate, str, float, np.ndarray]],
     width: int,
     height: int,
     scale: float,
@@ -196,7 +196,7 @@ def _nearest_surface(
     rows = max(1, int(round(height * scale)))
     owner = np.full((rows, columns), -1, dtype=np.int32)
     nearest = np.full((rows, columns), -np.inf, dtype=np.float64)
-    for index, (mean_depth, quad, depths, _coordinate, _slot, _facing) in enumerate(quads):
+    for index, (mean_depth, quad, depths, _coordinate, _slot, _facing, _texture_quad) in enumerate(quads):
         points = np.asarray(quad, dtype=np.float64) * scale
         left = max(0, int(np.floor(points[:, 0].min())))
         right = min(columns, int(np.ceil(points[:, 0].max())) + 1)
@@ -262,7 +262,7 @@ def sample_visible_faces(
 
     height, width = image.shape[:2]
     eye = np.asarray(camera.position, dtype=float) + np.asarray([0.0, camera.eye_height, 0.0])
-    quads: list[tuple[float, np.ndarray, np.ndarray, BlockCoordinate, str, float]] = []
+    quads: list[tuple[float, np.ndarray, np.ndarray, BlockCoordinate, str, float, np.ndarray]] = []
     for coordinate in coordinates:
         center = np.asarray(scene.to_world(coordinate), dtype=float) + 0.5
         for slot in FACE_SLOTS:
@@ -280,18 +280,26 @@ def sample_visible_faces(
             if _hidden_by(neighbour, slot, coordinates, occluding_slots):
                 reject("neighbour_occupied")
                 continue
-            projected = project_points(
-                [tuple(point) for point in center + default_face_corners(slot)],
-                camera,
-                width=width,
-                height=height,
-            )
-            if any(point is None for point in projected):
+            world_corners = center + default_face_corners(slot)
+            projected, _uv = project_clipped_polygon_uv(world_corners, camera, width=width, height=height)
+            if len(projected) < 3:
                 reject("behind_camera")
                 continue
-            quad = np.asarray([[point[0], point[1]] for point in projected], dtype=np.float32)
-            depths = np.asarray([point[2] for point in projected], dtype=np.float64)
-            quads.append((float(depths.mean()), quad, depths, coordinate, slot, facing))
+            quad = projected[:, :2].astype(np.float32)
+            depths = projected[:, 2]
+            # The original UV square is still projective even where part of it
+            # lies behind the lens. Its visible clipped polygon supplies the
+            # source-valid mask, so border replication never becomes evidence.
+            view = camera_space_points(world_corners, camera)
+            if np.any(np.abs(view[:, 2]) <= 1e-6):
+                reject("near_plane_vertex")
+                continue
+            calibration = intrinsics_for(camera, width, height)
+            texture_quad = np.column_stack((
+                calibration.principal_point_pixels[0] + view[:, 0] * calibration.focal_length_pixels[0] / view[:, 2],
+                calibration.principal_point_pixels[1] - view[:, 1] * calibration.focal_length_pixels[1] / view[:, 2],
+            )).astype(np.float32)
+            quads.append((float(depths.mean()), quad, depths, coordinate, slot, facing, texture_quad))
     if not quads:
         return []
 
@@ -305,7 +313,7 @@ def sample_visible_faces(
     buffer = _nearest_surface(quads, width, height, depth_scale)
 
     samples: list[FaceSample] = []
-    for index, (depth, quad, _depths, coordinate, slot, facing) in enumerate(quads):
+    for index, (depth, quad, _depths, coordinate, slot, facing, texture_quad) in enumerate(quads):
         area = quad_area(quad)
         if area < minimum_area:
             reject("minimum_area")
@@ -330,8 +338,8 @@ def sample_visible_faces(
             ).astype(bool)
         if gui_mask is not None:
             source_valid &= ~gui_mask
-        centroid = quad.mean(axis=0)
-        inner = (centroid + (quad - centroid) * shrink).astype(np.float32)
+        centroid = texture_quad.mean(axis=0)
+        inner = (centroid + (texture_quad - centroid) * shrink).astype(np.float32)
         rectified = rectify_face_valid(image, inner, source_valid)
         if rectified is None:
             reject("rectify_failed")
