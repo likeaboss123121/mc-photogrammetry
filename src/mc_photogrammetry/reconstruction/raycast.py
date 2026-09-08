@@ -117,10 +117,16 @@ that is found.
 """
 STEREO_MARGIN = 0.25
 STEREO_SCALE = 4
-CORRECT_LIGHT_CAST = False
-"""Off by default: the correction is sound and measures well on reference geometry,
-but 37 shows the shipped pipeline feeds it 97% fallback evidence, where it is worth
-nothing. Turn it on once geometry is carved."""
+CORRECT_LIGHT_CAST = True
+"""Undo the image-derived light cast before classifying dim captures.
+
+The previous self-labelled brightness gate classified Template 6's uniformly dim
+walls as dark materials and reported a scene brightness of 0.983. Its palette
+comparison is circular: a broad palette always contains a dark look-alike. The
+chroma-spread gate is independent of candidate labels. Under identical current
+geometry it restores Template 6 from 0 to 613 exact states while leaving the
+fullbright Template 2 run unchanged (655 exact states).
+"""
 DIM_SPREAD_THRESHOLD = 1.9
 """Brightness spread above which a scene is treated as lit rather than fullbright."""
 LIGHT_CAST = (1.234, 1.002, 0.763)

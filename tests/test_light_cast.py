@@ -16,6 +16,7 @@ import numpy as np
 import pytest
 
 from mc_photogrammetry.reconstruction.raycast import (
+    CORRECT_LIGHT_CAST,
     LIGHT_CAST,
     _chroma_key,
     _scene_spread,
@@ -35,6 +36,11 @@ def test_a_colour_keeps_its_key_however_dark_it_is():
     bright = np.asarray([200.0, 120.0, 60.0])
     assert _chroma_key(bright) == _chroma_key(bright * 0.3)
     assert _chroma_key(bright) == _chroma_key(bright * 0.05)
+
+
+def test_chroma_spread_light_correction_is_the_pipeline_default():
+    """The self-labelled brightness gate regressed Template 6 to zero states."""
+    assert CORRECT_LIGHT_CAST is True
 
 
 def test_different_colours_get_different_keys():
