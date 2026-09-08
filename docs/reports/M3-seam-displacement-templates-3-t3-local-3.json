@@ -1,0 +1,74 @@
+{
+  "fixture": "templates 3",
+  "landmark_digest": "8af5d7dda15f48300f53c2d698604a94b7232ec667ca443c25db0522ed004ae5",
+  "digest_verified": true,
+  "expected_frames": [
+    "2026-09-04_20.05.23.png",
+    "2026-09-04_20.05.27.png",
+    "2026-09-04_20.05.32.png"
+  ],
+  "sources": {
+    "reference": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 3\\Template 3.litematic",
+      "sha256": "671973c34c5d8fdc29a14e94ae14a07b533400ec237ce8f8a17e7be89bfa0270"
+    },
+    "scene": {
+      "sha256": "098f1e7902d16132d68ebe91fbae497d210ebe6db4075e9c371d45a2d1edec6f"
+    },
+    "cameras": {
+      "sha256": "92dc88ec990f3f96112cb3abfb30c38a3e373942cd6b74185438f3a7bcecf7fa"
+    },
+    "jar": {
+      "sha256": "522672ad20b460c02c2e39b6c5035ef6a849af28eb11ab2ac7eb293d395a8c11"
+    }
+  },
+  "calibration_artifact": {
+    "path": "docs/reports/M3-calibration-templates-3-t3-local-3.json",
+    "sha256": "54681ffc059a128fa8a3d236577021c3fc71f176ede87c1be64df01fa7c4db74"
+  },
+  "gate": {
+    "median_normalised_px": 2.0,
+    "reference_edge": 1920.0,
+    "minimum_coverage": 0.9
+  },
+  "translation": "manifest eye used for both cameras; evaluation scaffolding, since vanishing points recover no position",
+  "frames_passed": 3,
+  "frames_expected": 3,
+  "failures": [],
+  "per_frame": {
+    "2026-09-04_20.05.23.png": {
+      "yaw_quadrant_chosen": 1,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 1.0266214577108976,
+      "p90_px": 3.020046684404112,
+      "median_normalised_px": 0.7699660932831732,
+      "within_gate": true
+    },
+    "2026-09-04_20.05.27.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.4996120345602467,
+      "p90_px": 1.1677030736738885,
+      "median_normalised_px": 0.37470902592018507,
+      "within_gate": true
+    },
+    "2026-09-04_20.05.32.png": {
+      "yaw_quadrant_chosen": 2,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.47144334554569356,
+      "p90_px": 0.9082203472921783,
+      "median_normalised_px": 0.35358250915927014,
+      "within_gate": true
+    }
+  },
+  "pooled_median_normalised_px": 0.5165460510784107
+}

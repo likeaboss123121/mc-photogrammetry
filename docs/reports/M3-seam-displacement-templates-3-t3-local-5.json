@@ -1,0 +1,98 @@
+{
+  "fixture": "templates 3",
+  "landmark_digest": "076c4b62316fa4f8725ee81370e153c9d1683445e85095e4617f860c9c2c413f",
+  "digest_verified": true,
+  "expected_frames": [
+    "2026-09-04_20.03.32.png",
+    "2026-09-04_20.03.38.png",
+    "2026-09-04_20.03.42.png",
+    "2026-09-04_20.03.47.png",
+    "2026-09-04_20.03.52.png"
+  ],
+  "sources": {
+    "reference": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 3\\Template 3.litematic",
+      "sha256": "671973c34c5d8fdc29a14e94ae14a07b533400ec237ce8f8a17e7be89bfa0270"
+    },
+    "scene": {
+      "sha256": "098f1e7902d16132d68ebe91fbae497d210ebe6db4075e9c371d45a2d1edec6f"
+    },
+    "cameras": {
+      "sha256": "92dc88ec990f3f96112cb3abfb30c38a3e373942cd6b74185438f3a7bcecf7fa"
+    },
+    "jar": {
+      "sha256": "522672ad20b460c02c2e39b6c5035ef6a849af28eb11ab2ac7eb293d395a8c11"
+    }
+  },
+  "calibration_artifact": {
+    "path": "docs/reports/M3-calibration-templates-3-t3-local-5.json",
+    "sha256": "cd9628170aaffe973d51920dfeb3957a88041bd2379af1984f093a3a569fa5f7"
+  },
+  "gate": {
+    "median_normalised_px": 2.0,
+    "reference_edge": 1920.0,
+    "minimum_coverage": 0.9
+  },
+  "translation": "manifest eye used for both cameras; evaluation scaffolding, since vanishing points recover no position",
+  "frames_passed": 5,
+  "frames_expected": 5,
+  "failures": [],
+  "per_frame": {
+    "2026-09-04_20.03.32.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 1.0285010693528278,
+      "p90_px": 1.8302037162561149,
+      "median_normalised_px": 0.771375802014621,
+      "within_gate": true
+    },
+    "2026-09-04_20.03.38.png": {
+      "yaw_quadrant_chosen": 0,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.5532951515542823,
+      "p90_px": 0.9166641483980917,
+      "median_normalised_px": 0.41497136366571175,
+      "within_gate": true
+    },
+    "2026-09-04_20.03.42.png": {
+      "yaw_quadrant_chosen": 1,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 1.2149895292903108,
+      "p90_px": 2.4294508256252607,
+      "median_normalised_px": 0.9112421469677331,
+      "within_gate": true
+    },
+    "2026-09-04_20.03.47.png": {
+      "yaw_quadrant_chosen": 2,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 1.3959023433027717,
+      "p90_px": 3.348145163063803,
+      "median_normalised_px": 1.0469267574770789,
+      "within_gate": true
+    },
+    "2026-09-04_20.03.52.png": {
+      "yaw_quadrant_chosen": 2,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.9856913331353584,
+      "p90_px": 2.255037881843815,
+      "median_normalised_px": 0.7392684998515189,
+      "within_gate": true
+    }
+  },
+  "pooled_median_normalised_px": 0.7404546091626756
+}

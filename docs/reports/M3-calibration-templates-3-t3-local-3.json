@@ -1,0 +1,152 @@
+{
+  "fixture": "templates 3",
+  "subset": "t3-local-3",
+  "generated": "2026-09-08T17:26:06-0500",
+  "source": {
+    "commit": "fc24b6eb590e550d8bf7aa9e6391a8e0b45b7a55",
+    "dirty": true
+  },
+  "environment": {
+    "python": "3.10.11",
+    "numpy": "2.2.6",
+    "opencv": "5.0.0"
+  },
+  "settings": {
+    "minimum_length_px": 40.0,
+    "inlier_px": 3.0,
+    "detection_scales": [
+      1.0,
+      0.5
+    ],
+    "coarse_segments": 300,
+    "gamma": 0.45,
+    "clahe_clip": 3.0,
+    "clahe_grid": 16,
+    "refine_margin": 0.02,
+    "roll_limit_deg": 4.0,
+    "principal_limit_fraction": 0.12,
+    "weight_by_contrast": false
+  },
+  "inputs": {
+    "2026-09-04_20.05.23.png": {
+      "sha256": "0bfce03571e9aa1f09b4af57ccca4fe96dc68853d06b6ac206cf6e17490c2190",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.05.27.png": {
+      "sha256": "f200bf7ba8e9782bd580f1f8d5063644c3fe8b3a4be7ba6b10a4129c6bee6f65",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.05.32.png": {
+      "sha256": "f3a8e969a7e92c107d14f4baf97599af46a5b6bf2858fda11d9b41a1e39787ac",
+      "size": [
+        2560,
+        1369
+      ]
+    }
+  },
+  "seconds": 33.81538796424866,
+  "frames_estimated": 3,
+  "estimates": [
+    {
+      "frame": "2026-09-04_20.05.23.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 70.00000000000001,
+      "pitch_degrees": 9.100000000000005,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 2397,
+      "inliers": 2245,
+      "inlier_fraction": 0.9365874009178139,
+      "median_residual_px": 0.08722944175662409,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 3 frame(s) at 2560x1369; this view's own estimate differed by 0.3%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.05.27.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 31.699999999999996,
+      "pitch_degrees": 46.14999999999998,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 2065,
+      "inliers": 1935,
+      "inlier_fraction": 0.937046004842615,
+      "median_residual_px": 0.09358783583154869,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 3 frame(s) at 2560x1369; this view's own estimate differed by 0.0%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.05.32.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 29.599999999999994,
+      "pitch_degrees": 21.749999999999993,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 1639,
+      "inliers": 1509,
+      "inlier_fraction": 0.9206833435021354,
+      "median_residual_px": 0.08525140714908516,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 3 frame(s) at 2560x1369; this view's own estimate differed by 0.0%"
+      ]
+    }
+  ],
+  "unresolved": [
+    "2026-09-04_20.05.23.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.05.23.png: scale (needs the lattice period)",
+    "2026-09-04_20.05.23.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.05.27.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.05.27.png: scale (needs the lattice period)",
+    "2026-09-04_20.05.27.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.05.32.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.05.32.png: scale (needs the lattice period)",
+    "2026-09-04_20.05.32.png: yaw quadrant (recovered modulo 90 degrees)"
+  ],
+  "scored": {
+    "note": "evaluation only; the manifest is scaffolding and is never read during estimation",
+    "manifest_sha256": "92dc88ec990f3f96112cb3abfb30c38a3e373942cd6b74185438f3a7bcecf7fa",
+    "gate": {
+      "orientation_deg": 0.5,
+      "focal_fraction": 0.02
+    },
+    "passed": 3,
+    "compared": 3,
+    "per_view": [
+      {
+        "frame": "2026-09-04_20.05.23.png",
+        "pitch_error": 5.329070518200751e-15,
+        "yaw_error_mod90": 0.10000000000000853,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.05.27.png",
+        "pitch_error": 0.04999999999997584,
+        "yaw_error_mod90": 0.0,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.05.32.png",
+        "pitch_error": 0.049999999999993605,
+        "yaw_error_mod90": 0.0,
+        "focal_error": 0.0,
+        "within_gate": true
+      }
+    ]
+  }
+}

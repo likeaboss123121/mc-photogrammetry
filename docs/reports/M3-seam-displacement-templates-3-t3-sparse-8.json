@@ -1,0 +1,134 @@
+{
+  "fixture": "templates 3",
+  "landmark_digest": "8200a0ec605563d7672f63fbfb73886036436992d7ff7b115f9ba9fa27e541c6",
+  "digest_verified": true,
+  "expected_frames": [
+    "2026-09-04_20.03.32.png",
+    "2026-09-04_20.03.55.png",
+    "2026-09-04_20.04.18.png",
+    "2026-09-04_20.04.53.png",
+    "2026-09-04_20.05.23.png",
+    "2026-09-04_20.05.42.png",
+    "2026-09-04_20.06.32.png",
+    "2026-09-04_20.06.52.png"
+  ],
+  "sources": {
+    "reference": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 3\\Template 3.litematic",
+      "sha256": "671973c34c5d8fdc29a14e94ae14a07b533400ec237ce8f8a17e7be89bfa0270"
+    },
+    "scene": {
+      "sha256": "098f1e7902d16132d68ebe91fbae497d210ebe6db4075e9c371d45a2d1edec6f"
+    },
+    "cameras": {
+      "sha256": "92dc88ec990f3f96112cb3abfb30c38a3e373942cd6b74185438f3a7bcecf7fa"
+    },
+    "jar": {
+      "sha256": "522672ad20b460c02c2e39b6c5035ef6a849af28eb11ab2ac7eb293d395a8c11"
+    }
+  },
+  "calibration_artifact": {
+    "path": "docs/reports/M3-calibration-templates-3-t3-sparse-8.json",
+    "sha256": "bbbd3a0d938aa8219c9a45298f2e699bdeb51a9896a81b0799395171d120c758"
+  },
+  "gate": {
+    "median_normalised_px": 2.0,
+    "reference_edge": 1920.0,
+    "minimum_coverage": 0.9
+  },
+  "translation": "manifest eye used for both cameras; evaluation scaffolding, since vanishing points recover no position",
+  "frames_passed": 8,
+  "frames_expected": 8,
+  "failures": [],
+  "per_frame": {
+    "2026-09-04_20.03.32.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 1.0285010693528278,
+      "p90_px": 1.8302037162561149,
+      "median_normalised_px": 0.771375802014621,
+      "within_gate": true
+    },
+    "2026-09-04_20.03.55.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.627878699089871,
+      "p90_px": 1.2616335619521009,
+      "median_normalised_px": 0.4709090243174032,
+      "within_gate": true
+    },
+    "2026-09-04_20.04.18.png": {
+      "yaw_quadrant_chosen": 2,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 2.2737367544323206e-13,
+      "p90_px": 2.5421149729252077e-13,
+      "median_normalised_px": 1.7053025658242404e-13,
+      "within_gate": true
+    },
+    "2026-09-04_20.04.53.png": {
+      "yaw_quadrant_chosen": 0,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 1.0291099228800464,
+      "p90_px": 1.8702654607925688,
+      "median_normalised_px": 0.7718324421600349,
+      "within_gate": true
+    },
+    "2026-09-04_20.05.23.png": {
+      "yaw_quadrant_chosen": 1,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 1.0266214577108976,
+      "p90_px": 3.020046684404112,
+      "median_normalised_px": 0.7699660932831732,
+      "within_gate": true
+    },
+    "2026-09-04_20.05.42.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.7062940130371183,
+      "p90_px": 1.3279122745354464,
+      "median_normalised_px": 0.5297205097778386,
+      "within_gate": true
+    },
+    "2026-09-04_20.06.32.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 130,
+      "projected_by_both": 130,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.998252011812454,
+      "p90_px": 2.5377326194794403,
+      "median_normalised_px": 0.7486890088593405,
+      "within_gate": true
+    },
+    "2026-09-04_20.06.52.png": {
+      "yaw_quadrant_chosen": 0,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "not_projected": 0,
+      "coverage": 1.0,
+      "median_px": 0.46443726058737533,
+      "p90_px": 0.7049619277732513,
+      "median_normalised_px": 0.3483279454405315,
+      "within_gate": true
+    }
+  },
+  "pooled_median_normalised_px": 0.6210877966097688
+}

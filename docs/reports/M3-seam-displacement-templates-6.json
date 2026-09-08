@@ -1,53 +1,86 @@
 {
   "fixture": "templates 6",
-  "landmark_digest": "c4322979f5f5e822223e2e409f22a3c6b5e72e0e8e70916f6ec8f30b53d0c253",
-  "calibration_artifact": "docs/reports/M3-calibration-templates-6.json",
+  "landmark_digest": "bbe6f5d0bf92cd1ec5a82fa74ab527307933443e80736280d13df5f6ac47acde",
+  "digest_verified": true,
+  "expected_frames": [
+    "2026-09-05_18.01.09.png",
+    "2026-09-05_18.01.14.png",
+    "2026-09-05_18.01.18.png",
+    "2026-09-05_18.01.22.png"
+  ],
+  "sources": {
+    "reference": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 6\\Template 6.litematic",
+      "sha256": "874b198098dc56b0694d57258ec337b19174817f437cc706679d8f65c41b7d6e"
+    },
+    "scene": {
+      "sha256": "0a5528187e2ed47d1756d1a93dd28feb68c8c695e72aa210f067d07c45704563"
+    },
+    "cameras": {
+      "sha256": "836ad62f99c5d960cd98c10cf8f850372c5b571be1edd14ff5935fd89027f70f"
+    },
+    "jar": {
+      "sha256": "522672ad20b460c02c2e39b6c5035ef6a849af28eb11ab2ac7eb293d395a8c11"
+    }
+  },
+  "calibration_artifact": {
+    "path": "docs/reports/M3-calibration-templates-6.json",
+    "sha256": "a24751ab56cf188c06b26a02a1222a6918ba0313cffd91bd3ed98c4f2bd3a4db"
+  },
   "gate": {
     "median_normalised_px": 2.0,
-    "reference_edge": 1920.0
+    "reference_edge": 1920.0,
+    "minimum_coverage": 0.9
   },
   "translation": "manifest eye used for both cameras; evaluation scaffolding, since vanishing points recover no position",
+  "frames_passed": 4,
+  "frames_expected": 4,
+  "failures": [],
   "per_frame": {
     "2026-09-05_18.01.09.png": {
       "yaw_quadrant_chosen": 3,
       "landmarks": 400,
       "projected_by_both": 400,
+      "not_projected": 0,
       "coverage": 1.0,
-      "median_px": 1.3619987414729824,
-      "p90_px": 3.9456762976872484,
-      "median_normalised_px": 1.0214990561047368,
+      "median_px": 1.290632587661182,
+      "p90_px": 4.038690323540553,
+      "median_normalised_px": 0.9679744407458863,
       "within_gate": true
     },
     "2026-09-05_18.01.14.png": {
       "yaw_quadrant_chosen": 1,
       "landmarks": 400,
       "projected_by_both": 400,
+      "not_projected": 0,
       "coverage": 1.0,
-      "median_px": 1.1156096686021855,
-      "p90_px": 2.9691463547401313,
-      "median_normalised_px": 0.8367072514516392,
+      "median_px": 1.1839072865502238,
+      "p90_px": 3.0466155068469174,
+      "median_normalised_px": 0.8879304649126678,
       "within_gate": true
     },
     "2026-09-05_18.01.18.png": {
       "yaw_quadrant_chosen": 2,
       "landmarks": 400,
       "projected_by_both": 400,
+      "not_projected": 0,
       "coverage": 1.0,
-      "median_px": 0.5900400402333101,
-      "p90_px": 1.2506547884947241,
-      "median_normalised_px": 0.4425300301749826,
+      "median_px": 0.6705288884567782,
+      "p90_px": 1.2246265138281076,
+      "median_normalised_px": 0.5028966663425837,
       "within_gate": true
     },
     "2026-09-05_18.01.22.png": {
       "yaw_quadrant_chosen": 0,
       "landmarks": 400,
       "projected_by_both": 400,
+      "not_projected": 0,
       "coverage": 1.0,
-      "median_px": 0.4954665873807303,
-      "p90_px": 1.398382765069608,
-      "median_normalised_px": 0.3715999405355477,
+      "median_px": 0.5428531989093971,
+      "p90_px": 1.6201260039330323,
+      "median_normalised_px": 0.40713989918204785,
       "within_gate": true
     }
   },
-  "pooled_median_normalised_px": 0.7124210914819459
+  "pooled_median_normalised_px": 0.7276255730510367
 }
