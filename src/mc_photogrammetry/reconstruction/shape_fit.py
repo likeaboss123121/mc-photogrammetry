@@ -6,16 +6,18 @@ older answer scored shapes analytically - each visible face plus a "negative spa
 term for the part of the cell the shape fails to cover - and reached 44.4% top-1
 over 34 shapes.
 
-This asks the photograph instead. Draw the candidate into the scene, compare the
-pixels it produces against the pixels that are there, and keep whichever candidate
-explains them best. Negative space stops being a term of its own: the part of a
-cell a carpet does not fill simply shows whatever stands behind it.
+This asks the photograph instead. Draw the candidate into the scene, compare it
+with the pixels that are there over one common, depth-visible cell region, and
+keep whichever candidate explains them best. The part of a cell a carpet does
+not fill is still scored: it simply renders as the background behind it.
 
 Four things had to be right before the idea worked at all, each measured:
 
-* **Score inside the cell's silhouette, not its bounding box.** A carpet fills a
-  sixteenth of its cell, so most of the box is background whichever candidate is
-  drawn and every score lands within noise of every other.
+* **Score inside one depth-visible cell silhouette, not candidate ownership.** A
+  carpet fills a sixteenth of its cell, so candidate-owned scoring lets it skip
+  the photographed slab surface it fails to explain. The region includes what
+  is revealed when a candidate has no geometry, but excludes cells occluded by
+  the surrounding scene.
 * **Match the render's level to the photograph's.** The renderer is flat, so
   without a gain every candidate is penalised in proportion to the pixels it
   paints and the winners are the shapes that paint almost none.
@@ -171,6 +173,17 @@ def _window(scene, camera, coordinate, shape, scale):
     return x0, y0, x1, y1, inside
 
 
+def _coordinate_ownership(
+    ownership: np.ndarray, face_index: Sequence[tuple[BlockCoordinate, str]], coordinate: BlockCoordinate,
+) -> np.ndarray:
+    """Pixels assigned to any renderer face of one cell."""
+    region = np.zeros(ownership.shape, dtype=bool)
+    for identifier, (cell, _slot) in enumerate(face_index):
+        if cell == coordinate:
+            region |= ownership == identifier
+    return region
+
+
 def _slot_masks(scene, camera, coordinate, boxes, occupied, scale, shape):
     """Which pixels each of a candidate's face slots claims, and their shading."""
     import cv2
@@ -314,14 +327,29 @@ def fit_states(
 
     chosen: dict[BlockCoordinate, BlockState] = {}
     for coordinate in cells:
+        # Render this cell as a full cube once to determine the scoring region.
+        # It is deliberately independent of every hypothesis. Pixels where the
+        # cube is hidden by the surrounding scene cannot be evidence for any
+        # candidate; pixels where a carpet leaves the cube empty remain in the
+        # region and compare the background render with the photograph.
+        probe = BlockState("minecraft:shape_fit_scoring_probe")
         views = []
         for frame_id, camera in cameras.items():
             if frame_id not in backgrounds:
                 continue
             window = _window(scene, camera, coordinate,
                              backgrounds[frame_id].shape[:2], scale)
-            if window is not None:
-                views.append((frame_id, camera, window))
+            if window is None:
+                continue
+            height, width = frames[frame_id].shape[:2]
+            probe_render, probe_index = render_result(
+                {**background_blocks, coordinate: probe}, scene, camera, width, height,
+                colours, block_shapes, scale, ambient=True,
+                occluding_slots=occluding_slots, model_faces=model_faces,
+            )
+            usable = _coordinate_ownership(probe_render.ownership, probe_index, coordinate)
+            if int(usable.sum()) >= MINIMUM_PIXELS:
+                views.append((frame_id, camera, usable))
         if not views:
             continue
 
@@ -335,7 +363,7 @@ def fit_states(
             if index is not None:
                 total_weight = 0.0
                 pooled = np.zeros(index.count, dtype=np.float64)
-                for frame_id, camera, _seen in views:
+                for frame_id, camera, _usable in views:
                     for slot, patch, weight in _face_patches(
                             scene, camera, coordinate, boxes, frames[frame_id], scale):
                         costs, _best = index.costs(
@@ -354,24 +382,18 @@ def fit_states(
                     continue
                 total, counted = 0.0, 0
                 candidate_blocks = {**background_blocks, coordinate: state}
-                for frame_id, camera, _window_data in views:
+                for frame_id, camera, usable in views:
                     height, width = frames[frame_id].shape[:2]
-                    rendered, face_index = render_result(
+                    rendered, _face_index = render_result(
                         candidate_blocks, scene, camera, width, height, colours, block_shapes, scale,
                         ambient=True, occluding_slots=occluding_slots, model_faces=model_faces,
                     )
-                    owned = np.zeros(rendered.ownership.shape, dtype=bool)
-                    for identifier, (cell, _slot) in enumerate(face_index):
-                        if cell == coordinate:
-                            owned |= rendered.ownership == identifier
-                    if not owned.any():
-                        continue
                     painted = rendered.colour * gains[frame_id]
                     difference = np.linalg.norm(painted - photos[frame_id], axis=2)
                     if edge_weight > 0.0:
                         difference = difference + edge_weight * np.abs(
                             _gradient(painted) - edges[frame_id])
-                    total += float(difference[owned].mean())
+                    total += float(difference[usable].mean())
                     counted += 1
                 if not counted:
                     continue

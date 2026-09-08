@@ -12,6 +12,13 @@ import numpy as np
 import pytest
 
 from mc_photogrammetry.domain.models import BlockState
+from mc_photogrammetry.export.attribution import (
+    face_colours,
+    face_model_faces,
+    face_occluding_slots,
+    face_shapes,
+    render_volume,
+)
 from mc_photogrammetry.reconstruction.camera import CameraModel
 from mc_photogrammetry.reconstruction.facade import PaletteColor
 from mc_photogrammetry.reconstruction.scene import SceneTransform
@@ -231,3 +238,46 @@ def test_the_joint_mode_still_names_a_block():
                         palette, shape_from_silhouette=False)
     for state in fitted.values():
         assert state.name.startswith("minecraft:")
+
+
+def test_slab_beats_carpet_regardless_of_palette_order():
+    """A small candidate must pay for the photographed surface it leaves unexplained."""
+    target = (0, 0, 0)
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+
+    colours = face_colours((slab, carpet))
+    photo, _owner, _index, _depth = render_volume(
+        {target: slab.state}, scene, camera, 120, 120, colours,
+        face_shapes((slab, carpet)), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots((slab, carpet)),
+        model_faces=face_model_faces((slab, carpet)),
+    )
+    frames = {"slab.png": np.rint(photo).astype(np.uint8)}
+    cameras = {"slab.png": camera}
+
+    for palette in ((carpet, slab), (slab, carpet)):
+        fitted = fit_states(
+            [target], {target: slab.state}, scene, cameras, frames, palette,
+            scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        )
+        assert fitted[target] == slab.state
+
+
+def test_shape_fit_excludes_a_cell_occluded_by_the_scene():
+    """A foreground cube makes every shape at the covered target unscorable."""
+    target, foreground = (0, 0, 1), (0, 0, 0)
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 3))
+
+    fitted = fit_states(
+        [target], {target: slab.state, foreground: BlockState("minecraft:stone")}, scene,
+        {"covered.png": camera}, {"covered.png": np.zeros((120, 120, 3), dtype=np.uint8)},
+        (carpet, slab), scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert fitted == {}
