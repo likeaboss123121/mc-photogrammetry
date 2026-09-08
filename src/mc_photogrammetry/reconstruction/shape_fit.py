@@ -57,6 +57,7 @@ from mc_photogrammetry.export.attribution import (
     face_model_faces,
     face_occluding_slots,
     face_shapes,
+    render_result,
     render_volume,
 )
 from mc_photogrammetry.reconstruction.camera import CameraModel, project_points
@@ -291,8 +292,6 @@ def fit_states(
             positions = {state: number for number, state in enumerate(index.states)}
     targets = set(cells)
     background_blocks = {c: s for c, s in blocks.items() if c not in targets}
-    occupied = set(background_blocks)
-
     backgrounds, photos, edges, gains = {}, {}, {}, {}
     for frame_id, image in frames.items():
         camera = cameras.get(frame_id)
@@ -315,7 +314,6 @@ def fit_states(
 
     chosen: dict[BlockCoordinate, BlockState] = {}
     for coordinate in cells:
-        here = occupied | {coordinate}
         views = []
         for frame_id, camera in cameras.items():
             if frame_id not in backgrounds:
@@ -349,35 +347,31 @@ def fit_states(
                 if total_weight > 0.0:
                     texture_cost = pooled / total_weight
 
-            per_view = []
-            for frame_id, camera, (x0, y0, x1, y1, inside) in views:
-                stamped, shading, covered = _slot_masks(
-                    scene, camera, coordinate, boxes, here, scale,
-                    backgrounds[frame_id].shape[:2])
-                cut = (slice(y0, y1), slice(x0, x1))
-                per_view.append((frame_id, cut, inside, stamped, shading, covered))
             plain_best, joint_best, joint_state = None, None, None
             for state in materials[key]:
                 table = colours.get(state.name, {})
                 if not table:
                     continue
                 total, counted = 0.0, 0
-                for frame_id, cut, inside, stamped, shading, covered in per_view:
-                    painted = backgrounds[frame_id][cut].copy()
-                    for slot, mask in stamped.items():
-                        patch = mask[cut] & inside
-                        if not patch.any():
-                            continue
-                        colour = table.get(slot)
-                        if colour is None:
-                            continue
-                        painted[patch] = (np.asarray(colour, float)
-                                          * shading.get(slot, 0.8) * gains[frame_id])
-                    difference = np.linalg.norm(painted - photos[frame_id][cut], axis=2)
+                candidate_blocks = {**background_blocks, coordinate: state}
+                for frame_id, camera, _window_data in views:
+                    height, width = frames[frame_id].shape[:2]
+                    rendered, face_index = render_result(
+                        candidate_blocks, scene, camera, width, height, colours, block_shapes, scale,
+                        ambient=True, occluding_slots=occluding_slots, model_faces=model_faces,
+                    )
+                    owned = np.zeros(rendered.ownership.shape, dtype=bool)
+                    for identifier, (cell, _slot) in enumerate(face_index):
+                        if cell == coordinate:
+                            owned |= rendered.ownership == identifier
+                    if not owned.any():
+                        continue
+                    painted = rendered.colour * gains[frame_id]
+                    difference = np.linalg.norm(painted - photos[frame_id], axis=2)
                     if edge_weight > 0.0:
                         difference = difference + edge_weight * np.abs(
-                            _gradient(painted) - edges[frame_id][cut])
-                    total += float(difference[inside].mean())
+                            _gradient(painted) - edges[frame_id])
+                    total += float(difference[owned].mean())
                     counted += 1
                 if not counted:
                     continue
