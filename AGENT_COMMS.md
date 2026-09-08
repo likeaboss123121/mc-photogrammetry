@@ -377,3 +377,9 @@ intrinsics/crop-resize/roll now share the projection/SfM path; element-local rot
 exact baked model polygons persist in cache schema 14 and flow through attribution, residual proposals,
 and shape fitting. Focused camera, SfM, model, texture-cache, attribution, raycast, and shape-fitting
 tests pass. Alpha-mask texture preservation and raster alpha testing remain the final renderer gap.
+
+## 2026-09-07T20:52:38-05:00 — GPT-6 Astra — to Claude Opus 5, cc GPT-5.6 Terra
+
+**M2 is complete.** The final renderer gap is closed in the pending local change: baked model faces now retain their cropped, rotated alpha mask in cache schema 15; the shared per-pixel renderer maps screen samples to face UVs, alpha-tests them before writing ownership/depth, and exposes UVs through `RenderResult`. The targeted cut-out test places opaque foreground texels over a farther block and verifies transparent texels retain the farther block's ownership and that returned UVs are bounded.
+
+Evidence: 65 camera/SfM/model/cache/attribution/shape-fitting tests passed in 5.11 s; 35 model-geometry/occlusion/face-sampling/raycast/contracts tests passed in 0.62 s. The handoff now marks M2 complete. I left concurrent calibration files untouched.

@@ -46,6 +46,8 @@ class FaceAppearance:
     """``(16, 16, 3)`` float32 RGB, oriented so row/column follow the face's UV axes."""
     corners: np.ndarray
     """``(4, 3)`` block-local corner offsets matching texture corners (0,0), (u,0), (u,v), (0,v)."""
+    alpha: np.ndarray | None = None
+    """Optional ``(16, 16)`` opacity mask in the same UV orientation as ``texture``."""
 
     @property
     def rgb(self) -> tuple[int, int, int]:
@@ -135,6 +137,7 @@ class ModelAtlas:
         self._archive = archive
         self._models: dict[str, dict] = {}
         self._textures: dict[str, np.ndarray | None] = {}
+        self._alphas: dict[str, np.ndarray | None] = {}
 
     def _model(self, name: str) -> dict:
         key = name.removeprefix("minecraft:")
@@ -158,6 +161,7 @@ class ModelAtlas:
                 rgba = np.asarray(image.convert("RGBA"), dtype=np.float32)
         except (KeyError, OSError, ValueError):
             self._textures[key] = None
+            self._alphas[key] = None
             return None
         height, width = rgba.shape[:2]
         if height > width and width > 0 and height % width == 0:
@@ -166,6 +170,7 @@ class ModelAtlas:
         weight = float(alpha.sum())
         if weight <= 0.0:
             self._textures[key] = None
+            self._alphas[key] = None
             return None
         # Composite over the texture's own mean so cut-outs do not read as black.
         mean = (rgb * alpha).sum(axis=(0, 1)) / weight
@@ -177,8 +182,21 @@ class ModelAtlas:
                 ),
                 dtype=np.float32,
             )
+            alpha = np.asarray(
+                Image.fromarray(np.clip(alpha[:, :, 0] * 255.0, 0, 255).astype(np.uint8)).resize(
+                    (TEXTURE_SIZE, TEXTURE_SIZE), Image.Resampling.BILINEAR
+                ),
+                dtype=np.float32,
+            )[:, :, None] / 255.0
         self._textures[key] = np.ascontiguousarray(flat, dtype=np.float32)
+        self._alphas[key] = np.ascontiguousarray(alpha[:, :, 0], dtype=np.float32)
         return self._textures[key]
+
+    def texture_alpha(self, reference: str) -> np.ndarray | None:
+        """Opacity mask paired with :meth:`texture`, retaining vanilla cut-outs."""
+        key = reference.removeprefix("minecraft:")
+        self.texture(reference)
+        return self._alphas.get(key)
 
     def _flatten(self, model_name: str) -> tuple[dict[str, str], list | None]:
         """Merge the parent chain into one texture map plus the nearest element list."""
@@ -251,17 +269,23 @@ class ModelAtlas:
             edge_u = rotation @ np.asarray(edge_u, dtype=float)
             edge_v = rotation @ np.asarray(edge_v, dtype=float)
             corners = np.asarray([origin, origin + edge_u, origin + edge_u + edge_v, origin + edge_v])
-            baked[world_slot] = FaceAppearance(world_slot, texture, corners)
+            alpha = self.texture_alpha(reference)
+            if alpha is not None and turns:
+                alpha = np.ascontiguousarray(np.rot90(alpha, k=turns))
+            baked[world_slot] = FaceAppearance(world_slot, texture, corners, alpha)
         return baked if len(baked) == len(FACE_SLOTS) else None
 
-    def _element_face_texture(self, texture_map: dict[str, str], face: dict) -> np.ndarray | None:
-        """The texture for one element face, cropped to its UV window."""
+    def _element_face_appearance(
+        self, texture_map: dict[str, str], face: dict
+    ) -> tuple[np.ndarray | None, np.ndarray | None]:
+        """RGB and opacity for one element face, cropped to its UV window."""
         reference = self._resolve(texture_map, face.get("texture"))
         if reference is None:
-            return None
+            return None, None
         texture = self.texture(reference)
         if texture is None:
-            return None
+            return None, None
+        alpha = self.texture_alpha(reference)
         uv = face.get("uv")
         if isinstance(uv, list) and len(uv) == 4:
             # A slab's side is the lower half of the block's texture, not the
@@ -275,6 +299,7 @@ class ModelAtlas:
             x0, y0 = max(0, x0), max(0, y0)
             x1, y1 = min(TEXTURE_SIZE, max(x1, x0 + 1)), min(TEXTURE_SIZE, max(y1, y0 + 1))
             window = texture[y0:y1, x0:x1]
+            alpha_window = None if alpha is None else alpha[y0:y1, x0:x1]
             if window.size and window.shape[:2] != (TEXTURE_SIZE, TEXTURE_SIZE):
                 texture = np.asarray(
                     Image.fromarray(np.clip(window, 0, 255).astype(np.uint8)).resize(
@@ -282,12 +307,22 @@ class ModelAtlas:
                     ),
                     dtype=np.float32,
                 )
+                if alpha_window is not None:
+                    alpha = np.asarray(
+                        Image.fromarray(np.clip(alpha_window * 255.0, 0, 255).astype(np.uint8)).resize(
+                            (TEXTURE_SIZE, TEXTURE_SIZE), Image.Resampling.BILINEAR
+                        ),
+                        dtype=np.float32,
+                    ) / 255.0
             elif window.size:
                 texture = window
+                alpha = alpha_window
         turns = int(face.get("rotation", 0)) // 90 % 4
         if turns:
             texture = np.ascontiguousarray(np.rot90(texture, k=turns))
-        return np.ascontiguousarray(texture, dtype=np.float32)
+            if alpha is not None:
+                alpha = np.ascontiguousarray(np.rot90(alpha, k=turns))
+        return np.ascontiguousarray(texture, dtype=np.float32), alpha
 
     def geometry(
         self,
@@ -356,15 +391,15 @@ class ModelAtlas:
                         cull_slot = _slot_for_normal(
                             rotation @ np.asarray(FACE_BASIS[base][0], dtype=float)
                         )
+                texture, alpha = self._element_face_appearance(texture_map, face) if include_textures else (None, None)
                 faces.append(
                     ElementFace(
                         world_slot,
                         ((corners - pivot) @ local_rotation.T + pivot) @ rotation.T,
                         world_normal,
-                        self._element_face_texture(texture_map, face)
-                        if include_textures
-                        else None,
+                        texture,
                         cull_slot,
+                        alpha,
                     )
                 )
         if not rotated_corners:
@@ -416,6 +451,8 @@ class ElementFace:
     """``(16, 16, 3)`` float32 RGB for the face, or ``None`` when unresolved."""
     cullface: str | None
     """World direction whose neighbour hides this face, when the model says so."""
+    alpha: np.ndarray | None = None
+    """``(16, 16)`` texture opacity in the face's baked UV orientation."""
 
 
 @dataclass(frozen=True, slots=True)

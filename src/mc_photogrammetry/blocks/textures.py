@@ -19,7 +19,7 @@ from .model_atlas import (
     compose,
 )
 
-CACHE_SCHEMA_VERSION = 14
+CACHE_SCHEMA_VERSION = 15
 
 COLOUR_RESOLUTION = 4
 
@@ -52,7 +52,8 @@ class TextureSample:
     face_map: tuple[tuple[str, tuple[int, int, int]], ...] = ()
     face_thumbnails: tuple[tuple[str, str], ...] = ()
     face_corners: tuple[tuple[str, tuple[tuple[float, float, float], ...]], ...] = ()
-    model_faces: tuple[tuple[str, tuple[tuple[float, float, float], ...], tuple[float, float, float], str | None], ...] = ()
+    model_faces: tuple[tuple, ...] = ()
+    """Exact polygons: slot, corners, normal, cullface, and optional encoded alpha mask."""
     shape_boxes: tuple[tuple[tuple[float, float, float], tuple[float, float, float]], ...] = ()
     """Each model element's own extent in block units, after the variant rotation.
 
@@ -137,12 +138,10 @@ class VanillaJarTextureProvider:
                         # log reports end grain on the world faces that really show it.
                         baked = atlas.bake(model_name, x_degrees, y_degrees)
                         full_cube = baked is not None
-                        # Shape only: the boxes are what occlusion needs, and
-                        # resolving a texture per face per variant would cost far
-                        # more than reading them.
-                        shape = atlas.geometry(
-                            model_name, x_degrees, y_degrees, include_textures=False
-                        )
+                        # Exact polygons carry their own cropped alpha masks, so
+                        # cut-out blocks (leaves, panes, plants) do not become
+                        # opaque in the attribution renderer.
+                        shape = atlas.geometry(model_name, x_degrees, y_degrees)
                         shape_boxes = () if shape is None else shape.boxes
                         covered_slots = (
                             ()
@@ -152,7 +151,8 @@ class VanillaJarTextureProvider:
                         model_faces = () if shape is None else tuple(
                             (face.slot,
                              tuple(tuple(float(v) for v in corner) for corner in face.corners),
-                             tuple(float(v) for v in face.normal), face.cullface)
+                             tuple(float(v) for v in face.normal), face.cullface,
+                             _encode_alpha_mask(face.alpha))
                             for face in shape.faces
                         )
                         face_slots = _resolve_face_texture_slots(archive, model_name, set())
@@ -270,7 +270,8 @@ class VanillaJarTextureProvider:
                                 tuple(
                                     (face.slot,
                                      tuple(tuple(float(v) for v in corner) for corner in face.corners),
-                                     tuple(float(v) for v in face.normal), face.cullface)
+                                     tuple(float(v) for v in face.normal), face.cullface,
+                                     _encode_alpha_mask(face.alpha))
                                     for face in shape.faces
                                 ),
                                 shape.boxes,
@@ -789,6 +790,19 @@ def _encode_thumbnail(pixels: np.ndarray) -> str:
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
+def _encode_alpha_mask(alpha: np.ndarray | None) -> str | None:
+    """Persist a face's baked cut-out mask compactly alongside its polygon."""
+    if alpha is None:
+        return None
+    from PIL import Image
+
+    buffer = BytesIO()
+    Image.fromarray(np.clip(alpha * 255.0, 0, 255).astype(np.uint8), mode="L").save(
+        buffer, format="PNG", compress_level=9
+    )
+    return base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
 def _load_cached_samples(cache_path: Path, jar_path: Path) -> list[TextureSample] | None:
     try:
         data = json.loads(cache_path.read_text(encoding="utf-8"))
@@ -821,9 +835,15 @@ def _load_cached_samples(cache_path: Path, jar_path: Path) -> list[TextureSample
                     for slot, corners in item.get("face_corners", [])
                 ),
                 tuple(
-                    (str(slot), tuple(tuple(float(v) for v in corner) for corner in corners),
-                     tuple(float(v) for v in normal), str(cullface) if cullface is not None else None)
-                    for slot, corners, normal, cullface in item.get("model_faces", [])
+                    (
+                        str(record[0]),
+                        tuple(tuple(float(v) for v in corner) for corner in record[1]),
+                        tuple(float(v) for v in record[2]),
+                        str(record[3]) if record[3] is not None else None,
+                        str(record[4]) if len(record) > 4 and record[4] is not None else None,
+                    )
+                    for record in item.get("model_faces", [])
+                    if isinstance(record, list) and len(record) >= 4
                 ),
                 tuple(
                     (

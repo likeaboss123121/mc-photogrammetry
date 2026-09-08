@@ -119,6 +119,23 @@ def test_bake_rejects_models_without_full_cube_geometry(tmp_path):
         assert ModelAtlas(archive).bake("minecraft:block/carpet") is None
 
 
+def test_texture_alpha_is_preserved_separately_from_flattened_rgb(tmp_path):
+    jar = tmp_path / "client.jar"
+    cutout = tmp_path / "cutout.png"
+    pixels = np.zeros((16, 16, 4), dtype=np.uint8)
+    pixels[:, :, :3] = (20, 100, 200)
+    pixels[:, 8:, 3] = 255
+    Image.fromarray(pixels, mode="RGBA").save(cutout)
+    with zipfile.ZipFile(jar, "w") as archive:
+        archive.write(cutout, "assets/minecraft/textures/block/cutout.png")
+    with zipfile.ZipFile(jar) as archive:
+        alpha = ModelAtlas(archive).texture_alpha("minecraft:block/cutout")
+
+    assert alpha is not None
+    assert np.all(alpha[:, :8] == 0.0)
+    assert np.all(alpha[:, 8:] == 1.0)
+
+
 @pytest.mark.parametrize("missing", ["assets/minecraft/models/block/absent.json"])
 def test_bake_returns_none_for_unknown_models(tmp_path, missing):
     jar = tmp_path / "client.jar"

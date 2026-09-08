@@ -9,6 +9,9 @@ hit anything is useless - both volumes are usually closed, so both almost always
 hit something, and ``missing`` and ``phantom`` sit at zero while their content
 hides inside a catch-all.
 """
+import base64
+from io import BytesIO
+
 import numpy as np
 import pytest
 
@@ -176,7 +179,34 @@ def test_contract_result_exposes_the_renderer_buffers():
     result, index = render_result(_wall(WHITE), _scene(), _camera(), 120, 120, face_colours(_palette()))
     assert result.colour.shape[:2] == result.depth.shape == result.ownership.shape
     assert result.valid_pixels is not None
+    assert result.uv is not None and result.uv.shape[:2] == result.ownership.shape
     assert len(index) > 0
+
+
+def test_model_alpha_mask_leaves_holes_for_far_geometry_and_returns_uvs():
+    """A cut-out face must not own or depth-write pixels where its texture is clear."""
+    from PIL import Image
+
+    alpha = np.zeros((16, 16), dtype=np.uint8)
+    alpha[:, 8:] = 255
+    buffer = BytesIO()
+    Image.fromarray(alpha, mode="L").save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    foreground = (3, 2, 4)
+    background = (3, 2, 6)
+    corners = tuple(tuple(float(v) for v in point) for point in box_face_corners((0, 0, 0), (1, 1, 1), "north"))
+    models = {WHITE: (("north", corners, (0.0, 0.0, -1.0), None, encoded),)}
+    palette = _palette()
+    result, index = render_result(
+        {foreground: WHITE, background: BLACK}, _scene(), _camera(), 120, 120,
+        face_colours(palette), scale=1.0, model_faces=models,
+    )
+    owned = {index[identifier][0] for identifier in np.unique(result.ownership[result.ownership >= 0])}
+    assert {foreground, background} <= owned
+    assert result.uv is not None
+    visible_uvs = result.uv[np.isfinite(result.uv).all(axis=2)]
+    assert len(visible_uvs) > 0
+    assert np.all((visible_uvs >= 0.0) & (visible_uvs <= 1.0))
 
 
 def test_a_frame_without_a_camera_is_skipped():

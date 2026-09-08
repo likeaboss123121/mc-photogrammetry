@@ -24,8 +24,8 @@ class PaletteColor:
     face_map: tuple[tuple[str, tuple[int, int, int]], ...] = ()
     face_thumbnails: tuple[tuple[str, str], ...] = ()
     face_corners: tuple[tuple[str, tuple[tuple[float, float, float], ...]], ...] = ()
-    model_faces: tuple[tuple[str, tuple[tuple[float, float, float], ...], tuple[float, float, float], str | None], ...] = ()
-    """Exact baked element polygons: slot, corners, normal, optional cullface."""
+    model_faces: tuple[tuple, ...] = ()
+    """Exact baked polygons: slot, corners, normal, cullface, optional alpha PNG."""
     full_cube: bool = True
     """Whether the block fills its cell. False for stairs, slabs, carpets, fences."""
     shape_boxes: tuple[tuple[tuple[float, float, float], tuple[float, float, float]], ...] = ()

@@ -6,10 +6,10 @@ the result looks and not how the error is distributed: on Template 2, partial
 blocks are 8.1% of the cells and **76.3% of the visible error**.
 
 This renders the reference and the candidate from the same pose, differences the
-images, and traces each disagreeing pixel back into both volumes. The renderer does
-not need to be faithful - both volumes go through the same one, so its bias cancels
-in the difference - but it does need to draw each model's *boxes* rather than unit
-cubes, because a carpet drawn as a solid cube covers a whole cell it never fills.
+images, and traces each disagreeing pixel back into both volumes. Its
+correspondence must be faithful: it draws baked model polygons with UV-oriented
+cut-outs and uses boxes only when no model polygon is available. A carpet drawn
+as a solid cube covers a whole cell it never fills.
 
 Causes come from where each ray stopped, not from whether it hit anything: both
 volumes are usually closed, so both rays almost always hit something. Asking the
@@ -18,15 +18,18 @@ catch-all.
 """
 from __future__ import annotations
 
+import base64
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import lru_cache
+from io import BytesIO
 from typing import Iterable, Mapping, Sequence
 
 import numpy as np
 
 from mc_photogrammetry.blocks.model_atlas import FACE_BASIS, FACE_SHADE, FACE_SLOTS
 from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
-from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped_polygon
+from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped_polygon, project_points
 from mc_photogrammetry.reconstruction.lighting import ambient_occlusion
 from mc_photogrammetry.reconstruction.scene import SceneTransform
 from mc_photogrammetry.pipeline.contracts import RenderResult
@@ -137,6 +140,19 @@ def face_model_faces(palette: Sequence) -> dict[object, tuple]:
     return found
 
 
+@lru_cache(maxsize=4096)
+def _alpha_mask(encoded: str | None) -> np.ndarray | None:
+    """Decode the compact model-cache alpha mask once per distinct face texture."""
+    if not encoded:
+        return None
+    try:
+        from PIL import Image
+        with Image.open(BytesIO(base64.b64decode(encoded))) as image:
+            return np.asarray(image.convert("L"), dtype=np.float32) / 255.0
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def box_face_corners(low: Sequence[float], high: Sequence[float], slot: str) -> np.ndarray:
     """The four corners of one box face, relative to the cell centre."""
     x0, y0, z0 = low
@@ -176,6 +192,7 @@ def render_volume(
     ambient: bool = False,
     occluding_slots: Mapping[object, frozenset[str]] | None = None,
     model_faces: Mapping[object, tuple] | None = None,
+    include_uv: bool = False,
 ):
     """Painter render, with the cell and depth behind every pixel.
 
@@ -199,6 +216,7 @@ def render_volume(
     canvas = np.zeros((rows, columns, 3), dtype=np.float32)
     owner = np.full((rows, columns), -1, dtype=np.int64)
     depth_buffer = np.full((rows, columns), np.inf, dtype=np.float32)
+    uv_buffer = np.full((rows, columns, 2), np.nan, dtype=np.float32) if include_uv else None
     occupied = set(blocks)
     eye = np.asarray(camera.position, dtype=float) + np.asarray([0.0, camera.eye_height, 0.0])
 
@@ -207,7 +225,9 @@ def render_volume(
         centre = np.asarray(scene.to_world(coordinate), dtype=float) + 0.5
         exact_faces = () if model_faces is None else model_faces.get(state, model_faces.get(state.name, ()))
         if exact_faces:
-            for slot, corners, normal, cull_slot in exact_faces:
+            for record in exact_faces:
+                slot, corners, normal, cull_slot = record[:4]
+                alpha = _alpha_mask(record[4] if len(record) > 4 else None)
                 normal = np.asarray(normal, dtype=float)
                 if float(normal @ (eye - centre)) <= 0.05:
                     continue
@@ -224,7 +244,17 @@ def render_volume(
                 shade = FACE_SHADE.get(slot, 0.8)
                 if ambient:
                     shade *= ambient_occlusion(coordinate, slot, occupied)
-                faces.append((projected[:, :2].astype(np.float32) * scale, projected[:, 2], np.asarray(colour, dtype=float) * shade, (coordinate, slot)))
+                source_quad = projected[:, :2].astype(np.float32) * scale if len(projected) == 4 else None
+                if alpha is not None and source_quad is not None:
+                    source = np.asarray(project_points(
+                        centre + np.asarray(corners), camera, width=width, height=height
+                    ), dtype=float)
+                    if len(source) == 4 and np.all(source[:, 2] > 0.05):
+                        source_quad = source[:, :2].astype(np.float32) * scale
+                faces.append((
+                    projected[:, :2].astype(np.float32) * scale, projected[:, 2],
+                    np.asarray(colour, dtype=float) * shade, (coordinate, slot), alpha, source_quad,
+                ))
             continue
         boxes = CUBE if shapes is None else shapes.get(state, shapes.get(state.name, CUBE))
         for low, high in boxes:
@@ -263,18 +293,40 @@ def render_volume(
                     projected[:, 2],
                     np.asarray(colour, dtype=float) * shade,
                     (coordinate, slot),
+                    None,
+                    quad if len(quad) == 4 else None,
                 ))
 
     # Each entry is (cell, slot): the residual pass needs the face's own normal to
     # know which way to propose, and a cell alone cannot say.
     index: list[tuple[BlockCoordinate, str]] = []
-    for quad, depths, colour, owned in faces:
+    for quad, depths, colour, owned, alpha, source_quad in faces:
         stamp = np.zeros((rows, columns), dtype=np.uint8)
         cv2.fillConvexPoly(stamp, quad.astype(np.int32), 1)
         mask = stamp.astype(bool)
         if not mask.any():
             continue
         pixel_rows, pixel_columns = np.nonzero(mask)
+        pixel_uv = None
+        if source_quad is not None:
+            try:
+                homography = cv2.getPerspectiveTransform(
+                    source_quad.astype(np.float32),
+                    np.asarray(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)), dtype=np.float32),
+                )
+                points = np.column_stack((pixel_columns + 0.5, pixel_rows + 0.5)).astype(np.float32)
+                pixel_uv = cv2.perspectiveTransform(points.reshape(-1, 1, 2), homography).reshape(-1, 2)
+                pixel_uv = np.clip(pixel_uv, 0.0, 1.0)
+                if alpha is not None:
+                    alpha_rows = np.clip(np.floor(pixel_uv[:, 1] * alpha.shape[0]).astype(int), 0, alpha.shape[0] - 1)
+                    alpha_columns = np.clip(np.floor(pixel_uv[:, 0] * alpha.shape[1]).astype(int), 0, alpha.shape[1] - 1)
+                    opaque = alpha[alpha_rows, alpha_columns] >= 0.5
+                    pixel_rows, pixel_columns = pixel_rows[opaque], pixel_columns[opaque]
+                    pixel_uv = pixel_uv[opaque]
+            except cv2.error:
+                pixel_uv = None
+        if not len(pixel_rows):
+            continue
         # A face is planar, so inverse depth is affine in screen space. This is
         # exact perspective depth at the raster sample and avoids the painter's
         # mean-depth failure where two slanted quads overlap.
@@ -293,7 +345,11 @@ def render_volume(
             canvas[chosen_rows, chosen_columns] = colour
             owner[chosen_rows, chosen_columns] = len(index)
             depth_buffer[chosen_rows, chosen_columns] = pixel_depth[nearer]
+            if uv_buffer is not None and pixel_uv is not None:
+                uv_buffer[chosen_rows, chosen_columns] = pixel_uv[nearer]
         index.append(owned)
+    if include_uv:
+        return canvas, owner, index, depth_buffer, uv_buffer
     return canvas, owner, index, depth_buffer
 
 
@@ -305,10 +361,11 @@ def render_result(
     model_faces: Mapping[object, tuple] | None = None,
 ) -> tuple[RenderResult, list[tuple[BlockCoordinate, str]]]:
     """Contract-shaped rendering result plus the face table used by ownership IDs."""
-    colour, ownership, index, depth = render_volume(
-        blocks, scene, camera, width, height, colours, shapes, scale, ambient, occluding_slots, model_faces
+    colour, ownership, index, depth, uv = render_volume(
+        blocks, scene, camera, width, height, colours, shapes, scale, ambient, occluding_slots, model_faces,
+        include_uv=True,
     )
-    return RenderResult(colour=colour, depth=depth, ownership=ownership, valid_pixels=ownership >= 0), index
+    return RenderResult(colour=colour, depth=depth, ownership=ownership, uv=uv, valid_pixels=ownership >= 0), index
 
 
 def attribute_error(
