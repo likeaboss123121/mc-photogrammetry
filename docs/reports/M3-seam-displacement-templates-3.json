@@ -1,0 +1,93 @@
+{
+  "fixture": "templates 3",
+  "landmark_digest": "dcc69838d41d72a471c12009d745685a8ed72de5cb0c67ef7b816c40b5b06245",
+  "calibration_artifact": "docs/reports/M3-calibration-templates-3-t3-sparse-8.json",
+  "gate": {
+    "median_normalised_px": 2.0,
+    "reference_edge": 1920.0
+  },
+  "translation": "manifest eye used for both cameras; evaluation scaffolding, since vanishing points recover no position",
+  "per_frame": {
+    "2026-09-04_20.03.32.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 0.8818089875877222,
+      "p90_px": 1.02922307722567,
+      "median_normalised_px": 0.6613567406907916,
+      "within_gate": true
+    },
+    "2026-09-04_20.03.55.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 0.489732113484146,
+      "p90_px": 0.6610320428104901,
+      "median_normalised_px": 0.3672990851131095,
+      "within_gate": true
+    },
+    "2026-09-04_20.04.18.png": {
+      "yaw_quadrant_chosen": 2,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 2.2737367544323206e-13,
+      "p90_px": 9.094947017729282e-13,
+      "median_normalised_px": 1.7053025658242404e-13,
+      "within_gate": true
+    },
+    "2026-09-04_20.04.53.png": {
+      "yaw_quadrant_chosen": 0,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.0871262423262125,
+      "p90_px": 1.360105347607201,
+      "median_normalised_px": 0.8153446817446593,
+      "within_gate": true
+    },
+    "2026-09-04_20.05.23.png": {
+      "yaw_quadrant_chosen": 1,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.2686938210221106,
+      "p90_px": 2.634956896984721,
+      "median_normalised_px": 0.9515203657665828,
+      "within_gate": true
+    },
+    "2026-09-04_20.05.42.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 0.6785207661157491,
+      "p90_px": 1.339080538770069,
+      "median_normalised_px": 0.5088905745868119,
+      "within_gate": true
+    },
+    "2026-09-04_20.06.32.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.3907845909351126,
+      "p90_px": 2.473007918708188,
+      "median_normalised_px": 1.0430884432013343,
+      "within_gate": true
+    },
+    "2026-09-04_20.06.52.png": {
+      "yaw_quadrant_chosen": 0,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 0.7490557034378587,
+      "p90_px": 2.206216080701496,
+      "median_normalised_px": 0.561791777578394,
+      "within_gate": true
+    }
+  },
+  "pooled_median_normalised_px": 0.6487708295280898
+}

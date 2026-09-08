@@ -1,0 +1,53 @@
+{
+  "fixture": "templates 6",
+  "landmark_digest": "c4322979f5f5e822223e2e409f22a3c6b5e72e0e8e70916f6ec8f30b53d0c253",
+  "calibration_artifact": "docs/reports/M3-calibration-templates-6.json",
+  "gate": {
+    "median_normalised_px": 2.0,
+    "reference_edge": 1920.0
+  },
+  "translation": "manifest eye used for both cameras; evaluation scaffolding, since vanishing points recover no position",
+  "per_frame": {
+    "2026-09-05_18.01.09.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.3619987414729824,
+      "p90_px": 3.9456762976872484,
+      "median_normalised_px": 1.0214990561047368,
+      "within_gate": true
+    },
+    "2026-09-05_18.01.14.png": {
+      "yaw_quadrant_chosen": 1,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.1156096686021855,
+      "p90_px": 2.9691463547401313,
+      "median_normalised_px": 0.8367072514516392,
+      "within_gate": true
+    },
+    "2026-09-05_18.01.18.png": {
+      "yaw_quadrant_chosen": 2,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 0.5900400402333101,
+      "p90_px": 1.2506547884947241,
+      "median_normalised_px": 0.4425300301749826,
+      "within_gate": true
+    },
+    "2026-09-05_18.01.22.png": {
+      "yaw_quadrant_chosen": 0,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 0.4954665873807303,
+      "p90_px": 1.398382765069608,
+      "median_normalised_px": 0.3715999405355477,
+      "within_gate": true
+    }
+  },
+  "pooled_median_normalised_px": 0.7124210914819459
+}

@@ -54,6 +54,7 @@ def run(
     allow_default_palette: bool = False,
     bounded_adjacency: bool = False,
     usable_mask_paths: dict[str, Path] | None = None,
+    correct_light_cast: bool = raycast.CORRECT_LIGHT_CAST,
 ) -> None:
     """Produce a diagnostic report without silently choosing fixture inputs."""
     if mode not in MODES:
@@ -126,6 +127,7 @@ def run(
     volume = reconstruct_scene_surfaces(
         frames, cameras, scene, palette=palette, appearance_calibrations=calibrations,
         adjacency_strength=adjacency_strength, bounded_adjacency=bounded_adjacency, diagnostics=diagnostics,
+        correct_light_cast=correct_light_cast,
     )
     reconstruction_seconds = time.perf_counter() - reconstruction_started
     export_started = time.perf_counter()
@@ -175,6 +177,7 @@ def run(
         benchmark_script="scripts/benchmark_templates.py",
         visibility_renderer="shared alpha-tested model renderer" if provider else "analytic fallback",
         usable_mask_policy="frozen supplied masks" if usable_masks else "all decoded pixels (provisional)",
+        correct_light_cast=correct_light_cast,
     )
     report = {
         "report_schema": 2,
@@ -404,6 +407,11 @@ if __name__ == "__main__":
     parser.add_argument("--adjacency-strength", type=float, default=0.55)
     parser.add_argument("--bounded-adjacency", action="store_true")
     parser.add_argument(
+        "--correct-light-cast", action=argparse.BooleanOptionalAction,
+        default=raycast.CORRECT_LIGHT_CAST,
+        help="Use the image-only chroma-spread light-cast correction (enabled by default).",
+    )
+    parser.add_argument(
         "--usable-mask", action="append", default=[], metavar="FRAME=PATH",
         help="Frozen evaluator-owned white=usable image mask or tracked rectangle-spec JSON; provide one for every frame.",
     )
@@ -414,4 +422,5 @@ if __name__ == "__main__":
         adjacency_strength=args.adjacency_strength, report_path=args.report,
         allow_default_palette=args.allow_default_palette, bounded_adjacency=args.bounded_adjacency,
         usable_mask_paths=_parse_usable_masks(args.usable_mask),
+        correct_light_cast=args.correct_light_cast,
     )

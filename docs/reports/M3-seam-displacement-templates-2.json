@@ -1,0 +1,43 @@
+{
+  "fixture": "templates 2",
+  "landmark_digest": "e3db45645c71f55e8d42a7dac1e0f4846f885ca749d3cc060c64d71052a21d5b",
+  "calibration_artifact": "docs/reports/M3-calibration-templates-2.json",
+  "gate": {
+    "median_normalised_px": 2.0,
+    "reference_edge": 1920.0
+  },
+  "translation": "manifest eye used for both cameras; evaluation scaffolding, since vanishing points recover no position",
+  "per_frame": {
+    "2026-09-02_13.22.14.png": {
+      "yaw_quadrant_chosen": 3,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.1048392436798082,
+      "p90_px": 1.9755979565964996,
+      "median_normalised_px": 0.8286294327598561,
+      "within_gate": true
+    },
+    "2026-09-02_13.24.24.png": {
+      "yaw_quadrant_chosen": 2,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.5442437484463474,
+      "p90_px": 2.6242672378798453,
+      "median_normalised_px": 1.1581828113347608,
+      "within_gate": true
+    },
+    "2026-09-02_13.24.33.png": {
+      "yaw_quadrant_chosen": 0,
+      "landmarks": 400,
+      "projected_by_both": 400,
+      "coverage": 1.0,
+      "median_px": 1.152267153169345,
+      "p90_px": 2.121412553028862,
+      "median_normalised_px": 0.8642003648770086,
+      "within_gate": true
+    }
+  },
+  "pooled_median_normalised_px": 1.011201357384945
+}
