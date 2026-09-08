@@ -196,7 +196,8 @@ def _nearest_surface(
     rows = max(1, int(round(height * scale)))
     owner = np.full((rows, columns), -1, dtype=np.int32)
     nearest = np.full((rows, columns), -np.inf, dtype=np.float64)
-    for index, (mean_depth, quad, depths, _coordinate, _slot, _facing, _texture_quad) in enumerate(quads):
+    for index, entry in enumerate(quads):
+        mean_depth, quad, depths, _coordinate, _slot, _facing = entry[:6]
         points = np.asarray(quad, dtype=np.float64) * scale
         left = max(0, int(np.floor(points[:, 0].min())))
         right = min(columns, int(np.ceil(points[:, 0].max())) + 1)
