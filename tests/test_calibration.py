@@ -176,27 +176,114 @@ def test_the_axis_directions_are_orthonormal():
     assert np.allclose(axes @ axes.T, np.eye(3), atol=1e-12)
 
 
-def test_the_contract_adapter_never_invents_a_position():
-    """A fabricated position is indistinguishable from a measured one downstream.
+def test_the_contract_carries_orientation_and_still_invents_no_position():
+    """Honesty about translation must not cost the orientation that was measured.
 
-    Vanishing points give orientation and focal length, not translation, so the
-    adapter reports the frame as unresolved rather than filling in an origin.
-    This is the project's standing rule about not passing off inference as
-    observation, applied to camera state.
+    An earlier version dropped the whole pose so as not to fabricate a position,
+    which threw away measured yaw, pitch and roll to avoid inventing one number.
+    `CameraPose.position` is optional, so the pose travels with it unset.
     """
     from mc_photogrammetry.reconstruction.calibration import to_camera_solution
 
     result = CalibrationResult(focal_pixels=_focal(70.0), yaw_degrees=14.0,
                                pitch_degrees=17.0, width=WIDTH, height=HEIGHT,
-                               inliers=200, segments=250, median_residual=0.4)
+                               inliers=200, segments=250, median_residual=0.4,
+                               roll_degrees=3.5, principal_point=(410.0, 330.0))
     solution = to_camera_solution({"a.png": result})
     estimate = solution.cameras["a.png"]
-    assert estimate.pose is None, "the adapter invented a pose it cannot know"
+
+    assert estimate.pose is not None, "measured orientation was discarded"
+    assert estimate.pose.position is None, "a position was invented"
+    assert estimate.pose.yaw_degrees == pytest.approx(14.0)
+    assert estimate.pose.pitch_degrees == pytest.approx(17.0)
+    assert estimate.pose.roll_degrees == pytest.approx(3.5)
+
+    # The measured optical centre must survive, not be replaced by the middle.
+    assert estimate.intrinsics.principal_point_pixels == (410.0, 330.0)
+
     assert not solution.scale_known
-    assert any("position" in note for note in solution.unresolved)
+    for wanted in ("position", "scale", "yaw quadrant"):
+        assert any(wanted in note for note in solution.unresolved), wanted
+
+
+def test_the_adapter_does_not_pass_the_inlier_fraction_off_as_confidence():
+    """That statistic was measured not to separate success from failure.
+
+    Across 109 views the passing median was 93.7% and the failing median 92.7%.
+    Reporting it as `confidence` asserts a correctness it has been shown not to
+    carry.
+    """
+    from mc_photogrammetry.reconstruction.calibration import to_camera_solution
+
+    result = CalibrationResult(focal_pixels=_focal(70.0), yaw_degrees=0.0,
+                               pitch_degrees=0.0, width=WIDTH, height=HEIGHT,
+                               inliers=249, segments=250, median_residual=0.4)
+    estimate = to_camera_solution({"a.png": result}).cameras["a.png"]
+    assert result.inlier_fraction > 0.99
+    assert estimate.confidence != pytest.approx(result.inlier_fraction)
+    assert estimate.residual_pixels == pytest.approx(0.4)
+
+
+def test_a_centred_frame_reports_the_image_centre_rather_than_nothing():
+    # `principal_point is None` means "never justified moving it", and a consumer
+    # still needs a usable number.
+    from mc_photogrammetry.reconstruction.calibration import to_camera_solution
+
+    result = CalibrationResult(focal_pixels=_focal(70.0), yaw_degrees=0.0,
+                               pitch_degrees=0.0, width=WIDTH, height=HEIGHT,
+                               inliers=10, segments=20, median_residual=1.0)
+    estimate = to_camera_solution({"a.png": result}).cameras["a.png"]
     assert estimate.intrinsics.principal_point_pixels == (WIDTH / 2.0, HEIGHT / 2.0)
-    assert estimate.intrinsics.focal_length_pixels[0] == pytest.approx(_focal(70.0))
-    assert estimate.confidence == pytest.approx(0.8)
+
+
+def test_roll_matches_the_shared_camera_basis_at_every_orientation():
+    """A convention with two definitions has two places to drift, and it drifted.
+
+    This module once applied roll by hand because `CameraModel` had nowhere to
+    put it. Once it did, the two turned opposite ways: 0.832 apart in maximum
+    component at yaw 30, pitch -10, roll 25, and 6e-17 apart once negated.
+    """
+    from mc_photogrammetry.reconstruction.camera import camera_space_points
+
+    for yaw, pitch, roll in ((30.0, -10.0, 25.0), (0.0, 0.0, 0.0),
+                             (-76.0, 17.0, -4.0), (120.0, 45.0, 12.0)):
+        camera = CameraModel(position=(0.0, 0.0, 0.0), yaw_degrees=yaw,
+                             pitch_degrees=pitch, fov_degrees=70.0,
+                             roll_degrees=roll)
+        eye = np.asarray(camera.position, float) + [0.0, camera.eye_height, 0.0]
+        shared = camera_space_points([tuple(eye + axis) for axis in np.eye(3)], camera)
+        assert np.allclose(axis_directions(yaw, pitch, roll), shared, atol=1e-12)
+
+
+def test_a_session_of_mixed_image_sizes_does_not_pool_their_focal_lengths():
+    """A focal length in pixels belongs to the sampling, not to the lens.
+
+    The same field of view on a frame half as tall is half the focal length, so
+    a median taken across differently sized frames averages quantities that are
+    not the same quantity.
+    """
+    import mc_photogrammetry.reconstruction.calibration as module
+
+    big = _lattice_segments(_camera(23.0, -14.0, 70.0))
+    small_camera = _camera(23.0, -14.0, 70.0)
+    small = _lattice_segments(small_camera, width=WIDTH // 2, height=HEIGHT // 2)
+    frames = {"big.png": np.full((HEIGHT, WIDTH), 1, np.uint8),
+              "small.png": np.full((HEIGHT // 2, WIDTH // 2), 2, np.uint8)}
+    supplied = {1: big, 2: small}
+
+    detect, boost = module.detect_segments, module.enhance
+    module.enhance = lambda grey: grey
+    module.detect_segments = lambda grey, **kw: supplied[int(grey[0, 0])]
+    try:
+        results = module.estimate_session(frames)
+    finally:
+        module.detect_segments, module.enhance = detect, boost
+
+    if len(results) < 2:
+        pytest.skip("the synthetic small frame did not yield a fit")
+    focals = {name: r.focal_pixels for name, r in results.items()}
+    assert focals["big.png"] != pytest.approx(focals["small.png"], rel=0.2), (
+        "focals from different image geometries were pooled")
 
 
 def test_a_session_shares_one_focal_length_and_the_median_sets_it():
@@ -228,7 +315,8 @@ def test_a_session_shares_one_focal_length_and_the_median_sets_it():
     focals = {round(r.focal_pixels, 6) for r in results.values()}
     assert len(focals) == 1, "every view in a session must end on one focal length"
     assert focals.pop() == pytest.approx(_focal(70.0), rel=0.02)
-    assert any("session median" in note for note in results["c.png"].notes)
+    assert any("median" in note and "1280x720" in note
+               for note in results["c.png"].notes)
 
 
 def test_a_whole_screenshot_does_not_invent_roll_or_a_shifted_centre():

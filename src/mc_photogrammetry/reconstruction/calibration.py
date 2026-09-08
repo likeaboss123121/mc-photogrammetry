@@ -154,6 +154,15 @@ def estimate_session(
     every view with focal held there. The second pass searches two parameters
     instead of three and is correspondingly quicker.
 
+    **The median is only meaningful across comparable image geometries.** A focal
+    length in pixels is a property of the sampling, not of the lens: the same
+    field of view on a frame half the height is half the focal length, and a crop
+    changes the height without changing the field of view at all. Pooling raw
+    pixel focals across differently sized or differently cropped frames therefore
+    averages quantities that are not the same quantity. Frames are grouped by
+    dimensions and each group gets its own median; a group of one keeps its own
+    estimate rather than borrowing a stranger's.
+
     Only image evidence is used. Nothing here consults a manifest.
     """
     first: dict[str, CalibrationResult] = {}
@@ -168,23 +177,38 @@ def estimate_session(
     if not first:
         return {}
 
-    session_focal = float(np.median([r.focal_pixels for r in first.values()]))
+    groups: dict[tuple[int, int], list[float]] = {}
+    for result in first.values():
+        groups.setdefault((result.width, result.height), []).append(result.focal_pixels)
+    medians = {shape: float(np.median(values)) for shape, values in groups.items()}
+
     refined: dict[str, CalibrationResult] = {}
     for frame_id, result in first.items():
+        shape = (result.width, result.height)
+        session_focal = medians[shape]
         found = estimate_camera(frames[frame_id], segments=cached[frame_id],
                                 threshold=threshold, focal=session_focal, **kwargs)
         if found is None:
             continue
         shifted = abs(result.focal_pixels - session_focal) / session_focal
+        note = (f"focal fixed to the median {session_focal:.1f}px of the "
+                f"{len(groups[shape])} frame(s) at {shape[0]}x{shape[1]}; "
+                f"this view's own estimate differed by {shifted:.1%}")
+        if len(groups[shape]) == 1:
+            note = ("only frame at this size, so its own focal stands rather than "
+                    "one pooled from frames of a different geometry")
+        # Every measured field is carried across. Rebuilding the result and
+        # forgetting the refined roll and optical centre threw away the very
+        # refinement that had just been computed, before any consumer saw it.
         refined[frame_id] = CalibrationResult(
             focal_pixels=found.focal_pixels, yaw_degrees=found.yaw_degrees,
             pitch_degrees=found.pitch_degrees, width=found.width,
             height=found.height, inliers=found.inliers, segments=found.segments,
             median_residual=found.median_residual,
             per_axis_inliers=found.per_axis_inliers,
-            notes=found.notes + (
-                f"focal fixed to the session median {session_focal:.1f}px; "
-                f"this view's own estimate differed by {shifted:.1%}",),
+            roll_degrees=found.roll_degrees,
+            principal_point=found.principal_point,
+            notes=found.notes + (note,),
         )
     return refined
 
@@ -192,38 +216,55 @@ def estimate_session(
 def to_camera_solution(results: "dict[str, CalibrationResult]"):
     """Express these estimates in the shared `CameraSolution` contract.
 
-    **This is lossy today, and deliberately so.** `CameraPose` requires a
-    position, and vanishing-point calibration recovers orientation and focal
-    length without one - translation needs the lattice period, which is a later
-    part of M3. The honest encoding is therefore `pose=None` with the frame named
-    in `unresolved`, because inventing a position of `(0, 0, 0)` would hand a
-    downstream consumer a fabricated number it cannot tell from a measured one.
+    Now lossless for everything that was measured. `CameraPose.position` is
+    optional, so orientation travels as a real pose with the position left
+    unset, rather than the whole pose being dropped to avoid inventing one -
+    which is what an earlier version did, discarding measured yaw and pitch in
+    order to be honest about an unmeasured translation.
 
-    The cost is that yaw and pitch, which *are* measured, do not survive the
-    round trip. Until `CameraPose.position` becomes optional, read orientation
-    from the `CalibrationResult` objects rather than from what this returns.
+    Three things stay explicitly unresolved and are named per frame rather than
+    left for a consumer to infer:
+
+    * **Position.** Vanishing points are unchanged by moving along a ray.
+    * **Scale.** `scale_known` is False; the lattice period would supply it.
+    * **The yaw quadrant.** One view cannot tell which horizontal lattice axis is
+      which, so yaw is meaningful only modulo 90 degrees.
+
+    `confidence` is deliberately **not** the inlier fraction. That statistic was
+    measured across 109 views and does not separate a good estimate from a bad
+    one - 93.7% median on the passes against 92.7% on the failures - so passing
+    it as confidence would assert a correctness it has been shown not to carry.
+    The inlier fraction is reported in `residual_pixels`' company as a
+    diagnostic instead.
     """
     from mc_photogrammetry.pipeline.contracts import (
         CameraEstimate,
         CameraIntrinsics,
+        CameraPose,
         CameraSolution,
     )
 
     cameras, unresolved = {}, []
     for frame_id, result in results.items():
+        centre = result.principal_point or (result.width / 2.0, result.height / 2.0)
         cameras[frame_id] = CameraEstimate(
             intrinsics=CameraIntrinsics(
                 image_size=(result.width, result.height),
                 focal_length_pixels=(result.focal_pixels, result.focal_pixels),
-                principal_point_pixels=(result.width / 2.0, result.height / 2.0),
+                principal_point_pixels=(float(centre[0]), float(centre[1])),
             ),
-            pose=None,
+            pose=CameraPose(
+                position=None,
+                yaw_degrees=result.yaw_degrees,
+                pitch_degrees=result.pitch_degrees,
+                roll_degrees=result.roll_degrees,
+            ),
             residual_pixels=result.median_residual,
-            confidence=result.inlier_fraction,
+            confidence=0.0,
         )
-        unresolved.append(f"{frame_id}: position")
+        unresolved.append(f"{frame_id}: position (vanishing points fix no translation)")
+        unresolved.append(f"{frame_id}: scale (needs the lattice period)")
         unresolved.append(f"{frame_id}: yaw quadrant (recovered modulo 90 degrees)")
-        unresolved.append(f"{frame_id}: orientation not representable, see docstring")
     return CameraSolution(cameras=cameras, unresolved=tuple(unresolved),
                           scale_known=False)
 
@@ -368,31 +409,21 @@ def axis_directions(yaw_degrees: float, pitch_degrees: float,
                     roll_degrees: float = 0.0) -> np.ndarray:
     """The three world axes as camera-space directions ``(right, up, forward)``.
 
-    Defers to `camera.camera_space_points`, the shared world-to-camera convention,
-    rather than restating it. This module derived the same rotation independently
-    and the two agreed, which is reassuring and still not a reason to keep a second
-    copy: a convention with two definitions has two places to drift.
-
-    ``roll_degrees`` spins the frame about the view direction. Minecraft's own
-    camera cannot roll, and `CameraModel` accordingly has nowhere to put it, so it
-    is applied here on top of the shared transform rather than pushed into a file
-    M2 owns. It exists because a *cropped or rotated* screenshot is inside the
-    stated image scope even though a raw one never is.
+    Every part of this defers to `camera.camera_space_points`, including the
+    roll. An earlier version applied roll here by hand, because `CameraModel`
+    had nowhere to put it; it now does, and the two disagreed by 0.832 in
+    maximum component at yaw 30, pitch -10, roll 25 - the hand-rolled rotation
+    turned the opposite way. Negating it reproduced the shared basis to 6e-17,
+    which is the whole argument against keeping a second copy of a convention.
     """
     from mc_photogrammetry.reconstruction.camera import CameraModel, camera_space_points
 
     camera = CameraModel(position=(0.0, 0.0, 0.0), yaw_degrees=yaw_degrees,
-                         pitch_degrees=pitch_degrees, fov_degrees=70.0)
+                         pitch_degrees=pitch_degrees, fov_degrees=70.0,
+                         roll_degrees=roll_degrees)
     eye = np.asarray(camera.position, dtype=float) + np.asarray(
         [0.0, camera.eye_height, 0.0])
-    axes = camera_space_points([tuple(eye + axis) for axis in np.eye(3)], camera)
-    if roll_degrees:
-        angle = np.radians(roll_degrees)
-        cos, sin = np.cos(angle), np.sin(angle)
-        right, up = axes[:, 0].copy(), axes[:, 1].copy()
-        axes[:, 0] = right * cos + up * sin
-        axes[:, 1] = -right * sin + up * cos
-    return axes
+    return camera_space_points([tuple(eye + axis) for axis in np.eye(3)], camera)
 
 
 def vanishing_points(
