@@ -56,10 +56,25 @@ class FaceSample:
     One is dead-on; near zero is edge-on, where the face lands on a sliver of
     pixels and its rectification stretches whatever noise it caught.
     """
+    valid: np.ndarray | None = None
+    """Face-patch pixels surviving ownership and GUI masking."""
+
+    @property
+    def pixels(self) -> np.ndarray:
+        return self.patch.reshape(-1, 3) if self.valid is None else self.patch[self.valid]
+
+    @property
+    def observed_patch(self) -> np.ndarray:
+        """Patch with invalid pixels neutralised for fixed-shape descriptors."""
+        if self.valid is None or self.valid.all():
+            return self.patch
+        result = self.patch.copy()
+        result[~self.valid] = self.pixels.mean(axis=0) if self.pixels.size else 0.0
+        return result
 
     @property
     def rgb(self) -> np.ndarray:
-        return self.patch.reshape(-1, 3).mean(axis=0)
+        return self.pixels.mean(axis=0)
 
 
 def default_face_corners(slot: str) -> np.ndarray:
@@ -109,6 +124,39 @@ def rectify_face(image: np.ndarray, quad: np.ndarray, size: int = PATCH_SIZE) ->
     if native != size:
         warped = cv2.resize(warped, (size, size), interpolation=cv2.INTER_AREA)
     return warped.astype(np.float32)
+
+
+def rectify_face_valid(
+    image: np.ndarray, quad: np.ndarray, source_valid: np.ndarray, size: int = PATCH_SIZE
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Rectify a patch and the source-pixel ownership mask through one warp."""
+    if source_valid.shape != image.shape[:2]:
+        raise ValueError("source_valid must match the image dimensions")
+    if quad.shape != (4, 2) or size < 2:
+        raise ValueError("quad must have shape (4, 2) and size must be at least 2")
+    try:
+        import cv2
+    except ImportError:
+        return None
+    area = quad_area(quad)
+    native = int(np.clip(round(np.sqrt(max(area, 1.0))), size, 8 * size))
+    native = int(np.ceil(native / size) * size)
+    destination = np.asarray(
+        [[0.0, 0.0], [native, 0.0], [native, native], [0.0, native]], dtype=np.float32
+    )
+    transform = cv2.getPerspectiveTransform(quad.astype(np.float32), destination)
+    patch = cv2.warpPerspective(
+        image, transform, (native, native), flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+    valid = cv2.warpPerspective(
+        source_valid.astype(np.uint8), transform, (native, native), flags=cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+    ).astype(bool)
+    if native != size:
+        patch = cv2.resize(patch, (size, size), interpolation=cv2.INTER_AREA)
+        valid = cv2.resize(valid.astype(np.float32), (size, size), interpolation=cv2.INTER_AREA) > 0.01
+    return patch.astype(np.float32), valid
 
 
 def _hidden_by(
@@ -275,24 +323,28 @@ def sample_visible_faces(
         if visible < minimum_visible_fraction * in_frame_area:
             reject("visible_fraction")
             continue
-        if gui_mask is not None and gui_mask.any():
-            polygon = np.zeros(gui_mask.shape, dtype=np.uint8)
-            cv2.fillConvexPoly(polygon, quad.astype(np.int32), 1)
-            covered = polygon.astype(bool)
-            if covered.any() and (covered & gui_mask).sum() > 0.02 * covered.sum():
-                reject("gui_mask")
-                continue
+        source_valid = buffer == index
+        if source_valid.shape != image.shape[:2]:
+            source_valid = cv2.resize(
+                source_valid.astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST
+            ).astype(bool)
+        if gui_mask is not None:
+            source_valid &= ~gui_mask
         centroid = quad.mean(axis=0)
         inner = (centroid + (quad - centroid) * shrink).astype(np.float32)
-        patch = rectify_face(image, inner)
-        if patch is None:
+        rectified = rectify_face_valid(image, inner, source_valid)
+        if rectified is None:
             reject("rectify_failed")
+            continue
+        patch, valid = rectified
+        if not valid.any():
+            reject("gui_mask")
             continue
         reject("accepted")
         samples.append(
             FaceSample(
                 coordinate, slot, patch, area, depth,
-                min(1.0, visible / max(area, 1e-6)), facing,
+                min(1.0, visible / max(area, 1e-6)), facing, valid,
             )
         )
     return samples

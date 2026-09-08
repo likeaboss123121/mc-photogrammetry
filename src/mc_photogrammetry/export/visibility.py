@@ -45,7 +45,14 @@ from mc_photogrammetry.export.attribution import (
     box_face_corners,
     on_cell_wall,
 )
-from mc_photogrammetry.reconstruction.camera import CameraModel, _focal_length
+from mc_photogrammetry.reconstruction.camera import (
+    CameraModel,
+    camera_eye,
+    camera_rotation_matrix,
+    camera_space_points,
+    intrinsics_for,
+    project_clipped_polygon,
+)
 from mc_photogrammetry.reconstruction.scene import SceneTransform
 
 PARALLEL_EPSILON = 1e-9
@@ -67,19 +74,7 @@ the hundred. Clipping the polygon keeps the part that is in front.
 
 def _camera_space(points, camera) -> np.ndarray:
     """World points as ``(view_x, rotated_y, depth)``, matching `project_points`."""
-    yaw, pitch = np.radians(camera.yaw_degrees), np.radians(camera.pitch_degrees)
-    cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
-    cos_pitch, sin_pitch = np.cos(pitch), np.sin(pitch)
-    offset = np.asarray(points, dtype=np.float64) - (
-        np.asarray(camera.position, dtype=np.float64)
-        + np.asarray([0.0, camera.eye_height, 0.0]))
-    dx, dy, dz = offset[:, 0], offset[:, 1], offset[:, 2]
-    horizontal = -dx * sin_yaw + dz * cos_yaw
-    return np.stack([
-        -(dx * cos_yaw + dz * sin_yaw),
-        dy * cos_pitch + horizontal * sin_pitch,
-        horizontal * cos_pitch - dy * sin_pitch,
-    ], axis=1)
+    return camera_space_points(points, camera)
 
 
 def _clip_halfplane(polygon: np.ndarray, keep, where) -> np.ndarray:
@@ -115,19 +110,12 @@ def _project_clipped(corners, camera, width: int, height: int) -> np.ndarray:
     a block from the eye otherwise projects past +/-80,000 - so the polygon handed
     to OpenCV is always the size of the region it actually covers.
     """
-    polygon = _camera_space(corners, camera)
-    polygon = _clip_halfplane(
-        polygon,
-        lambda p: p[:, 2] >= NEAR_CLIP,
-        lambda a, b: (NEAR_CLIP - a[2]) / (b[2] - a[2]),
+    projected = project_clipped_polygon(
+        corners, camera, width=width, height=height, near_clip=NEAR_CLIP
     )
-    if polygon.shape[0] < 3:
-        return polygon[:0]
-    focal = _focal_length(camera.fov_degrees, height)
-    screen = np.stack([
-        width / 2.0 + polygon[:, 0] * focal / polygon[:, 2],
-        height / 2.0 - polygon[:, 1] * focal / polygon[:, 2],
-    ], axis=1)
+    if projected.shape[0] < 3:
+        return projected[:, :2]
+    screen = projected[:, :2]
     for axis, limit, lower in ((0, width, True), (0, width, False),
                                (1, height, True), (1, height, False)):
         bound = 0.0 if lower else float(limit)
@@ -158,18 +146,15 @@ def ray_directions(
     quantity `project_points` returns - so it can be compared against a depth
     buffer directly and it interpolates linearly.
     """
-    focal = _focal_length(camera.fov_degrees, height)
-    view_x = -(np.asarray(xs, dtype=np.float64) - width / 2.0) / focal
-    rotated_y = -(np.asarray(ys, dtype=np.float64) - height / 2.0) / focal
-    yaw, pitch = np.radians(camera.yaw_degrees), np.radians(camera.pitch_degrees)
-    cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
-    cos_pitch, sin_pitch = np.cos(pitch), np.sin(pitch)
-    horizontal = rotated_y * sin_pitch + cos_pitch
-    return np.stack([
-        view_x * cos_yaw - horizontal * sin_yaw,
-        rotated_y * cos_pitch - sin_pitch,
-        view_x * sin_yaw + horizontal * cos_yaw,
-    ], axis=1)
+    calibration = intrinsics_for(camera, width, height)
+    view = np.column_stack((
+        (np.asarray(xs, dtype=np.float64) - calibration.principal_point_pixels[0])
+        / calibration.focal_length_pixels[0],
+        -(np.asarray(ys, dtype=np.float64) - calibration.principal_point_pixels[1])
+        / calibration.focal_length_pixels[1],
+        np.ones(np.broadcast(np.asarray(xs), np.asarray(ys)).shape, dtype=np.float64),
+    ))
+    return view @ camera_rotation_matrix(camera)
 
 
 def full_cube_keys(palette: Sequence) -> set:
@@ -262,8 +247,7 @@ def visible_cells(
         if size is None:
             continue
         width, height = int(size[0]), int(size[1])
-        eye = np.asarray(camera.position, dtype=float) + np.asarray(
-            [0.0, camera.eye_height, 0.0])
+        eye = camera_eye(camera)
         depth = np.full((height, width), np.inf, dtype=np.float64)
         owner = np.full((height, width), -1, dtype=np.int64)
         cells: list[BlockCoordinate] = []

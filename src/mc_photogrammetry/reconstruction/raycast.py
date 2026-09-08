@@ -698,7 +698,7 @@ def reconstruct_scene_surfaces(
             if (sample.coordinate, sample.slot) in seen_here:
                 continue
             seen_here.add((sample.coordinate, sample.slot))
-            pixels = sample.patch.reshape(-1, 3)
+            pixels = sample.pixels
             if float(pixels.std()) < min_surface_contrast:
                 face_rejections["low_contrast"] = face_rejections.get("low_contrast", 0) + 1
                 continue
@@ -707,7 +707,8 @@ def reconstruct_scene_surfaces(
             # reconstruction's own geometry, so they cannot be culled; they can
             # still be recognised, because half the patch stops matching the
             # other half.
-            uniformity = _face_uniformity(sample.patch)
+            observed_patch = sample.observed_patch
+            uniformity = _face_uniformity(observed_patch)
             if uniformity > max_face_variation:
                 face_rejections["uniformity"] = face_rejections.get("uniformity", 0) + 1
                 continue
@@ -737,8 +738,8 @@ def reconstruct_scene_surfaces(
             weight /= 1.0 + uniformity / max(uniformity_scale, 1e-6)
             raw.append((
                 frame_id, sample.coordinate, np.median(pixels, axis=0),
-                _patch_descriptor(sample.patch), sample.slot, weight,
-                _normalised_pattern(sample.patch), sample.area,
+                _patch_descriptor(observed_patch), sample.slot, weight,
+                _normalised_pattern(observed_patch), sample.area,
             ))
 
     # Pass three: blocks whose faces were all too small, clipped or hidden behind

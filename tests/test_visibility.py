@@ -16,6 +16,7 @@ from mc_photogrammetry.export.visibility import (
     theoretical_maximum,
     visible_cells,
 )
+from mc_photogrammetry.pipeline.contracts import CameraIntrinsics
 from mc_photogrammetry.reconstruction.camera import CameraModel, project_points
 from mc_photogrammetry.reconstruction.facade import PaletteColor
 from mc_photogrammetry.reconstruction.scene import SceneTransform
@@ -55,6 +56,22 @@ def test_the_ray_parameter_is_the_camera_depth():
     x, y, depth = projected
     direction = ray_directions(np.array([x]), np.array([y]), camera, width, height)[0]
     assert np.allclose(eye + depth * direction, point, atol=1e-9)
+
+
+def test_visibility_projection_and_rays_honour_explicit_intrinsics_and_roll():
+    from mc_photogrammetry.export.visibility import _project_clipped
+
+    camera = CameraModel(
+        position=(0.0, 0.0, 0.0), yaw_degrees=0.0, pitch_degrees=0.0, fov_degrees=90.0,
+        eye_height=0.0, roll_degrees=10.0,
+        intrinsics=CameraIntrinsics((100, 100), (50.0, 50.0), (30.0, 40.0)),
+    )
+    corners = np.asarray(((-0.5, -0.5, 4.0), (0.5, -0.5, 4.0),
+                          (0.5, 0.5, 4.0), (-0.5, 0.5, 4.0)))
+    shared = np.asarray(project_points(corners, camera, width=100, height=100), dtype=float)
+    assert np.allclose(_project_clipped(corners, camera, 100, 100), shared[:, :2])
+    direction = ray_directions(shared[:, 0], shared[:, 1], camera, 100, 100)
+    assert np.allclose(direction * shared[:, 2, None], corners, atol=1e-9)
 
 
 def test_a_block_in_front_of_the_camera_is_reached():

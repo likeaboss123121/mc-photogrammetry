@@ -99,6 +99,22 @@ def test_sample_visible_faces_skips_faces_under_the_hud():
     assert with_mask == []
 
 
+def test_sample_visible_faces_keeps_the_unmasked_part_of_a_hud_overlapped_face():
+    image = np.full((100, 100, 3), 128, dtype=np.uint8)
+    camera = CameraModel((0.5, 0.5, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    mask = np.zeros((100, 100), dtype=bool)
+    mask[42:44, 42:59] = True
+    samples = sample_visible_faces(
+        {(0, 0, 0)}, camera, scene, image, gui_mask=mask, minimum_area=1.0, shrink=1.0
+    )
+
+    assert samples
+    north = next(sample for sample in samples if sample.slot == "north")
+    assert north.valid is not None and not north.valid.all()
+    assert north.pixels.shape[0] < north.patch.shape[0] * north.patch.shape[1]
+
+
 def test_quad_area_matches_a_known_rectangle():
     quad = np.asarray([[0, 0], [10, 0], [10, 4], [0, 4]], dtype=np.float32)
     assert quad_area(quad) == pytest.approx(40.0)
