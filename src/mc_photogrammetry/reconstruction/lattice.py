@@ -128,6 +128,63 @@ def sampling_for(extent: float, focal: float,
     return int(max(64, min(8192, round(2.0 * extent * focal * oversample))))
 
 
+def plane_window(
+    mask: np.ndarray,
+    axis: int,
+    axis_matrix: np.ndarray,
+    focal: float,
+    *,
+    principal_point: tuple[float, float] | None = None,
+    margin: float = 1.05,
+) -> tuple[float, float, float] | None:
+    """Where a masked region lands on the unit-distance plane: centre and half-span.
+
+    Rectifying a fixed window about the plane's centre works only when the
+    surface of interest happens to sit there. A proposed region generally does
+    not, and then the window either misses it or gives it a handful of pixels in
+    a corner - which is why every region measured on Template 2 returned no
+    period at all. The window has to follow the region.
+
+    Returned square, because a rectangular one would put a different scale on
+    each axis and the period-to-distance conversion assumes a single scale.
+
+    The fourth value is which **side** of the camera the surface is on. A plane
+    normal names an axis, not a direction along it, so a floor below the eye and
+    a ceiling above it share one. Placing the reference plane only at `+normal`
+    silently excludes half of every scene - the first version did, and returned
+    nothing at all for four regions out of four on Template 2, having worked
+    earlier only because the surface it was tested on happened to be a ceiling.
+    """
+    ys, xs = np.nonzero(np.asarray(mask) > 0.5)
+    if ys.size == 0:
+        return None
+    height, width = mask.shape[:2]
+    centre_x, centre_y = principal_point or (width / 2.0, height / 2.0)
+    normal, first, second = plane_basis(axis, axis_matrix)
+
+    rays = np.stack([(xs - centre_x) / focal,
+                     -(ys - centre_y) / focal,
+                     np.ones(xs.shape, dtype=float)], axis=1)
+    projected = rays @ normal
+    forward = int((projected > 1e-6).sum())
+    backward = int((projected < -1e-6).sum())
+    if forward == 0 and backward == 0:
+        return None
+    side = 1.0 if forward >= backward else -1.0
+    denominator = projected * side
+    usable = denominator > 1e-6
+    if not usable.any():
+        return None
+    points = rays[usable] / denominator[usable][:, None]
+    us, vs = points @ first, points @ second
+    centre_u = float((us.min() + us.max()) / 2.0)
+    centre_v = float((vs.min() + vs.max()) / 2.0)
+    half = float(max(us.max() - us.min(), vs.max() - vs.min()) / 2.0) * margin
+    if not np.isfinite(half) or half <= 0.0:
+        return None
+    return centre_u, centre_v, half, side
+
+
 def plane_basis(axis: int, axis_matrix: np.ndarray):
     """Normal and two in-plane directions for a world-axis-aligned plane.
 
@@ -150,6 +207,8 @@ def rectify_plane(
     samples: int | None = None,
     principal_point: tuple[float, float] | None = None,
     oversample: float = OVERSAMPLE,
+    centre: tuple[float, float] = (0.0, 0.0),
+    side: float = 1.0,
 ) -> np.ndarray | None:
     """Warp the image to a fronto-parallel view of a plane at unit distance.
 
@@ -174,10 +233,11 @@ def rectify_plane(
     if samples is None:
         samples = sampling_for(extent, focal, oversample)
 
-    span = np.linspace(-extent, extent, samples)
-    grid_u, grid_v = np.meshgrid(span, span)
+    grid_u, grid_v = np.meshgrid(
+        np.linspace(centre[0] - extent, centre[0] + extent, samples),
+        np.linspace(centre[1] - extent, centre[1] + extent, samples))
     # A point on the unit-distance plane at in-plane coordinates (u, v).
-    points = (normal[None, None, :]
+    points = (side * normal[None, None, :]
               + grid_u[..., None] * first[None, None, :]
               + grid_v[..., None] * second[None, None, :])
     depth = points[..., 2]
@@ -383,7 +443,7 @@ def measure_plane(
     rounds: int = 3,
     target_period: float = TARGET_PERIOD,
     oversample: float = OVERSAMPLE,
-) -> tuple["PeriodEstimate | None", int]:
+) -> tuple["PeriodEstimate | None", int, float]:
     """Measure a plane's lattice, adjusting the sampling to what it turns out to be.
 
     How finely the patch must be sampled depends on how far away the plane is,
@@ -397,23 +457,39 @@ def measure_plane(
     the finest detail at ``target_period`` pixels, and measure again. Two or three
     rounds settle it. Returns the estimate and the sampling it was made at, which
     the caller needs to convert the period into a distance.
+
+    When a ``mask`` is given the window follows it, via `plane_window`, rather
+    than sitting at the plane's centre - the caller's region is rarely there, and
+    a window that misses it measures nothing. The returned ``extent`` is then the
+    region's own half-span, so pass it, not the argument, to
+    `period_hypotheses`.
     """
+    centre, side = (0.0, 0.0), 1.0
+    if mask is not None:
+        window = plane_window(mask, axis, axis_matrix, focal)
+        if window is None:
+            return None, sampling_for(extent, focal, oversample), extent
+        centre = (window[0], window[1])
+        extent, side = window[2], window[3]
+
     samples = sampling_for(extent, focal, oversample)
     found = None
     for _round in range(max(1, rounds)):
         patch = rectify_plane(image, axis, axis_matrix, focal,
-                              extent=extent, samples=samples)
+                              extent=extent, samples=samples, centre=centre,
+                              side=side)
         if patch is None:
-            return None, samples
+            return None, samples, extent
         weights = None
         if mask is not None:
             weights = rectify_plane(mask, axis, axis_matrix, focal,
-                                    extent=extent, samples=samples)
+                                    extent=extent, samples=samples, centre=centre,
+                                    side=side)
             if weights is None or float(weights.sum()) <= 0.0:
-                return None, samples
+                return None, samples, extent
         found = plane_period(patch, weights=weights)
         if found is None:
-            return None, samples
+            return None, samples, extent
         if found.period_pixels >= target_period:
             break
         wanted = int(round(samples * target_period / max(found.period_pixels, 1e-6)))
@@ -421,7 +497,7 @@ def measure_plane(
         if wanted <= samples:
             break
         samples = wanted
-    return found, samples
+    return found, samples, extent
 
 
 def period_hypotheses(

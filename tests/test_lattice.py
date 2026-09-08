@@ -9,6 +9,7 @@ import pytest
 
 from mc_photogrammetry.reconstruction.calibration import axis_directions
 from mc_photogrammetry.reconstruction.lattice import (
+    measure_plane,
     TEXELS_PER_BLOCK,
     estimate_period,
     period_hypotheses,
@@ -250,3 +251,63 @@ def test_readings_that_are_not_harmonics_keep_the_stronger_one():
     found = plane_period(patch)
     assert found is not None
     assert found.period_pixels == pytest.approx(13.0, rel=0.05)
+
+
+def test_the_window_follows_the_masked_region_rather_than_the_plane_centre():
+    """A proposed region is rarely at the plane's centre.
+
+    Rectifying a fixed window about the centre either misses it or gives it a
+    few pixels in a corner, which is why every region proposed on Template 2
+    first came back with no period at all.
+    """
+    from mc_photogrammetry.reconstruction.lattice import plane_window
+
+    axes = axis_directions(0.0, 0.0)
+
+    def window_for(rows, columns):
+        mask = np.zeros((400, 400), np.float32)
+        mask[rows[0]:rows[1], columns[0]:columns[1]] = 1.0
+        found = plane_window(mask, 2, axes, 250.0)
+        assert found is not None
+        return found
+
+    middle = window_for((180, 220), (180, 220))
+    left = window_for((180, 220), (40, 100))
+    right = window_for((180, 220), (300, 360))
+    top = window_for((40, 100), (180, 220))
+
+    # Signs are left to the projection's own handedness - in Minecraft world +X
+    # falls on screen left - so what is asserted is that the window moves with
+    # the region and in opposite directions for opposite sides.
+    assert abs(middle[0]) < 0.05 and abs(middle[1]) < 0.05
+    assert left[0] * right[0] < 0, "opposite sides gave the same-signed window"
+    assert abs(left[0]) > 0.1 and abs(right[0]) > 0.1
+    assert abs(top[1]) > 0.1, "the window did not follow the region vertically"
+    assert 0.0 < middle[2] < 1.0
+    assert middle[3] in (1.0, -1.0)
+
+
+def test_an_empty_mask_has_no_window():
+    from mc_photogrammetry.reconstruction.lattice import plane_window
+
+    axes = axis_directions(0.0, 0.0)
+    assert plane_window(np.zeros((50, 50), np.float32), 2, axes, 100.0) is None
+
+
+def test_measure_plane_reports_the_extent_it_actually_used():
+    """The caller must convert the period at the scale it was measured at.
+
+    `measure_plane` may replace the requested extent with the region's own
+    half-span, so it returns the extent alongside the sampling; using the
+    requested one instead scales every distance by their ratio.
+    """
+    pytest.importorskip("cv2")
+    axes = axis_directions(0.0, 0.0)
+    image = np.zeros((300, 300), np.float32)
+    image[:, ::9] = 1.0
+    mask = np.zeros((300, 300), np.float32)
+    mask[100:200, 100:200] = 1.0
+    found, samples, extent = measure_plane(image, 2, axes, 200.0, mask=mask)
+    assert samples > 0
+    assert extent != 1.0, "the extent should have become the region's own span"
+    assert extent > 0.0
