@@ -31,6 +31,12 @@ class FrameTransform:
     def resolved_output_size(self) -> tuple[int, int]:
         return self.output_size or self.resolved_crop_size
 
+    @property
+    def scale(self) -> tuple[float, float]:
+        crop_width, crop_height = self.resolved_crop_size
+        output_width, output_height = self.resolved_output_size
+        return output_width / crop_width, output_height / crop_height
+
 
 @dataclass(frozen=True, slots=True)
 class FrameObservation:
@@ -50,10 +56,21 @@ class CameraIntrinsics:
     focal_length_pixels: tuple[float, float]
     principal_point_pixels: tuple[float, float]
 
+    def transformed(self, transform: FrameTransform) -> "CameraIntrinsics":
+        """Apply the frame's crop followed by its resize to this calibration."""
+        scale_x, scale_y = transform.scale
+        crop_x, crop_y = transform.crop_origin
+        return CameraIntrinsics(
+            transform.resolved_output_size,
+            (self.focal_length_pixels[0] * scale_x, self.focal_length_pixels[1] * scale_y),
+            ((self.principal_point_pixels[0] - crop_x) * scale_x,
+             (self.principal_point_pixels[1] - crop_y) * scale_y),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class CameraPose:
-    position: tuple[float, float, float]
+    position: tuple[float, float, float] | None
     yaw_degrees: float
     pitch_degrees: float
     roll_degrees: float = 0.0

@@ -9,6 +9,7 @@ from mc_photogrammetry.reconstruction.camera import (
     project_clipped_polygon,
     unproject_pixel,
 )
+from mc_photogrammetry.pipeline.contracts import CameraIntrinsics, FrameTransform
 from mc_photogrammetry.domain.models import BlockObservation, BlockState, BlockVolume
 from mc_photogrammetry.reconstruction.multiview import visible_blocks_for_camera
 from mc_photogrammetry.reconstruction.multiview import reconstruct_visible_surfaces
@@ -24,6 +25,28 @@ def test_camera_projection_round_trips_a_world_point():
     recovered = unproject_pixel(pixel[0], pixel[1], camera, width=1920, height=1080, depth=pixel[2])
 
     assert recovered == pytest.approx(point)
+
+
+def test_explicit_intrinsics_survive_crop_then_resize():
+    camera = CameraModel(
+        (0.0, 0.0, 0.0), 0.0, 0.0, eye_height=0.0,
+        intrinsics=CameraIntrinsics((2000, 1000), (900.0, 880.0), (1050.0, 480.0)),
+    ).transformed(FrameTransform((2000, 1000), crop_origin=(100, 50), crop_size=(1600, 800), output_size=(800, 400)))
+    point = (1.0, 1.0, 8.0)
+    pixel = project_points([point], camera, width=800, height=400)[0]
+    assert pixel is not None
+    recovered = unproject_pixel(pixel[0], pixel[1], camera, width=800, height=400, depth=pixel[2])
+    assert recovered == pytest.approx(point)
+    assert camera.intrinsics.principal_point_pixels == pytest.approx((475.0, 215.0))
+
+
+def test_roll_changes_the_projected_axis_but_keeps_projection_invertible():
+    camera = CameraModel((0.0, 0.0, 0.0), 0.0, 0.0, eye_height=0.0, roll_degrees=90.0)
+    pixel = project_points([(1.0, 0.0, 8.0)], camera, width=200, height=100)[0]
+    assert pixel is not None
+    assert pixel[0] == pytest.approx(100.0)
+    assert pixel[1] > 50.0
+    assert unproject_pixel(pixel[0], pixel[1], camera, width=200, height=100, depth=pixel[2]) == pytest.approx((1, 0, 8))
 
 
 @pytest.mark.parametrize("width,height", [(1920, 1080), (1080, 1920), (2560, 1369)])
