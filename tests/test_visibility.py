@@ -5,6 +5,9 @@ that would quietly inflate or deflate it: that occlusion is real, that a partial
 block does not occlude like a cube, and that the ray parameter really is the
 camera depth the projection reports.
 """
+import base64
+from io import BytesIO
+
 import numpy as np
 import pytest
 
@@ -20,6 +23,7 @@ from mc_photogrammetry.pipeline.contracts import CameraIntrinsics
 from mc_photogrammetry.reconstruction.camera import CameraModel, project_points
 from mc_photogrammetry.reconstruction.facade import PaletteColor
 from mc_photogrammetry.reconstruction.scene import SceneTransform
+from mc_photogrammetry.export.attribution import box_face_corners
 
 SIZE = (256, 256)
 CARPET = (((0.0, 0.0, 0.0), (1.0, 0.0625, 1.0)),)
@@ -104,6 +108,27 @@ def test_a_carpet_does_not_hide_the_block_behind_it():
     shapes = {"minecraft:white_carpet": CARPET}
     found = _look(blocks, shapes=shapes, full_cubes={"minecraft:stone"})
     assert found.get((3, 2, 3), 0) > 0, "a carpet occludes a sixteenth of a cube"
+
+
+def test_palette_visibility_uses_exact_alpha_tested_model_faces():
+    from PIL import Image
+
+    alpha = np.zeros((16, 16), dtype=np.uint8)
+    alpha[:, 8:] = 255
+    buffer = BytesIO()
+    Image.fromarray(alpha, mode="L").save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    white, black = BlockState("minecraft:white_wool"), BlockState("minecraft:black_wool")
+    corners = tuple(tuple(float(v) for v in point) for point in box_face_corners((0, 0, 0), (1, 1, 1), "north"))
+    palette = (
+        PaletteColor(white, (240, 240, 240), model_faces=(("north", corners, (0, 0, -1), None, encoded),)),
+        PaletteColor(black, (12, 12, 12)),
+    )
+    near, far = (3, 2, 2), (3, 2, 4)
+    found = visible_cells(
+        {near: white, far: black}, _scene(), {"a.png": _camera()}, {"a.png": SIZE}, palette=palette
+    )
+    assert found.get(near, 0) > 0 and found.get(far, 0) > 0
 
 
 def test_depth_decides_rather_than_draw_order():

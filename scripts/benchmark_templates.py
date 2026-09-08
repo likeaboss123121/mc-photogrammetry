@@ -121,6 +121,7 @@ def run(
         reference_snapshot.blocks, scene, cameras, resolutions,
         full_cubes=full_cube_keys(provider.samples) if provider else None,
         shapes=shape_table(provider.samples) if provider else None,
+        palette=provider.samples if provider else None,
     )
     visible = visible_metrics(
         reference_snapshot.blocks, comparison.candidate.blocks, visibility,

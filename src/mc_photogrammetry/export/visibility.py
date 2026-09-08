@@ -43,7 +43,12 @@ from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
 from mc_photogrammetry.export.attribution import (
     CUBE,
     box_face_corners,
+    face_colours,
+    face_model_faces,
+    face_occluding_slots,
+    face_shapes,
     on_cell_wall,
+    render_result,
 )
 from mc_photogrammetry.reconstruction.camera import (
     CameraModel,
@@ -225,6 +230,7 @@ def visible_cells(
     *,
     full_cubes: set | None = None,
     shapes: Mapping | None = None,
+    palette: Sequence | None = None,
     progress=None,
 ) -> dict[BlockCoordinate, int]:
     """Pixels each reference cell wins, summed across every camera.
@@ -240,6 +246,10 @@ def visible_cells(
 
     shapes = {} if shapes is None else shapes
     full_cubes = set() if full_cubes is None else full_cubes
+    colours = face_colours(palette) if palette is not None else None
+    model_faces = face_model_faces(palette) if palette is not None else None
+    occluding_slots = face_occluding_slots(palette) if palette is not None else None
+    model_shapes = face_shapes(palette) if palette is not None else None
     totals: dict[BlockCoordinate, int] = {}
 
     for frame_id, camera in cameras.items():
@@ -247,6 +257,17 @@ def visible_cells(
         if size is None:
             continue
         width, height = int(size[0]), int(size[1])
+        if colours is not None:
+            rendered, face_index = render_result(
+                blocks, scene, camera, width, height, colours, model_shapes, scale=1.0,
+                occluding_slots=occluding_slots, model_faces=model_faces,
+            )
+            for identifier, count in zip(*np.unique(rendered.ownership[rendered.ownership >= 0], return_counts=True)):
+                coordinate, _slot = face_index[int(identifier)]
+                totals[coordinate] = totals.get(coordinate, 0) + int(count)
+            if progress is not None:
+                progress(frame_id, len(totals))
+            continue
         eye = camera_eye(camera)
         depth = np.full((height, width), np.inf, dtype=np.float64)
         owner = np.full((height, width), -1, dtype=np.int64)

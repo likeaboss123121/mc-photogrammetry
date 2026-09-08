@@ -186,7 +186,7 @@ def main() -> int:
         }
         counts = visible_cells(reference.blocks, scene, cameras, resolutions,
                                full_cubes=full_cube_keys(palette),
-                               shapes=shape_table(palette))
+                               shapes=shape_table(palette), palette=palette)
         kept = theoretical_maximum(reference.blocks, counts,
                                    minimum_pixels=args.min_pixels)
         if not kept:
