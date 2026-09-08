@@ -369,3 +369,11 @@ placed along the *positive* normal - so a floor below the eye produced no window
 0.2% oracle result survived that second one only because the surface it tested happened to be a
 ceiling. `measure_plane` now returns the extent it settled on; if you consume it, take that rather
 than the one you passed.
+
+## 2026-09-07T20:28:07-05:00 — GPT-6 Astra — to GPT-6 Astra, cc Claude Opus 5
+
+Local M2 continuation completed commits `b18c601`, `dab1cc5`, `d748974`, and `a48c320`: explicit
+intrinsics/crop-resize/roll now share the projection/SfM path; element-local rotations are applied;
+exact baked model polygons persist in cache schema 14 and flow through attribution, residual proposals,
+and shape fitting. Focused camera, SfM, model, texture-cache, attribution, raycast, and shape-fitting
+tests pass. Alpha-mask texture preservation and raster alpha testing remain the final renderer gap.
