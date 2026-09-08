@@ -64,6 +64,12 @@ def _rotation_y(degrees: float) -> np.ndarray:
     return np.asarray([[cos, 0.0, sin], [0.0, 1.0, 0.0], [-sin, 0.0, cos]])
 
 
+def _rotation_z(degrees: float) -> np.ndarray:
+    radians = np.radians(degrees)
+    cos, sin = np.cos(radians), np.sin(radians)
+    return np.asarray([[cos, -sin, 0.0], [sin, cos, 0.0], [0.0, 0.0, 1.0]])
+
+
 def variant_rotation(x_degrees: float, y_degrees: float) -> np.ndarray:
     """Vanilla ``BlockModelRotation``: rotate by ``-x`` about +X, then ``-y`` about +Y."""
     return _rotation_y(-y_degrees) @ _rotation_x(-x_degrees)
@@ -74,6 +80,29 @@ def _slot_for_normal(normal: np.ndarray) -> str | None:
         if np.allclose(normal, np.asarray(reference, dtype=float), atol=1e-6):
             return slot
     return None
+
+
+def _nearest_slot_for_normal(normal: np.ndarray) -> str:
+    """Cardinal ownership bucket for a non-cardinal face; keep its real normal too."""
+    return max(FACE_SLOTS, key=lambda slot: float(np.asarray(FACE_BASIS[slot][0]) @ normal))
+
+
+def element_rotation(element: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Vanilla element-local rotation matrix and pivot in centred block coordinates."""
+    raw = element.get("rotation")
+    if not isinstance(raw, dict):
+        return np.eye(3), np.zeros(3)
+    makers = {"x": _rotation_x, "y": _rotation_y, "z": _rotation_z}
+    maker = makers.get(raw.get("axis"))
+    if maker is None:
+        return np.eye(3), np.zeros(3)
+    matrix = maker(float(raw.get("angle", 0.0)))
+    origin = raw.get("origin", [8, 8, 8])
+    try:
+        pivot = np.asarray(origin, dtype=float) / 16.0 - 0.5
+    except (TypeError, ValueError):
+        pivot = np.zeros(3)
+    return matrix, pivot
 
 
 def blockstate_variants(blockstate: object) -> list[tuple[tuple[tuple[str, str], ...], str, float, float]]:
@@ -302,7 +331,8 @@ class ModelAtlas:
                  for a in (0, 1) for b in (0, 1) for c in (0, 1)],
                 dtype=float,
             ) - 0.5
-            turned = box @ rotation.T
+            local_rotation, pivot = element_rotation(element)
+            turned = ((box - pivot) @ local_rotation.T + pivot) @ rotation.T
             rotated_corners.append(turned)
             element_boxes.append((
                 tuple(float(value) for value in (turned.min(axis=0) + 0.5)),
@@ -316,10 +346,8 @@ class ModelAtlas:
                 if not isinstance(face, dict):
                     continue
                 normal, corners = element_face_corners(low, high, slot)
-                world_normal = rotation @ normal
-                world_slot = _slot_for_normal(world_normal)
-                if world_slot is None:
-                    continue
+                world_normal = rotation @ (local_rotation @ normal)
+                world_slot = _slot_for_normal(world_normal) or _nearest_slot_for_normal(world_normal)
                 cull = face.get("cullface")
                 cull_slot = None
                 if isinstance(cull, str):
@@ -331,7 +359,7 @@ class ModelAtlas:
                 faces.append(
                     ElementFace(
                         world_slot,
-                        corners @ rotation.T,
+                        ((corners - pivot) @ local_rotation.T + pivot) @ rotation.T,
                         world_normal,
                         self._element_face_texture(texture_map, face)
                         if include_textures

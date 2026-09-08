@@ -10,6 +10,7 @@ from mc_photogrammetry.blocks.model_atlas import (
     ModelAtlas,
     ModelGeometry,
     element_face_corners,
+    element_rotation,
 )
 
 FULL = ((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
@@ -140,3 +141,27 @@ def test_bake_still_refuses_a_partial_model(tmp_path):
         # The classifier palette compares full-cube appearances, so the partial
         # path must stay separate from it rather than quietly widening it.
         assert ModelAtlas(archive).bake("block/oak_slab") is None
+
+
+def test_element_rotation_keeps_non_cardinal_faces_for_rendering(tmp_path):
+    jar = tmp_path / "slab.jar"
+    _slab_jar(jar)
+    with zipfile.ZipFile(jar, "a") as archive:
+        archive.writestr(
+            "assets/minecraft/models/block/tilted_slab.json",
+            json.dumps({"textures": {"side": "minecraft:block/oak_planks"}, "elements": [{
+                "from": [0, 0, 0], "to": [16, 8, 16],
+                "rotation": {"origin": [8, 4, 8], "axis": "x", "angle": 45},
+                "faces": {slot: {"texture": "#side"} for slot in FACE_SLOTS},
+            }]}),
+        )
+        geometry = ModelAtlas(archive).geometry("block/tilted_slab")
+    assert geometry is not None
+    assert len(geometry.faces) == 6
+    assert any(abs(float(face.normal[1])) < 0.99 for face in geometry.faces)
+
+
+def test_element_rotation_uses_the_authored_pivot():
+    matrix, pivot = element_rotation({"rotation": {"axis": "y", "angle": 90, "origin": [8, 8, 8]}})
+    assert np.allclose(pivot, (0.0, 0.0, 0.0))
+    assert np.allclose(matrix @ np.asarray((1.0, 0.0, 0.0)), (0.0, 0.0, -1.0))
