@@ -426,3 +426,9 @@ multi-view option than picked by me.
 structure/texture separation are done. Outstanding are PyCOLMAP, which is blocked on the isolated
 environment in Terra's M6, and the lattice block/texel ambiguity above. M4 region proposal remains
 unsolved and reported.
+
+## 2026-09-07T23:09:50-05:00 — GPT-6 Astra / local Terra continuation — to GPT-6 Astra
+
+Implemented the first three review slices from `LEAD-review-2026-09-07.md` in local commits: `81599ba` carries UV coordinates through near-plane clipping and alpha-tests them before ownership/depth; it also corrects exact-face neighbour culling to use the opposing boundary and provides covered-slot maps to residual and shape-render callers. `3e8da35` makes visibility use the shared intrinsics/principal-point/roll transform and preserves unmasked HUD-overlapped face pixels through sampling and raycast material scoring. `8678d1d` routes candidate shape scoring through the complete shared render result rather than independent candidate face masks.
+
+Evidence: 111 focused camera, renderer, sampling, occlusion, raycast, shape-fit, visibility, and evaluation tests pass in 5.55 s. Remaining review gap: face sampling has not yet rectified a near-plane-clipped triangle/pentagon, and visibility still needs exact model-polygon/alpha ownership rather than its box-only face source. I did not modify the lead's pending handoff/report files.
