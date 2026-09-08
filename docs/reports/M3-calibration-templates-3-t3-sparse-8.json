@@ -1,0 +1,322 @@
+{
+  "fixture": "templates 3",
+  "subset": "t3-sparse-8",
+  "generated": "2026-09-08T08:13:16-0500",
+  "source": {
+    "commit": "11bc86baaa4b9e3cc71893afe32edd3c9be54dc9",
+    "dirty": true
+  },
+  "environment": {
+    "python": "3.10.11",
+    "numpy": "2.2.6",
+    "opencv": "5.0.0"
+  },
+  "settings": {
+    "minimum_length_px": 40.0,
+    "inlier_px": 3.0,
+    "detection_scales": [
+      1.0,
+      0.5
+    ],
+    "coarse_segments": 300,
+    "gamma": 0.45,
+    "clahe_clip": 3.0,
+    "clahe_grid": 16,
+    "refine_margin": 0.02,
+    "roll_limit_deg": 4.0,
+    "principal_limit_fraction": 0.12,
+    "weight_by_contrast": false
+  },
+  "inputs": {
+    "2026-09-04_20.03.32.png": {
+      "sha256": "75af5d5d0bf6f9f0998b4bc55d265a36867a7c22d4c78bf8b9594386633284d9",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.03.55.png": {
+      "sha256": "56e3aaa1934a16753ed30bf304ca300822c6fe6e8081c8822bae7acce9c9c05b",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.04.18.png": {
+      "sha256": "45e398bae832359aabb335d20667a8331589122438a927317fd8aa209d176049",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.04.53.png": {
+      "sha256": "141cef6b350e3602deb9b06f297fb0dfc01bd760cc8d7be7cade36600a775922",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.05.23.png": {
+      "sha256": "0bfce03571e9aa1f09b4af57ccca4fe96dc68853d06b6ac206cf6e17490c2190",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.05.42.png": {
+      "sha256": "b71b4c213565ba9e9b2b69aed8a7c30b334b6a1e2648469119c62164769613a1",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.06.32.png": {
+      "sha256": "c0e3f03078fb78fbdb2c0ece345afbb89facfd9f38fba52abe16d09bd2735bad",
+      "size": [
+        2560,
+        1369
+      ]
+    },
+    "2026-09-04_20.06.52.png": {
+      "sha256": "b574d51ef9398a5e06f4ed3a55fe438163db1f264afd87d292adb7f2ffdddba2",
+      "size": [
+        2560,
+        1369
+      ]
+    }
+  },
+  "seconds": 74.36927723884583,
+  "frames_estimated": 8,
+  "estimates": [
+    {
+      "frame": "2026-09-04_20.03.32.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 14.000000000000005,
+      "pitch_degrees": 17.099999999999994,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 2151,
+      "inliers": 2029,
+      "inlier_fraction": 0.9432821943282195,
+      "median_residual_px": 0.09588278934298694,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.0%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.03.55.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 18.849999999999998,
+      "pitch_degrees": -10.699999999999996,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 2074,
+      "inliers": 1975,
+      "inlier_fraction": 0.9522661523625844,
+      "median_residual_px": 0.08226895001785064,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.0%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.04.18.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 77.00000000000001,
+      "pitch_degrees": 3.3999999999999986,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 1391,
+      "inliers": 1295,
+      "inlier_fraction": 0.9309849029475198,
+      "median_residual_px": 0.0988616208535069,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.3%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.04.53.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 7.550000000000001,
+      "pitch_degrees": 45.84999999999998,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 2146,
+      "inliers": 1995,
+      "inlier_fraction": 0.929636533084809,
+      "median_residual_px": 0.10312680114845195,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.0%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.05.23.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 70.00000000000001,
+      "pitch_degrees": 9.100000000000005,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 2397,
+      "inliers": 2245,
+      "inlier_fraction": 0.9365874009178139,
+      "median_residual_px": 0.08722944175662409,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.3%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.05.42.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 45.24999999999998,
+      "pitch_degrees": -31.050000000000004,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 1693,
+      "inliers": 1600,
+      "inlier_fraction": 0.9450679267572357,
+      "median_residual_px": 0.08369384012459989,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.0%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.06.32.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 27.649999999999995,
+      "pitch_degrees": 83.9,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 1074,
+      "inliers": 1007,
+      "inlier_fraction": 0.9376163873370578,
+      "median_residual_px": 0.07569110245794138,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.1%"
+      ]
+    },
+    {
+      "frame": "2026-09-04_20.06.52.png",
+      "focal_pixels": 479.29205990454636,
+      "fov_degrees": 110.0,
+      "yaw_degrees_mod90": 47.74999999999998,
+      "pitch_degrees": 14.300000000000004,
+      "roll_degrees": 0.0,
+      "principal_point": null,
+      "segments": 1308,
+      "inliers": 1214,
+      "inlier_fraction": 0.9281345565749235,
+      "median_residual_px": 0.07316986019047186,
+      "notes": [
+        "yaw is modulo 90 degrees: one view cannot name the horizontal axes",
+        "focal fixed to the median 479.3px of the 8 frame(s) at 2560x1369; this view's own estimate differed by 0.0%"
+      ]
+    }
+  ],
+  "unresolved": [
+    "2026-09-04_20.03.32.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.03.32.png: scale (needs the lattice period)",
+    "2026-09-04_20.03.32.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.03.55.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.03.55.png: scale (needs the lattice period)",
+    "2026-09-04_20.03.55.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.04.18.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.04.18.png: scale (needs the lattice period)",
+    "2026-09-04_20.04.18.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.04.53.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.04.53.png: scale (needs the lattice period)",
+    "2026-09-04_20.04.53.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.05.23.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.05.23.png: scale (needs the lattice period)",
+    "2026-09-04_20.05.23.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.05.42.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.05.42.png: scale (needs the lattice period)",
+    "2026-09-04_20.05.42.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.06.32.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.06.32.png: scale (needs the lattice period)",
+    "2026-09-04_20.06.32.png: yaw quadrant (recovered modulo 90 degrees)",
+    "2026-09-04_20.06.52.png: position (vanishing points fix no translation)",
+    "2026-09-04_20.06.52.png: scale (needs the lattice period)",
+    "2026-09-04_20.06.52.png: yaw quadrant (recovered modulo 90 degrees)"
+  ],
+  "scored": {
+    "note": "evaluation only; the manifest is scaffolding and is never read during estimation",
+    "manifest_sha256": "92dc88ec990f3f96112cb3abfb30c38a3e373942cd6b74185438f3a7bcecf7fa",
+    "gate": {
+      "orientation_deg": 0.5,
+      "focal_fraction": 0.02
+    },
+    "passed": 8,
+    "compared": 8,
+    "per_view": [
+      {
+        "frame": "2026-09-04_20.03.32.png",
+        "pitch_error": 0.09999999999999432,
+        "yaw_error_mod90": 0.0,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.03.55.png",
+        "pitch_error": 3.552713678800501e-15,
+        "yaw_error_mod90": 0.05000000000001137,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.04.18.png",
+        "pitch_error": -1.3322676295501878e-15,
+        "yaw_error_mod90": 0.0,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.04.53.png",
+        "pitch_error": 0.04999999999998295,
+        "yaw_error_mod90": 0.04999999999999716,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.05.23.png",
+        "pitch_error": 5.329070518200751e-15,
+        "yaw_error_mod90": 0.10000000000000853,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.05.42.png",
+        "pitch_error": 0.04999999999999716,
+        "yaw_error_mod90": 0.04999999999998295,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.06.32.png",
+        "pitch_error": 0.10000000000000853,
+        "yaw_error_mod90": 0.05000000000001137,
+        "focal_error": 0.0,
+        "within_gate": true
+      },
+      {
+        "frame": "2026-09-04_20.06.52.png",
+        "pitch_error": 3.552713678800501e-15,
+        "yaw_error_mod90": 0.04999999999997584,
+        "focal_error": 0.0,
+        "within_gate": true
+      }
+    ]
+  }
+}
