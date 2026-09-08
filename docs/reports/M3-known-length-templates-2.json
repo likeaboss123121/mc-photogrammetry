@@ -1,7 +1,7 @@
 {
   "fixture": "templates 2",
   "frame": "2026-09-02_13.22.14.png",
-  "generated": "2026-09-08T17:12:11-0500",
+  "generated": "2026-09-08T17:15:07-0500",
   "calibration_artifact": {
     "path": "docs\\reports\\M3-calibration-templates-2.json",
     "sha256": "435c19bba85c7f88cf886fae35c781cb1bf8470522673c610eb6c52fe7f32ba2"
@@ -46,8 +46,8 @@
     "note": "evaluation only; the manifest and reference are scaffolding and are not read while resolving the constraint",
     "manifest_sha256": "4f743e4fc478430f608e0e879f73cd4a3dc9ce50c726841d2da897be78be6126",
     "eye_on_axis": 109.62,
-    "nearest_matching_wall": 117.0,
-    "reference_distance_blocks": 7.3799999999999955,
-    "relative_error": 0.26868147141616555
+    "nearest_matching_wall": 119.0,
+    "reference_distance_blocks": 9.379999999999995,
+    "relative_error": 0.0018263050051918555
   }
 }

@@ -149,12 +149,13 @@ def main(argv=None) -> int:
         eye = (np.asarray(truth.position, dtype=float)
                + np.asarray([0.0, truth.eye_height, 0.0]))
 
-        # The nearest occupied cell wall along that axis, as a reference distance.
+        # Every occupied cell wall along that axis, scored by how near its
+        # distance is to the answer. The comparison is "did this land on a real
+        # surface, and which", not "is it near some arbitrary wall".
         walls = sorted({scene.to_world(c)[args.axis] for c in reference.blocks}
                        | {scene.to_world(c)[args.axis] + 1.0 for c in reference.blocks})
-        nearest = min(walls, key=lambda w: abs(w - eye[args.axis]) if found.resolved
-                      and abs(abs(w - eye[args.axis]) - found.distance) < 2.0
-                      else float("inf")) if found.resolved else None
+        nearest = (min(walls, key=lambda w: abs(abs(w - eye[args.axis]) - found.distance))
+                   if found.resolved and walls else None)
         payload["scored"] = {
             "note": "evaluation only; the manifest and reference are scaffolding "
                     "and are not read while resolving the constraint",
