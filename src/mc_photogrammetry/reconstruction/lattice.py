@@ -128,6 +128,37 @@ def sampling_for(extent: float, focal: float,
     return int(max(64, min(8192, round(2.0 * extent * focal * oversample))))
 
 
+GRAZING_INCIDENCE = 0.05
+"""Smallest ray-to-plane incidence that is worth intersecting.
+
+Below this a ray runs nearly parallel to the plane, so the intersection races off
+toward infinity and a pixel of pointing error moves it by an unbounded amount.
+The constraint is reported ill-conditioned rather than answered.
+"""
+
+MINIMUM_SEPARATION = 1e-4
+"""Separation on the unit-distance plane below which two points state nothing."""
+
+
+@dataclass(frozen=True)
+class LengthConstraint:
+    """What a user's stated length did or did not establish.
+
+    A distance is returned only when the constraint is consistent. Anything else
+    carries a status and no number, because a plausible-looking distance derived
+    from an impossible constraint is worse than no answer: nothing downstream can
+    tell it from a measured one.
+    """
+
+    status: str
+    distance: float | None = None
+    detail: str = ""
+
+    @property
+    def resolved(self) -> bool:
+        return self.distance is not None
+
+
 def plane_coordinates(
     points,
     axis: int,
@@ -152,7 +183,11 @@ def plane_coordinates(
     projected = rays @ normal
     side = 1.0 if float(np.sum(projected > 0)) >= float(np.sum(projected < 0)) else -1.0
     denominator = projected * side
-    if not np.all(np.abs(denominator) > 1e-9):
+    # Every ray must meet the plane on the same side and in front of the eye.
+    # Testing only the magnitude accepted points whose intersection lies behind
+    # the camera, so two pixels on opposite sides of the plane's vanishing line
+    # returned a plausible distance for a constraint that cannot exist.
+    if not np.all(denominator > GRAZING_INCIDENCE):
         return None
     on_plane = rays / denominator[:, None]
     return np.stack([on_plane @ first, on_plane @ second], axis=1)
@@ -168,7 +203,7 @@ def scale_from_known_length(
     image_size: tuple[int, int],
     *,
     principal_point: tuple[float, float] | None = None,
-) -> float | None:
+) -> "LengthConstraint":
     """Distance to a plane, from a length the user states across it.
 
     One image fixes a plane's *shape* and never its size: a wall twice as far
@@ -187,16 +222,28 @@ def scale_from_known_length(
     Both points must lie on the *same* plane. That is the user's assertion and
     this cannot check it.
     """
-    if blocks_apart <= 0.0:
-        return None
-    coordinates = plane_coordinates([point_a, point_b], axis, axis_matrix, focal,
+    if not np.isfinite(blocks_apart) or blocks_apart <= 0.0:
+        return LengthConstraint("invalid_length",
+                                detail=f"stated length {blocks_apart!r} is not a positive number")
+    pixels = np.asarray([point_a, point_b], dtype=float)
+    if not np.all(np.isfinite(pixels)):
+        return LengthConstraint("non_finite", detail="a stated point is not finite")
+
+    coordinates = plane_coordinates(pixels, axis, axis_matrix, focal,
                                     image_size, principal_point=principal_point)
-    if coordinates is None or coordinates.shape[0] != 2:
-        return None
+    if coordinates is None:
+        return LengthConstraint(
+            "inconsistent",
+            detail=("the two points do not meet one plane in front of the camera: "
+                    "their rays fall on opposite sides of its vanishing line, or "
+                    "one grazes it too nearly to intersect stably"))
     separation = float(np.linalg.norm(coordinates[1] - coordinates[0]))
-    if separation <= 1e-9:
-        return None
-    return blocks_apart / separation
+    if not np.isfinite(separation) or separation <= MINIMUM_SEPARATION:
+        return LengthConstraint(
+            "ill_conditioned",
+            detail=f"the points are {separation:.2e} apart on the plane, which "
+                   f"states nothing about its scale")
+    return LengthConstraint("resolved", distance=blocks_apart / separation)
 
 
 def resolve_hypotheses(

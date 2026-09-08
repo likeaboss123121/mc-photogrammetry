@@ -337,7 +337,8 @@ def test_a_stated_length_gives_the_distance_to_the_plane():
 
     found = scale_from_known_length(pixel(a), pixel(b), apart, 2, axes, focal,
                                     (width, height))
-    assert found == pytest.approx(distance, rel=1e-6)
+    assert found.resolved and found.status == "resolved"
+    assert found.distance == pytest.approx(distance, rel=1e-6)
 
 
 def test_the_stated_length_scales_the_answer_linearly():
@@ -348,18 +349,21 @@ def test_the_stated_length_scales_the_answer_linearly():
     args = ((520.0, 400.0), (620.0, 400.0), 2, axes, 500.0, (800, 800))
     one = scale_from_known_length(args[0], args[1], 3.0, *args[2:])
     two = scale_from_known_length(args[0], args[1], 6.0, *args[2:])
-    assert two == pytest.approx(2.0 * one, rel=1e-9)
+    assert one.resolved and two.resolved
+    assert two.distance == pytest.approx(2.0 * one.distance, rel=1e-9)
 
 
 def test_a_nonsense_length_is_refused_rather_than_scaled():
     from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
 
     axes = axis_directions(0.0, 0.0)
-    assert scale_from_known_length((400.0, 400.0), (500.0, 400.0), 0.0, 2, axes,
-                                   500.0, (800, 800)) is None
+    zero = scale_from_known_length((400.0, 400.0), (500.0, 400.0), 0.0, 2, axes,
+                                   500.0, (800, 800))
+    assert not zero.resolved and zero.status == "invalid_length"
     # The same point twice states nothing about scale.
-    assert scale_from_known_length((400.0, 400.0), (400.0, 400.0), 3.0, 2, axes,
-                                   500.0, (800, 800)) is None
+    same = scale_from_known_length((400.0, 400.0), (400.0, 400.0), 3.0, 2, axes,
+                                   500.0, (800, 800))
+    assert not same.resolved and same.status == "ill_conditioned"
 
 
 def test_a_known_distance_settles_the_block_versus_texel_reading():
@@ -394,3 +398,46 @@ def test_a_distance_agreeing_with_neither_reading_changes_no_ranking():
     settled = resolve_hypotheses(ranked, 10_000.0)
     assert [h.interpretation for h in settled.hypotheses] == \
            [h.interpretation for h in ranked.hypotheses]
+
+
+def test_a_constraint_that_cannot_exist_carries_status_and_no_distance():
+    """The lead's reproduction: two points on opposite sides of a vanishing line.
+
+    Their rays meet the plane on opposite sides of the eye, so no single plane in
+    front of the camera contains both. This previously returned 0.2 - a plausible
+    number nothing downstream could tell from a measured one.
+    """
+    from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
+
+    axes = axis_directions(0.0, 0.0)
+    found = scale_from_known_length((300.0, 400.0), (500.0, 400.0), 2.0, 0, axes,
+                                    500.0, (800, 800))
+    assert not found.resolved
+    assert found.distance is None
+    assert found.status == "inconsistent"
+    assert "opposite sides" in found.detail
+
+
+def test_a_grazing_ray_is_refused_rather_than_extrapolated():
+    # Nearly parallel to the plane, so the intersection races to infinity and a
+    # pixel of pointing error moves it without bound.
+    from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
+
+    axes = axis_directions(0.0, 0.0)
+    found = scale_from_known_length((401.0, 400.0), (403.0, 400.0), 2.0, 0, axes,
+                                    500.0, (800, 800))
+    assert not found.resolved
+    assert found.status in {"inconsistent", "ill_conditioned"}
+
+
+def test_non_finite_input_is_refused():
+    from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
+
+    axes = axis_directions(0.0, 0.0)
+    for bad in ((float("nan"), 400.0), (float("inf"), 400.0)):
+        found = scale_from_known_length(bad, (500.0, 400.0), 2.0, 2, axes,
+                                        500.0, (800, 800))
+        assert not found.resolved and found.status in {"non_finite", "inconsistent"}
+    assert not scale_from_known_length((400.0, 400.0), (500.0, 400.0),
+                                       float("nan"), 2, axes, 500.0,
+                                       (800, 800)).resolved

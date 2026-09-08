@@ -1,0 +1,53 @@
+{
+  "fixture": "templates 2",
+  "frame": "2026-09-02_13.22.14.png",
+  "generated": "2026-09-08T17:12:11-0500",
+  "calibration_artifact": {
+    "path": "docs\\reports\\M3-calibration-templates-2.json",
+    "sha256": "435c19bba85c7f88cf886fae35c781cb1bf8470522673c610eb6c52fe7f32ba2"
+  },
+  "inputs": {
+    "axis": 1,
+    "axis_name": "Y",
+    "points": [
+      [
+        1471.7,
+        29.1
+      ],
+      [
+        1262.3,
+        233.0
+      ]
+    ],
+    "blocks_apart": 4.0,
+    "yaw_quadrant": 0,
+    "image_size": [
+      2560,
+      1369
+    ]
+  },
+  "camera_used": {
+    "yaw_degrees": 47.349999999999994,
+    "pitch_degrees": -4.499999999999998,
+    "roll_degrees": 0.0,
+    "focal_pixels": 479.29205990454636,
+    "principal_point": null
+  },
+  "thresholds": {
+    "grazing_incidence": 0.05,
+    "minimum_separation": 0.0001
+  },
+  "result": {
+    "status": "resolved",
+    "distance_blocks": 9.362869259051296,
+    "detail": ""
+  },
+  "scored": {
+    "note": "evaluation only; the manifest and reference are scaffolding and are not read while resolving the constraint",
+    "manifest_sha256": "4f743e4fc478430f608e0e879f73cd4a3dc9ce50c726841d2da897be78be6126",
+    "eye_on_axis": 109.62,
+    "nearest_matching_wall": 117.0,
+    "reference_distance_blocks": 7.3799999999999955,
+    "relative_error": 0.26868147141616555
+  }
+}
