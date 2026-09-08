@@ -19,7 +19,7 @@ from .model_atlas import (
     compose,
 )
 
-CACHE_SCHEMA_VERSION = 13
+CACHE_SCHEMA_VERSION = 14
 
 COLOUR_RESOLUTION = 4
 
@@ -52,6 +52,7 @@ class TextureSample:
     face_map: tuple[tuple[str, tuple[int, int, int]], ...] = ()
     face_thumbnails: tuple[tuple[str, str], ...] = ()
     face_corners: tuple[tuple[str, tuple[tuple[float, float, float], ...]], ...] = ()
+    model_faces: tuple[tuple[str, tuple[tuple[float, float, float], ...], tuple[float, float, float], str | None], ...] = ()
     shape_boxes: tuple[tuple[tuple[float, float, float], tuple[float, float, float]], ...] = ()
     """Each model element's own extent in block units, after the variant rotation.
 
@@ -148,6 +149,12 @@ class VanillaJarTextureProvider:
                             if shape is None
                             else tuple(slot for slot in FACE_SLOTS if shape.covers(slot))
                         )
+                        model_faces = () if shape is None else tuple(
+                            (face.slot,
+                             tuple(tuple(float(v) for v in corner) for corner in face.corners),
+                             tuple(float(v) for v in face.normal), face.cullface)
+                            for face in shape.faces
+                        )
                         face_slots = _resolve_face_texture_slots(archive, model_name, set())
                         face_paths = _resolve_face_textures(archive, model_name, set()) or _resolve_model_textures(archive, model_name, set())
                         unique_paths = tuple(dict.fromkeys(face_paths))
@@ -197,6 +204,7 @@ class VanillaJarTextureProvider:
                                 face_map,
                                 face_thumbnails,
                                 face_corners,
+                                model_faces,
                                 shape_boxes,
                                 covered_slots,
                             )
@@ -259,6 +267,12 @@ class VanillaJarTextureProvider:
                                 face_map,
                                 face_thumbnails,
                                 (),
+                                tuple(
+                                    (face.slot,
+                                     tuple(tuple(float(v) for v in corner) for corner in face.corners),
+                                     tuple(float(v) for v in face.normal), face.cullface)
+                                    for face in shape.faces
+                                ),
                                 shape.boxes,
                                 tuple(slot for slot in FACE_SLOTS if shape.covers(slot)),
                             )
@@ -491,6 +505,7 @@ def _palette_color(sample: TextureSample) -> PaletteColor:
         sample.face_map,
         sample.face_thumbnails,
         sample.face_corners,
+        sample.model_faces,
         sample.full_cube,
         sample.shape_boxes,
         sample.covered_slots,
@@ -806,6 +821,11 @@ def _load_cached_samples(cache_path: Path, jar_path: Path) -> list[TextureSample
                     for slot, corners in item.get("face_corners", [])
                 ),
                 tuple(
+                    (str(slot), tuple(tuple(float(v) for v in corner) for corner in corners),
+                     tuple(float(v) for v in normal), str(cullface) if cullface is not None else None)
+                    for slot, corners, normal, cullface in item.get("model_faces", [])
+                ),
+                tuple(
                     (
                         tuple(float(value) for value in box[0]),
                         tuple(float(value) for value in box[1]),
@@ -836,6 +856,7 @@ def _save_cached_samples(cache_path: Path, jar_path: Path, samples: list[Texture
                 "face_map": sample.face_map,
                 "face_thumbnails": sample.face_thumbnails,
                 "face_corners": sample.face_corners,
+                "model_faces": sample.model_faces,
                 "shape_boxes": sample.shape_boxes,
                 "covered_slots": sample.covered_slots,
             }

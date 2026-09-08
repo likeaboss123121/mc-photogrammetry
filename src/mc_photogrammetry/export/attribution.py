@@ -126,6 +126,17 @@ def face_occluding_slots(palette: Sequence) -> dict[object, frozenset[str]]:
     return slots
 
 
+def face_model_faces(palette: Sequence) -> dict[object, tuple]:
+    """Exact baked model polygons keyed by state, with legacy name fallback."""
+    found: dict[object, tuple] = {}
+    for item in palette:
+        faces = tuple(getattr(item, "model_faces", ()) or ())
+        if faces:
+            found[item.state] = faces
+            found.setdefault(item.state.name, faces)
+    return found
+
+
 def box_face_corners(low: Sequence[float], high: Sequence[float], slot: str) -> np.ndarray:
     """The four corners of one box face, relative to the cell centre."""
     x0, y0, z0 = low
@@ -164,6 +175,7 @@ def render_volume(
     scale: float = RENDER_SCALE,
     ambient: bool = False,
     occluding_slots: Mapping[object, frozenset[str]] | None = None,
+    model_faces: Mapping[object, tuple] | None = None,
 ):
     """Painter render, with the cell and depth behind every pixel.
 
@@ -193,6 +205,27 @@ def render_volume(
     faces = []
     for coordinate, state in blocks.items():
         centre = np.asarray(scene.to_world(coordinate), dtype=float) + 0.5
+        exact_faces = () if model_faces is None else model_faces.get(state, model_faces.get(state.name, ()))
+        if exact_faces:
+            for slot, corners, normal, cull_slot in exact_faces:
+                normal = np.asarray(normal, dtype=float)
+                if float(normal @ (eye - centre)) <= 0.05:
+                    continue
+                if cull_slot is not None:
+                    basis = np.asarray(FACE_BASIS[cull_slot][0], dtype=float)
+                    neighbour = tuple(coordinate[index] + int(basis[index]) for index in range(3))
+                    neighbour_state = blocks.get(neighbour)
+                    if neighbour_state is not None and (occluding_slots is None or cull_slot in occluding_slots.get(neighbour_state, occluding_slots.get(neighbour_state.name, frozenset()))):
+                        continue
+                projected = project_clipped_polygon(centre + np.asarray(corners), camera, width=width, height=height)
+                if len(projected) < 3:
+                    continue
+                colour = colours.get(state, colours.get(state.name, {})).get(slot, np.asarray((128.0, 128.0, 128.0)))
+                shade = FACE_SHADE.get(slot, 0.8)
+                if ambient:
+                    shade *= ambient_occlusion(coordinate, slot, occupied)
+                faces.append((projected[:, :2].astype(np.float32) * scale, projected[:, 2], np.asarray(colour, dtype=float) * shade, (coordinate, slot)))
+            continue
         boxes = CUBE if shapes is None else shapes.get(state, shapes.get(state.name, CUBE))
         for low, high in boxes:
             for slot in FACE_SLOTS:
@@ -269,10 +302,11 @@ def render_result(
     width: int, height: int, colours: Mapping[object, Mapping[str, np.ndarray]],
     shapes: Mapping[object, tuple] | None = None, scale: float = RENDER_SCALE,
     ambient: bool = False, occluding_slots: Mapping[object, frozenset[str]] | None = None,
+    model_faces: Mapping[object, tuple] | None = None,
 ) -> tuple[RenderResult, list[tuple[BlockCoordinate, str]]]:
     """Contract-shaped rendering result plus the face table used by ownership IDs."""
     colour, ownership, index, depth = render_volume(
-        blocks, scene, camera, width, height, colours, shapes, scale, ambient, occluding_slots
+        blocks, scene, camera, width, height, colours, shapes, scale, ambient, occluding_slots, model_faces
     )
     return RenderResult(colour=colour, depth=depth, ownership=ownership, valid_pixels=ownership >= 0), index
 
@@ -293,6 +327,7 @@ def attribute_error(
     colours = face_colours(palette)
     shapes = face_shapes(palette)
     occluding_slots = face_occluding_slots(palette)
+    model_faces = face_model_faces(palette)
     energy: dict[str, float] = defaultdict(float)
     pixels: dict[str, int] = defaultdict(int)
     blamed: dict[str, float] = defaultdict(float)
@@ -304,9 +339,9 @@ def attribute_error(
             continue
         height, width = image.shape[:2]
         want, want_owner, want_index, want_depth = render_volume(
-            reference, scene, camera, width, height, colours, shapes, scale, occluding_slots=occluding_slots)
+            reference, scene, camera, width, height, colours, shapes, scale, occluding_slots=occluding_slots, model_faces=model_faces)
         got, got_owner, got_index, got_depth = render_volume(
-            candidate, scene, camera, width, height, colours, shapes, scale, occluding_slots=occluding_slots)
+            candidate, scene, camera, width, height, colours, shapes, scale, occluding_slots=occluding_slots, model_faces=model_faces)
         difference = np.linalg.norm(want - got, axis=2)
         for row, column in zip(*np.nonzero(difference > threshold)):
             here = int(want_owner[row, column])

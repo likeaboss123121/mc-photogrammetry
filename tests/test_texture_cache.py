@@ -107,4 +107,6 @@ def test_face_model_resolves_only_visible_face_textures(tmp_path):
         "east": (40, 50, 60),
         "west": (40, 50, 60),
     }
+    assert len(sample.model_faces) == 6
+    assert {face[0] for face in sample.model_faces} == {"up", "down", "north", "south", "east", "west"}
     assert dict(sample.face_thumbnails)
