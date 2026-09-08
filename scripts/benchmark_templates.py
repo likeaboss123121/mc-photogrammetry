@@ -286,8 +286,8 @@ def _load_usable_masks(paths: dict[str, Path], frames: dict[str, object]) -> dic
     """Load evaluator-owned masks and verify coverage.
 
     PNG masks use white for usable pixels. A tracked JSON specification freezes
-    integer excluded rectangles for a fixed image size, avoiding a dependency on
-    the mutable production GUI-mask heuristic.
+    integer excluded rectangles and polygons for a fixed image size, avoiding a
+    dependency on the mutable production GUI-mask heuristic.
     """
     if not paths:
         return {}
@@ -322,6 +322,17 @@ def _load_usable_masks(paths: dict[str, Path], frames: dict[str, object]) -> dic
                 if not (0 <= x0 <= x1 <= expected[1] and 0 <= y0 <= y1 <= expected[0]):
                     raise ValueError(f"usable mask {path} has out-of-bounds rectangle {rectangle}")
                 mask[y0:y1, x0:x1] = False
+            for polygon in specification.get("excluded_polygons", []):
+                points = np.asarray(polygon, dtype=np.int32)
+                if points.ndim != 2 or points.shape[0] < 3 or points.shape[1] != 2:
+                    raise ValueError(f"usable mask {path} has invalid polygon {polygon}")
+                if (points[:, 0] < 0).any() or (points[:, 0] >= expected[1]).any() or (
+                    points[:, 1] < 0
+                ).any() or (points[:, 1] >= expected[0]).any():
+                    raise ValueError(f"usable mask {path} has out-of-bounds polygon {polygon}")
+                import cv2
+
+                cv2.fillPoly(mask, [points], False)
         else:
             mask = np.asarray(Image.open(path).convert("L"), dtype=np.uint8) > 0
         if mask.shape != expected:

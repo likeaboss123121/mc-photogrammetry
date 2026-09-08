@@ -1,0 +1,7 @@
+{
+  "schema": 2,
+  "review": "Manual visual review of this frame only; static-pixel detection was not used.",
+  "image_size": [2560, 1369],
+  "excluded_rectangles": [[0, 0, 430, 105], [1268, 672, 1293, 697], [1165, 1325, 1465, 1369]],
+  "excluded_polygons": [[[1790, 1000], [1900, 950], [2040, 970], [2200, 1090], [2250, 1368], [1780, 1368]]]
+}
