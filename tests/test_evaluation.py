@@ -61,3 +61,30 @@ def test_visible_breakdowns_preserve_state_and_pixel_area_evidence():
     assert breakdowns["by_state"]["minecraft:dirt"]["coordinate_matches"] == 1
     assert breakdowns["by_pixel_area"]["1-9"]["visible_pixels"] == 3
     assert breakdowns["by_pixel_area"]["100-999"]["visible_reference_blocks"] == 1
+
+
+def test_visible_alignment_rotates_directional_property_keys_and_rail_shapes():
+    north_fence = BlockState("minecraft:oak_fence", (("north", "true"), ("east", "false")))
+    east_fence = BlockState("minecraft:oak_fence", (("north", "false"), ("east", "true")))
+    north_south = BlockState("minecraft:rail", (("shape", "north_south"),))
+    east_west = BlockState("minecraft:rail", (("shape", "east_west"),))
+    reference = {(0, 0, 0): east_fence, (0, 0, 1): east_west}
+    candidate = {(0, 0, 0): north_fence, (1, 0, 0): north_south}
+
+    turns, translation = best_visible_alignment(reference, candidate, reference)
+    metrics = visible_metrics(reference, candidate, reference,
+                              translation=translation, rotation_quarter_turns=turns)
+
+    assert turns == 1
+    assert metrics.visible_exact_state_matches == 2
+
+
+def test_visible_breakdowns_do_not_merge_distinct_block_states():
+    north = BlockState("minecraft:oak_fence", (("north", "true"),))
+    east = BlockState("minecraft:oak_fence", (("east", "true"),))
+    breakdowns = visible_breakdowns({(0, 0, 0): north, (1, 0, 0): east}, {},
+                                    {(0, 0, 0): 10, (1, 0, 0): 10})
+
+    assert set(breakdowns["by_state"]) == {
+        "minecraft:oak_fence[north=true]", "minecraft:oak_fence[east=true]",
+    }

@@ -137,7 +137,7 @@ def visible_breakdowns(
         state = reference.get(coordinate)
         if state is None:
             continue
-        for group, key in ((by_state, state.name), (by_area, _pixel_area_bin(pixels))):
+        for group, key in ((by_state, _state_key(state)), (by_area, _pixel_area_bin(pixels))):
             counts = group.setdefault(key, Counter())
             counts["visible_reference_blocks"] += 1
             counts["visible_pixels"] += int(pixels)
@@ -183,15 +183,38 @@ def _rotate_coordinate(coordinate: BlockCoordinate, turns: int) -> BlockCoordina
 
 def _rotate_state(state: BlockState, turns: int) -> BlockState:
     properties = dict(state.properties)
-    facing = properties.get("facing")
     order = ("north", "east", "south", "west")
+    turns %= 4
+
+    def rotate(direction: str) -> str:
+        return order[(order.index(direction) + turns) % 4] if direction in order else direction
+
+    # Fence, wall and pane connections encode their direction in the *key*, not
+    # only in a property value. Preserve their state (true/low/tall/false) while
+    # moving it to the rotated key.
+    directional = {key: properties.pop(key) for key in order if key in properties}
+    for key, value in directional.items():
+        properties[rotate(key)] = value
+    facing = properties.get("facing")
     if facing in order:
-        properties["facing"] = order[(order.index(facing) + turns) % 4]
+        properties["facing"] = rotate(facing)
     if turns % 2 and properties.get("axis") in {"x", "z"}:
         properties["axis"] = "z" if properties["axis"] == "x" else "x"
     if properties.get("rotation", "").isdigit():
         properties["rotation"] = str((int(properties["rotation"]) + 4 * turns) % 16)
+    # Rail shape values are orientation-bearing compound directions. Stair
+    # shapes such as `inner_left` contain no cardinal token and remain intact.
+    shape = properties.get("shape")
+    if shape:
+        properties["shape"] = "_".join(rotate(part) for part in shape.split("_"))
     return BlockState(state.name, tuple(sorted(properties.items())))
+
+
+def _state_key(state: BlockState) -> str:
+    if not state.properties:
+        return state.name
+    values = ",".join(f"{key}={value}" for key, value in state.properties)
+    return f"{state.name}[{values}]"
 
 
 def _pixel_area_bin(pixels: int) -> str:
