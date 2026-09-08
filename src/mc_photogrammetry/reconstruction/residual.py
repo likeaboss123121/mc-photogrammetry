@@ -27,6 +27,7 @@ from mc_photogrammetry.blocks.model_atlas import FACE_BASIS
 from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
 from mc_photogrammetry.export.attribution import (
     face_colours,
+    face_model_faces,
     face_shapes,
     render_result,
 )
@@ -70,7 +71,7 @@ def face_residuals(
         import cv2
     except ImportError:  # pragma: no cover - diagnostic path
         return {}
-    colours, shapes = face_colours(palette), face_shapes(palette)
+    colours, shapes, model_faces = face_colours(palette), face_shapes(palette), face_model_faces(palette)
     gathered: dict[tuple[BlockCoordinate, str], list[float]] = defaultdict(list)
 
     for frame_id, image in frames.items():
@@ -79,7 +80,7 @@ def face_residuals(
             continue
         height, width = image.shape[:2]
         rendered, index = render_result(
-            blocks, scene, camera, width, height, colours, shapes, scale, ambient=True)
+            blocks, scene, camera, width, height, colours, shapes, scale, ambient=True, model_faces=model_faces)
         canvas, owner = rendered.colour, rendered.ownership
         seen = owner >= 0
         if not seen.any():
