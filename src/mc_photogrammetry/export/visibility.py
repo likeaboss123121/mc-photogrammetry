@@ -231,13 +231,16 @@ def visible_cells(
     full_cubes: set | None = None,
     shapes: Mapping | None = None,
     palette: Sequence | None = None,
+    usable_masks: Mapping[str, np.ndarray] | None = None,
     progress=None,
 ) -> dict[BlockCoordinate, int]:
     """Pixels each reference cell wins, summed across every camera.
 
     ``resolutions`` maps a frame id to its ``(width, height)``. A Minecraft
     screenshot's geometry depends on both, so the real frame size is used rather
-    than a nominal one.
+    than a nominal one. ``usable_masks`` is an optional, evaluator-owned boolean
+    mask per frame. It is applied after visibility rendering, so a candidate
+    cannot change the denominator by changing what it predicts.
     """
     try:
         import cv2
@@ -257,12 +260,22 @@ def visible_cells(
         if size is None:
             continue
         width, height = int(size[0]), int(size[1])
+        usable_mask = None if usable_masks is None else usable_masks.get(frame_id)
+        if usable_mask is not None:
+            usable_mask = np.asarray(usable_mask, dtype=bool)
+            if usable_mask.shape != (height, width):
+                raise ValueError(
+                    f"usable mask for {frame_id} has shape {usable_mask.shape}, expected {(height, width)}"
+                )
         if colours is not None:
             rendered, face_index = render_result(
                 blocks, scene, camera, width, height, colours, model_shapes, scale=1.0,
                 occluding_slots=occluding_slots, model_faces=model_faces,
             )
-            for identifier, count in zip(*np.unique(rendered.ownership[rendered.ownership >= 0], return_counts=True)):
+            owned = rendered.ownership >= 0
+            if usable_mask is not None:
+                owned &= usable_mask
+            for identifier, count in zip(*np.unique(rendered.ownership[owned], return_counts=True)):
                 coordinate, _slot = face_index[int(identifier)]
                 totals[coordinate] = totals.get(coordinate, 0) + int(count)
             if progress is not None:
@@ -316,7 +329,10 @@ def visible_cells(
             cells.append(coordinate)
 
         if cells:
-            for index, count in zip(*np.unique(owner[owner >= 0], return_counts=True)):
+            owned = owner >= 0
+            if usable_mask is not None:
+                owned &= usable_mask
+            for index, count in zip(*np.unique(owner[owned], return_counts=True)):
                 coordinate = cells[int(index)]
                 totals[coordinate] = totals.get(coordinate, 0) + int(count)
         if progress is not None:

@@ -7,6 +7,7 @@ reference simply by importing an evaluator.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from collections import Counter
 from typing import Iterable, Mapping
 
 from mc_photogrammetry.domain.models import BlockCoordinate, BlockState, BlockVolume, ObservationKind
@@ -55,6 +56,7 @@ def visible_metrics(
     visible_reference: Iterable[BlockCoordinate],
     *,
     translation: BlockCoordinate = (0, 0, 0),
+    rotation_quarter_turns: int = 0,
 ) -> VisibleMetrics:
     """Score an aligned candidate using only reference cells visible in images.
 
@@ -63,10 +65,7 @@ def visible_metrics(
     itself visible; this follows the promotion metric's ``C minus R`` term.
     """
     visible = set(visible_reference) & set(reference)
-    aligned = {
-        (coordinate[0] + translation[0], coordinate[1] + translation[1], coordinate[2] + translation[2]): state
-        for coordinate, state in candidate.items()
-    }
+    aligned = _aligned_candidate(candidate, translation, rotation_quarter_turns)
     matching_coordinates = visible & set(aligned)
     exact_states = sum(reference[coordinate] == aligned[coordinate] for coordinate in matching_coordinates)
     phantoms = len(set(aligned) - set(reference))
@@ -79,12 +78,130 @@ def visible_metrics(
     )
 
 
+def best_visible_alignment(
+    reference: Mapping[BlockCoordinate, BlockState],
+    candidate: Mapping[BlockCoordinate, BlockState],
+    visible_reference: Iterable[BlockCoordinate],
+) -> tuple[int, BlockCoordinate]:
+    """Find the permitted Y-axis lattice rotation and integer translation.
+
+    The rotation is applied to both coordinates and directional state properties,
+    before an integer translation maps candidate coordinates into the reference
+    frame.  It deliberately excludes reflections and scale fitting.
+    """
+    reference_coordinates = set(reference)
+    visible = set(visible_reference) & reference_coordinates
+    if not reference_coordinates or not candidate:
+        return 0, (0, 0, 0)
+    reference_sample = sorted(reference_coordinates)[:20_000]
+    best = (0, (0, 0, 0), -1, -1)
+    for turns in range(4):
+        rotated = {_rotate_coordinate(coordinate, turns): state for coordinate, state in candidate.items()}
+        candidate_sample = sorted(rotated)[:2_000]
+        votes = Counter(
+            (reference_coordinate[0] - candidate_coordinate[0],
+             reference_coordinate[1] - candidate_coordinate[1],
+             reference_coordinate[2] - candidate_coordinate[2])
+            for reference_coordinate in reference_sample
+            for candidate_coordinate in candidate_sample
+        )
+        for translation, _count in votes.most_common(32):
+            aligned = {
+                _translate(coordinate, translation): _rotate_state(state, turns)
+                for coordinate, state in rotated.items()
+            }
+            coordinate_matches = len(visible & set(aligned))
+            state_matches = sum(
+                reference[coordinate] == aligned[coordinate]
+                for coordinate in visible & set(aligned)
+            )
+            rank = (coordinate_matches, state_matches)
+            if rank > best[2:]:
+                best = (turns, translation, *rank)
+    return best[0], best[1]
+
+
+def visible_breakdowns(
+    reference: Mapping[BlockCoordinate, BlockState],
+    candidate: Mapping[BlockCoordinate, BlockState],
+    visible_pixels: Mapping[BlockCoordinate, int],
+    *,
+    translation: BlockCoordinate = (0, 0, 0),
+    rotation_quarter_turns: int = 0,
+) -> dict[str, dict[str, dict[str, int]]]:
+    """Break visible exact/geometry evidence down by state and pixel-area bin."""
+    aligned = _aligned_candidate(candidate, translation, rotation_quarter_turns)
+    by_state: dict[str, Counter[str]] = {}
+    by_area: dict[str, Counter[str]] = {}
+    for coordinate, pixels in visible_pixels.items():
+        state = reference.get(coordinate)
+        if state is None:
+            continue
+        for group, key in ((by_state, state.name), (by_area, _pixel_area_bin(pixels))):
+            counts = group.setdefault(key, Counter())
+            counts["visible_reference_blocks"] += 1
+            counts["visible_pixels"] += int(pixels)
+            if coordinate in aligned:
+                counts["coordinate_matches"] += 1
+                if state == aligned[coordinate]:
+                    counts["exact_state_matches"] += 1
+    return {
+        "by_state": {key: dict(counts) for key, counts in sorted(by_state.items())},
+        "by_pixel_area": {key: dict(counts) for key, counts in sorted(by_area.items())},
+    }
+
+
 def observation_kind_counts(volume: BlockVolume) -> dict[str, int]:
     """Count observed and inferred output separately for benchmark reports."""
     counts = {kind.value: 0 for kind in ObservationKind}
     for observation in volume.blocks.values():
         counts[observation.kind.value] += 1
     return counts
+
+
+def _aligned_candidate(
+    candidate: Mapping[BlockCoordinate, BlockState],
+    translation: BlockCoordinate,
+    turns: int,
+) -> dict[BlockCoordinate, BlockState]:
+    return {
+        _translate(_rotate_coordinate(coordinate, turns), translation): _rotate_state(state, turns)
+        for coordinate, state in candidate.items()
+    }
+
+
+def _translate(coordinate: BlockCoordinate, translation: BlockCoordinate) -> BlockCoordinate:
+    return tuple(coordinate[index] + translation[index] for index in range(3))  # type: ignore[return-value]
+
+
+def _rotate_coordinate(coordinate: BlockCoordinate, turns: int) -> BlockCoordinate:
+    x, y, z = coordinate
+    for _ in range(turns % 4):
+        x, z = -z, x
+    return x, y, z
+
+
+def _rotate_state(state: BlockState, turns: int) -> BlockState:
+    properties = dict(state.properties)
+    facing = properties.get("facing")
+    order = ("north", "east", "south", "west")
+    if facing in order:
+        properties["facing"] = order[(order.index(facing) + turns) % 4]
+    if turns % 2 and properties.get("axis") in {"x", "z"}:
+        properties["axis"] = "z" if properties["axis"] == "x" else "x"
+    if properties.get("rotation", "").isdigit():
+        properties["rotation"] = str((int(properties["rotation"]) + 4 * turns) % 16)
+    return BlockState(state.name, tuple(sorted(properties.items())))
+
+
+def _pixel_area_bin(pixels: int) -> str:
+    if pixels < 10:
+        return "1-9"
+    if pixels < 100:
+        return "10-99"
+    if pixels < 1000:
+        return "100-999"
+    return "1000+"
 
 
 def _ratio(numerator: int, denominator: int) -> float:

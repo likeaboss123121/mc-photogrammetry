@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "description": "Evaluator-owned usable-pixel definition for the 2560x1369 vanilla screenshot fixtures. False pixels cover the status bars, chat, hotbar, crosshair, and held-item corner. Coordinates are frozen integer pixel rectangles, not derived from the runtime GUI-mask helper.",
+  "image_size": [2560, 1369],
+  "excluded_rectangles": [
+    [0, 0, 1408, 136],
+    [1246, 650, 1315, 719],
+    [0, 903, 870, 1204],
+    [0, 1204, 2560, 1369],
+    [1484, 752, 2560, 1369]
+  ]
+}

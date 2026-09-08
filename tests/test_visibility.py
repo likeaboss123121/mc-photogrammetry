@@ -83,6 +83,25 @@ def test_a_block_in_front_of_the_camera_is_reached():
     assert found.get((3, 2, 2), 0) > 0
 
 
+def test_frozen_usable_mask_restricts_the_visibility_denominator():
+    blocks = {(3, 2, 2): STONE}
+    unrestricted = _look(blocks)
+    masked = visible_cells(
+        blocks, _scene(), {"a.png": _camera()}, {"a.png": SIZE},
+        usable_masks={"a.png": np.zeros((SIZE[1], SIZE[0]), dtype=bool)},
+    )
+    assert unrestricted[(3, 2, 2)] > 0
+    assert masked == {}
+
+
+def test_usable_mask_dimensions_are_checked():
+    with pytest.raises(ValueError, match="expected"):
+        visible_cells(
+            {(3, 2, 2): STONE}, _scene(), {"a.png": _camera()}, {"a.png": SIZE},
+            usable_masks={"a.png": np.ones((10, 10), dtype=bool)},
+        )
+
+
 def test_a_block_outside_the_frustum_is_not_reached():
     # Behind the camera entirely.
     assert _look({(3, 2, 2): STONE}, camera=CameraModel(
