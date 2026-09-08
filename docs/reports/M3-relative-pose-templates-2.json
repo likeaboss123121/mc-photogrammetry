@@ -1,0 +1,491 @@
+{
+  "fixture": "templates 2",
+  "generated": "2026-09-08T11:55:54-0500",
+  "environment": {
+    "python": "3.12.10",
+    "pycolmap": "4.2.0",
+    "numpy": "2.5.3",
+    "device": "cpu"
+  },
+  "calibration_artifact": {
+    "path": "docs\\reports\\M3-calibration-templates-2.json",
+    "sha256": "435c19bba85c7f88cf886fae35c781cb1bf8470522673c610eb6c52fe7f32ba2"
+  },
+  "declared_configurations": {
+    "baseline": "PyCOLMAP defaults, so the others have something to be compared against",
+    "dense": "these frames are dim and low contrast; more, weaker features",
+    "strict": "Minecraft repeats textures, so trade recall for fewer wrong matches"
+  },
+  "masks": ".masks\\templates-2",
+  "note": "translation is recovered as a direction only; two views cannot fix its length, and no scale is claimed",
+  "runs": [
+    {
+      "configuration": "baseline",
+      "why": "PyCOLMAP defaults, so the others have something to be compared against",
+      "settings": {
+        "extraction": {},
+        "matching": {}
+      },
+      "seconds": {
+        "extraction": 2.3160793781280518,
+        "matching": 1.4991023540496826
+      },
+      "features": {
+        "2026-09-02_13.22.14.png": 7619,
+        "2026-09-02_13.24.24.png": 4777,
+        "2026-09-02_13.24.33.png": 6762
+      },
+      "pairs": [
+        {
+          "views": [
+            "2026-09-02_13.22.14.png",
+            "2026-09-02_13.24.24.png"
+          ],
+          "raw_matches": 226,
+          "inliers": 83,
+          "configuration": "UNCALIBRATED",
+          "triangulation_angle_deg": -1.0,
+          "resolved": true,
+          "relative_rotation": [
+            [
+              -0.5602043443419369,
+              0.04852065707071765,
+              0.8269321848965893
+            ],
+            [
+              -0.47471361875022966,
+              0.7992871967513886,
+              -0.3684928184949724
+            ],
+            [
+              -0.6788358216487126,
+              -0.5989872477329821,
+              -0.42473074329483707
+            ]
+          ],
+          "translation_direction": [
+            -0.9797175422049612,
+            -0.07727590218832894,
+            -0.1848836727157106
+          ],
+          "scale": "unresolved: two views fix direction only"
+        },
+        {
+          "views": [
+            "2026-09-02_13.22.14.png",
+            "2026-09-02_13.24.33.png"
+          ],
+          "raw_matches": 162,
+          "inliers": 27,
+          "configuration": "CALIBRATED",
+          "triangulation_angle_deg": -1.0,
+          "resolved": true,
+          "relative_rotation": [
+            [
+              0.4212703836863071,
+              -0.9013962454433688,
+              0.10008033038209796
+            ],
+            [
+              0.49148410484731836,
+              0.31964127101011397,
+              0.8101066797338912
+            ],
+            [
+              -0.762216923527169,
+              -0.29208606020766753,
+              0.5776773276848772
+            ]
+          ],
+          "translation_direction": [
+            -0.20969692098238718,
+            -0.7359541990261023,
+            0.643738004366959
+          ],
+          "scale": "unresolved: two views fix direction only"
+        },
+        {
+          "views": [
+            "2026-09-02_13.24.24.png",
+            "2026-09-02_13.24.33.png"
+          ],
+          "raw_matches": 125,
+          "inliers": 30,
+          "configuration": "WATERMARK",
+          "triangulation_angle_deg": -1.0,
+          "resolved": false,
+          "reason": "configuration WATERMARK with 30 inliers"
+        }
+      ],
+      "resolved_pairs": 2,
+      "components": [
+        [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.24.png",
+          "2026-09-02_13.24.33.png"
+        ]
+      ],
+      "largest_component": 3,
+      "registered": [
+        "2026-09-02_13.22.14.png",
+        "2026-09-02_13.24.24.png",
+        "2026-09-02_13.24.33.png"
+      ],
+      "excluded": []
+    },
+    {
+      "configuration": "dense",
+      "why": "these frames are dim and low contrast; more, weaker features",
+      "settings": {
+        "extraction": {
+          "max_num_features": 16384,
+          "peak_threshold": 0.004,
+          "edge_threshold": 12.0
+        },
+        "matching": {}
+      },
+      "seconds": {
+        "extraction": 2.6986000537872314,
+        "matching": 4.562000751495361
+      },
+      "features": {
+        "2026-09-02_13.22.14.png": 15890,
+        "2026-09-02_13.24.24.png": 10306,
+        "2026-09-02_13.24.33.png": 13660
+      },
+      "pairs": [
+        {
+          "views": [
+            "2026-09-02_13.22.14.png",
+            "2026-09-02_13.24.24.png"
+          ],
+          "raw_matches": 466,
+          "inliers": 100,
+          "configuration": "UNCALIBRATED",
+          "triangulation_angle_deg": -1.0,
+          "resolved": true,
+          "relative_rotation": [
+            [
+              -0.5973929425272502,
+              0.4275323097695811,
+              0.6784819793640212
+            ],
+            [
+              -0.377672118224052,
+              0.5963611529647823,
+              -0.7083199463171096
+            ],
+            [
+              -0.707449958184175,
+              -0.6793890633043796,
+              -0.19479491093867551
+            ]
+          ],
+          "translation_direction": [
+            0.9506828991261529,
+            -0.035562809091339666,
+            0.30811898987018965
+          ],
+          "scale": "unresolved: two views fix direction only"
+        },
+        {
+          "views": [
+            "2026-09-02_13.22.14.png",
+            "2026-09-02_13.24.33.png"
+          ],
+          "raw_matches": 455,
+          "inliers": 116,
+          "configuration": "PLANAR_OR_PANORAMIC",
+          "triangulation_angle_deg": -1.0,
+          "resolved": false,
+          "reason": "configuration PLANAR_OR_PANORAMIC with 116 inliers"
+        },
+        {
+          "views": [
+            "2026-09-02_13.24.24.png",
+            "2026-09-02_13.24.33.png"
+          ],
+          "raw_matches": 324,
+          "inliers": 47,
+          "configuration": "UNCALIBRATED",
+          "triangulation_angle_deg": -1.0,
+          "resolved": true,
+          "relative_rotation": [
+            [
+              0.9756790000368896,
+              0.04507391647084959,
+              -0.2145200012609411
+            ],
+            [
+              -0.0923814537755953,
+              0.9720285411313101,
+              -0.21593096633981101
+            ],
+            [
+              0.1987867095288889,
+              0.23049697889585435,
+              0.95255182894925
+            ]
+          ],
+          "translation_direction": [
+            0.13084309476523623,
+            0.2799010676017178,
+            -0.9510707002676899
+          ],
+          "scale": "unresolved: two views fix direction only"
+        }
+      ],
+      "resolved_pairs": 2,
+      "components": [
+        [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.24.png",
+          "2026-09-02_13.24.33.png"
+        ]
+      ],
+      "largest_component": 3,
+      "registered": [
+        "2026-09-02_13.22.14.png",
+        "2026-09-02_13.24.24.png",
+        "2026-09-02_13.24.33.png"
+      ],
+      "excluded": []
+    },
+    {
+      "configuration": "strict",
+      "why": "Minecraft repeats textures, so trade recall for fewer wrong matches",
+      "settings": {
+        "extraction": {},
+        "matching": {
+          "max_ratio": 0.7,
+          "cross_check": true
+        }
+      },
+      "seconds": {
+        "extraction": 2.257002592086792,
+        "matching": 1.5008833408355713
+      },
+      "features": {
+        "2026-09-02_13.22.14.png": 7619,
+        "2026-09-02_13.24.24.png": 4777,
+        "2026-09-02_13.24.33.png": 6762
+      },
+      "pairs": [
+        {
+          "views": [
+            "2026-09-02_13.22.14.png",
+            "2026-09-02_13.24.24.png"
+          ],
+          "raw_matches": 84,
+          "inliers": 41,
+          "configuration": "UNCALIBRATED",
+          "triangulation_angle_deg": -1.0,
+          "resolved": true,
+          "relative_rotation": [
+            [
+              -0.5518859224442876,
+              0.37705735444374133,
+              0.7438075558017038
+            ],
+            [
+              -0.5068527086141128,
+              0.5566183109861829,
+              -0.6582373338283284
+            ],
+            [
+              -0.6622101330985165,
+              -0.7402727925128519,
+              -0.11607726860530887
+            ]
+          ],
+          "translation_direction": [
+            -0.9112769733341927,
+            0.1158779179754325,
+            -0.395153876352684
+          ],
+          "scale": "unresolved: two views fix direction only"
+        },
+        {
+          "views": [
+            "2026-09-02_13.22.14.png",
+            "2026-09-02_13.24.33.png"
+          ],
+          "raw_matches": 73,
+          "inliers": 22,
+          "configuration": "UNCALIBRATED",
+          "triangulation_angle_deg": -1.0,
+          "resolved": true,
+          "relative_rotation": [
+            [
+              0.9048910513663291,
+              0.18542354824078874,
+              -0.38313221336104786
+            ],
+            [
+              -0.19616869869373868,
+              0.980506002072064,
+              0.011217020703504714
+            ],
+            [
+              0.37774333456719633,
+              0.06500836606509633,
+              0.9236254032515572
+            ]
+          ],
+          "translation_direction": [
+            -0.04383845486414087,
+            0.23398164747361794,
+            -0.9712521704071793
+          ],
+          "scale": "unresolved: two views fix direction only"
+        },
+        {
+          "views": [
+            "2026-09-02_13.24.24.png",
+            "2026-09-02_13.24.33.png"
+          ],
+          "raw_matches": 64,
+          "inliers": 28,
+          "configuration": "UNCALIBRATED",
+          "triangulation_angle_deg": -1.0,
+          "resolved": true,
+          "relative_rotation": [
+            [
+              0.9999033289680453,
+              -0.013200761753409462,
+              -0.004367219681962642
+            ],
+            [
+              0.012330102447232517,
+              0.9869897910522161,
+              -0.16030945365867716
+            ],
+            [
+              0.006426608145946865,
+              0.16024010811227174,
+              0.9870571444753875
+            ]
+          ],
+          "translation_direction": [
+            0.9999894849581796,
+            -0.0016070507594710798,
+            -0.004295039107082786
+          ],
+          "scale": "unresolved: two views fix direction only"
+        }
+      ],
+      "resolved_pairs": 3,
+      "components": [
+        [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.24.png",
+          "2026-09-02_13.24.33.png"
+        ]
+      ],
+      "largest_component": 3,
+      "registered": [
+        "2026-09-02_13.22.14.png",
+        "2026-09-02_13.24.24.png",
+        "2026-09-02_13.24.33.png"
+      ],
+      "excluded": []
+    }
+  ],
+  "scored": {
+    "note": "evaluation only; the manifest is scaffolding, never read during estimation. Translation is compared as a direction and only up to sign, because two views fix no scale.",
+    "manifest_sha256": "4f743e4fc478430f608e0e879f73cd4a3dc9ce50c726841d2da897be78be6126",
+    "pairs": [
+      {
+        "configuration": "baseline",
+        "views": [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.24.png"
+        ],
+        "two_view_config": "UNCALIBRATED",
+        "inliers": 83,
+        "rotation_error_deg": 50.63797981355534,
+        "baseline_metres": 11.42716062720763,
+        "translation_direction_error_deg": 45.79007278211058,
+        "direction_sign_ambiguous": true
+      },
+      {
+        "configuration": "baseline",
+        "views": [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.33.png"
+        ],
+        "two_view_config": "CALIBRATED",
+        "inliers": 27,
+        "rotation_error_deg": 90.66928768045257,
+        "baseline_metres": 9.323625904121227,
+        "translation_direction_error_deg": 80.01805705811037,
+        "direction_sign_ambiguous": true
+      },
+      {
+        "configuration": "dense",
+        "views": [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.24.png"
+        ],
+        "two_view_config": "UNCALIBRATED",
+        "inliers": 100,
+        "rotation_error_deg": 67.0762757794329,
+        "baseline_metres": 11.42716062720763,
+        "translation_direction_error_deg": 37.80079894823449,
+        "direction_sign_ambiguous": false
+      },
+      {
+        "configuration": "dense",
+        "views": [
+          "2026-09-02_13.24.24.png",
+          "2026-09-02_13.24.33.png"
+        ],
+        "two_view_config": "UNCALIBRATED",
+        "inliers": 47,
+        "rotation_error_deg": 165.20532737528768,
+        "baseline_metres": 12.503199590504957,
+        "translation_direction_error_deg": 45.605715950873346,
+        "direction_sign_ambiguous": true
+      },
+      {
+        "configuration": "strict",
+        "views": [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.24.png"
+        ],
+        "two_view_config": "UNCALIBRATED",
+        "inliers": 41,
+        "rotation_error_deg": 70.47975105540823,
+        "baseline_metres": 11.42716062720763,
+        "translation_direction_error_deg": 32.31093948547213,
+        "direction_sign_ambiguous": true
+      },
+      {
+        "configuration": "strict",
+        "views": [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.33.png"
+        ],
+        "two_view_config": "UNCALIBRATED",
+        "inliers": 22,
+        "rotation_error_deg": 56.961544880142135,
+        "baseline_metres": 9.323625904121227,
+        "translation_direction_error_deg": 69.32050994504455,
+        "direction_sign_ambiguous": true
+      },
+      {
+        "configuration": "strict",
+        "views": [
+          "2026-09-02_13.24.24.png",
+          "2026-09-02_13.24.33.png"
+        ],
+        "two_view_config": "UNCALIBRATED",
+        "inliers": 28,
+        "rotation_error_deg": 175.2659636347215,
+        "baseline_metres": 12.503199590504957,
+        "translation_direction_error_deg": 86.52746300682314,
+        "direction_sign_ambiguous": false
+      }
+    ]
+  }
+}

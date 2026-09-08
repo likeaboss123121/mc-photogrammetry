@@ -70,6 +70,17 @@ CONFIGURATIONS = {
     },
 }
 
+# `TwoViewGeometry.config` comes back as a plain int, so comparing it against a
+# set of names silently matches nothing and every configuration reads as
+# resolved. A PLANAR_OR_PANORAMIC pair was accepted that way before this map
+# existed.
+CONFIG_NAMES = {
+    int(getattr(pycolmap.TwoViewGeometryConfiguration, name)): name
+    for name in ("UNDEFINED", "DEGENERATE", "CALIBRATED", "UNCALIBRATED",
+                 "PLANAR", "PANORAMIC", "PLANAR_OR_PANORAMIC", "WATERMARK",
+                 "MULTIPLE")
+}
+
 UNRESOLVED = {"PANORAMIC", "PLANAR", "PLANAR_OR_PANORAMIC", "DEGENERATE",
               "WATERMARK", "UNDEFINED", "MULTIPLE"}
 
@@ -87,10 +98,11 @@ def camera_for(entry: dict) -> pycolmap.Camera:
     width, height = entry["size"]
     focal = entry["focal_pixels"]
     centre = entry["principal_point"] or [width / 2.0, height / 2.0]
-    return pycolmap.Camera.create(0, "PINHOLE", focal, width, height).from_dict({
-        "camera_id": 0, "model": "PINHOLE", "width": width, "height": height,
-        "params": [focal, focal, centre[0], centre[1]],
-    })
+    camera = pycolmap.Camera.create(1, "PINHOLE", focal, width, height)
+    # PINHOLE takes (fx, fy, cx, cy); the measured optical centre goes in here
+    # rather than the image middle, which is the whole point of refining it.
+    camera.params = [focal, focal, float(centre[0]), float(centre[1])]
+    return camera
 
 
 def rotation_from(yaw_degrees, pitch_degrees, roll_degrees=0.0) -> np.ndarray:
@@ -115,7 +127,8 @@ def angle_between(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.degrees(np.arccos(trace)))
 
 
-def run(fixture: Path, calibration: dict, name: str, workspace: Path) -> dict:
+def run(fixture: Path, calibration: dict, name: str, workspace: Path,
+        masks: Path | None = None) -> dict:
     options = CONFIGURATIONS[name]
     database = workspace / f"{name}.db"
     if database.exists():
@@ -127,14 +140,18 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path) -> dict:
     names = sorted(entries)
 
     started = time.time()
-    extraction = pycolmap.SiftExtractionOptions()
+    extraction = pycolmap.FeatureExtractionOptions()
+    extraction.use_gpu = False
     for key, value in options["extraction"].items():
-        setattr(extraction, key, value)
+        setattr(extraction.sift, key, value)
     reader = pycolmap.ImageReaderOptions()
+    if masks is not None:
+        reader.mask_path = str(masks)
     pycolmap.extract_features(database, fixture, names,
                               camera_mode=pycolmap.CameraMode.PER_IMAGE,
                               reader_options=reader,
-                              sift_options=extraction, device=pycolmap.Device.cpu)
+                              extraction_options=extraction,
+                              device=pycolmap.Device.cpu)
     extracted = time.time() - started
 
     matching = pycolmap.FeatureMatchingOptions()
@@ -144,8 +161,7 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path) -> dict:
     pycolmap.match_exhaustive(database, matching_options=matching)
     matched = time.time() - started - extracted
 
-    handle = pycolmap.Database()
-    handle.open(str(database))
+    handle = pycolmap.Database.open(str(database))
     images = {image.name: image for image in handle.read_all_images()}
     keypoints = {name_: handle.read_keypoints(images[name_].image_id) for name_ in names
                  if name_ in images}
@@ -169,7 +185,8 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path) -> dict:
             camera_for(entries[first]), points1,
             camera_for(entries[second]), points2,
             np.asarray(raw, dtype=np.uint32))
-        configuration = str(geometry.config).rsplit(".", 1)[-1]
+        configuration = CONFIG_NAMES.get(int(geometry.config),
+                                         f"UNKNOWN_{int(geometry.config)}")
         inliers = int(len(geometry.inlier_matches))
         record.update(inliers=inliers, configuration=configuration,
                       triangulation_angle_deg=float(geometry.tri_angle))
@@ -181,17 +198,32 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path) -> dict:
                         if configuration.startswith("PAN")
                         else f"configuration {configuration} with {inliers} inliers"),
             )
-        else:
-            pose = geometry.cam2_from_cam1
-            direction = np.asarray(pose.translation, dtype=float)
-            norm = float(np.linalg.norm(direction))
-            record.update(
-                resolved=True,
-                relative_rotation=np.asarray(pose.rotation.matrix()).tolist(),
-                translation_direction=(direction / norm).tolist() if norm > 0 else None,
-                scale="unresolved: two views fix direction only",
-            )
-            edges.append((first, second))
+            pairs.append(record)
+            continue
+
+        # The geometry carries E, F and H; turning one into a pose is a separate
+        # step that can fail on its own, and a pair whose pose cannot be
+        # recovered is unresolved rather than an error.
+        if geometry.cam2_from_cam1 is None:
+            pycolmap.estimate_two_view_geometry_pose(
+                camera_for(entries[first]), points1,
+                camera_for(entries[second]), points2, geometry)
+        pose = geometry.cam2_from_cam1
+        if pose is None:
+            record.update(resolved=False,
+                          reason=f"{configuration} geometry yielded no pose")
+            pairs.append(record)
+            continue
+
+        direction = np.asarray(pose.translation, dtype=float)
+        norm = float(np.linalg.norm(direction))
+        record.update(
+            resolved=True,
+            relative_rotation=np.asarray(pose.rotation.matrix()).tolist(),
+            translation_direction=(direction / norm).tolist() if norm > 0 else None,
+            scale="unresolved: two views fix direction only",
+        )
+        edges.append((first, second))
         pairs.append(record)
     handle.close()
 
@@ -236,6 +268,9 @@ def main(argv=None) -> int:
     parser.add_argument("--config", choices=sorted(CONFIGURATIONS) + ["all"],
                         default="all")
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--masks", type=Path,
+                        help="directory of COLMAP masks, from "
+                             "scripts/overlay_mask.py; excludes the debug overlay")
     parser.add_argument("--score", action="store_true",
                         help="compare recovered rotations with cameras.json; "
                              "evaluation only")
@@ -250,7 +285,7 @@ def main(argv=None) -> int:
     try:
         for name in wanted:
             print(f"[{name}] {CONFIGURATIONS[name]['why']}", flush=True)
-            result = run(folder, calibration, name, workspace)
+            result = run(folder, calibration, name, workspace, args.masks)
             runs.append(result)
             print(f"    {result['resolved_pairs']}/{len(result['pairs'])} pairs resolved, "
                   f"largest component {result['largest_component']}/"
@@ -275,6 +310,7 @@ def main(argv=None) -> int:
         "calibration_artifact": {"path": str(args.calibration),
                                  "sha256": digest(args.calibration)},
         "declared_configurations": {k: v["why"] for k, v in CONFIGURATIONS.items()},
+        "masks": str(args.masks) if args.masks else None,
         "note": "translation is recovered as a direction only; two views cannot "
                 "fix its length, and no scale is claimed",
         "runs": runs,
@@ -282,12 +318,7 @@ def main(argv=None) -> int:
 
     if args.score:
         manifest = folder / "cameras.json"
-        truth = json.loads(manifest.read_text(encoding="utf-8"))
-        poses = {}
-        for entry in (truth.get("cameras") or truth.get("frames") or []):
-            key = entry.get("frame") or entry.get("name") or entry.get("image")
-            if key:
-                poses[key] = entry
+        poses = json.loads(manifest.read_text(encoding="utf-8"))
         scored = []
         for result in runs:
             for pair in result["pairs"]:
@@ -298,22 +329,45 @@ def main(argv=None) -> int:
                     continue
                 first = rotation_from(poses[a]["yaw_degrees"], poses[a]["pitch_degrees"])
                 second = rotation_from(poses[b]["yaw_degrees"], poses[b]["pitch_degrees"])
-                wanted_rotation = second @ first.T
                 got = np.asarray(pair["relative_rotation"], dtype=float)
-                scored.append({"configuration": result["configuration"],
-                               "views": [a, b],
-                               "rotation_error_deg": angle_between(got, wanted_rotation)})
+                row = {"configuration": result["configuration"],
+                       "views": [a, b],
+                       "two_view_config": pair["configuration"],
+                       "inliers": pair["inliers"],
+                       "rotation_error_deg": angle_between(got, second @ first.T)}
+
+                # Translation has no scale, but its *direction* is comparable.
+                # The true baseline in the first camera's frame is the second
+                # eye minus the first, rotated into that frame.
+                if pair.get("translation_direction"):
+                    baseline = (np.asarray(poses[b]["position"], dtype=float)
+                                - np.asarray(poses[a]["position"], dtype=float))
+                    length = float(np.linalg.norm(baseline))
+                    if length > 1e-6:
+                        wanted = first @ (baseline / length)
+                        mine = np.asarray(pair["translation_direction"], dtype=float)
+                        cosine = float(np.clip(np.dot(mine, wanted), -1.0, 1.0))
+                        row["baseline_metres"] = length
+                        row["translation_direction_error_deg"] = float(
+                            np.degrees(np.arccos(abs(cosine))))
+                        row["direction_sign_ambiguous"] = bool(cosine < 0)
+                scored.append(row)
         payload["scored"] = {
             "note": "evaluation only; the manifest is scaffolding, never read "
-                    "during estimation. Rotations only - translation has no "
-                    "scale to compare.",
+                    "during estimation. Translation is compared as a direction "
+                    "and only up to sign, because two views fix no scale.",
             "manifest_sha256": digest(manifest),
             "pairs": scored,
         }
         if scored:
-            errors = [row["rotation_error_deg"] for row in scored]
+            rotations = [row["rotation_error_deg"] for row in scored]
+            directions = [row["translation_direction_error_deg"] for row in scored
+                          if "translation_direction_error_deg" in row]
             print(f"\n  scored {len(scored)} resolved pairs; median relative "
-                  f"rotation error {np.median(errors):.2f} deg")
+                  f"rotation error {np.median(rotations):.2f} deg")
+            if directions:
+                print(f"  median translation direction error "
+                      f"{np.median(directions):.2f} deg over {len(directions)} pairs")
         else:
             print("\n  nothing resolved, so nothing to score")
 

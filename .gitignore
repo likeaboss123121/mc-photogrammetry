@@ -26,3 +26,4 @@ verification.txt
 mismatch_probe.json
 tmp_*.py
 tmp_*.txt
+.masks/
