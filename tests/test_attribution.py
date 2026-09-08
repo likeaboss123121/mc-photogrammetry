@@ -28,7 +28,7 @@ from mc_photogrammetry.export.attribution import (
     render_volume,
     render_result,
 )
-from mc_photogrammetry.reconstruction.camera import CameraModel
+from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped_polygon_uv
 from mc_photogrammetry.reconstruction.camera import project_points
 from mc_photogrammetry.reconstruction.facade import PaletteColor
 from mc_photogrammetry.reconstruction.scene import SceneTransform
@@ -207,6 +207,45 @@ def test_model_alpha_mask_leaves_holes_for_far_geometry_and_returns_uvs():
     visible_uvs = result.uv[np.isfinite(result.uv).all(axis=2)]
     assert len(visible_uvs) > 0
     assert np.all((visible_uvs >= 0.0) & (visible_uvs <= 1.0))
+
+
+def test_alpha_tested_face_crossing_the_near_plane_keeps_interpolated_uvs():
+    """Near clipping adds UV-bearing vertices instead of crashing on ``None`` corners."""
+    from PIL import Image
+
+    alpha = np.zeros((16, 16), dtype=np.uint8)
+    alpha[:, 8:] = 255
+    buffer = BytesIO()
+    Image.fromarray(alpha, mode="L").save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    camera = CameraModel(position=(0.5, 0.5, -0.1), yaw_degrees=60.0, pitch_degrees=0.0,
+                         fov_degrees=90.0, eye_height=0.0)
+    corners = box_face_corners((0, 0, 0), (1, 1, 1), "north")
+    projected, uv = project_clipped_polygon_uv(corners + 0.5, camera, width=100, height=100)
+    assert len(projected) >= 3
+    assert projected.shape[0] == uv.shape[0]
+    assert np.all((uv >= 0.0) & (uv <= 1.0))
+    result, _index = render_result(
+        {(0, 0, 0): WHITE}, _scene(), camera, 100, 100, face_colours(_palette()), scale=1.0,
+        model_faces={WHITE: (("north", tuple(map(tuple, corners)), (0.0, 0.0, -1.0), None, encoded),)},
+    )
+    assert result.uv is not None
+
+
+def test_exact_face_is_not_culled_by_a_neighbours_non_opposing_slab_face():
+    """A top slab closes its top boundary, never the underside above a floor."""
+    camera = CameraModel(position=(3.5, 4.0, -4.0), yaw_degrees=0.0, pitch_degrees=40.0,
+                         fov_degrees=90.0)
+    floor, slab = (3, 1, 4), (3, 2, 4)
+    corners = tuple(tuple(float(v) for v in point) for point in box_face_corners((0, 0, 0), (1, 1, 1), "up"))
+    result, index = render_result(
+        {floor: WHITE, slab: CARPET}, _scene(), camera, 120, 120, face_colours(_palette()), scale=1.0,
+        shapes={CARPET: (((0.0, 0.5, 0.0), (1.0, 1.0, 1.0)),)},
+        occluding_slots={CARPET: frozenset({"up"})},
+        model_faces={WHITE: (("up", corners, (0.0, 1.0, 0.0), "up", None),)},
+    )
+    owners = {index[value][0] for value in np.unique(result.ownership[result.ownership >= 0])}
+    assert floor in owners
 
 
 def test_a_frame_without_a_camera_is_skipped():

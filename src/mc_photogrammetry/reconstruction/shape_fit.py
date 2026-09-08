@@ -55,6 +55,7 @@ from mc_photogrammetry.export.attribution import (
     box_face_corners,
     face_colours,
     face_model_faces,
+    face_occluding_slots,
     face_shapes,
     render_volume,
 )
@@ -272,6 +273,7 @@ def fit_states(
     if not shapes:
         return {}
     colours, block_shapes, model_faces = face_colours(palette), face_shapes(palette), face_model_faces(palette)
+    occluding_slots = face_occluding_slots(palette)
     index, positions = None, {}
     if texture_weight > 0.0:
         from mc_photogrammetry.reconstruction.raycast import (
@@ -299,7 +301,8 @@ def fit_states(
         height, width = image.shape[:2]
         canvas, _o, _i, _d = render_volume(background_blocks, scene, camera, width,
                                            height, colours, block_shapes, scale,
-                                           ambient=True, model_faces=model_faces)
+                                           ambient=True, occluding_slots=occluding_slots,
+                                           model_faces=model_faces)
         photo = cv2.resize(image, (canvas.shape[1], canvas.shape[0]),
                            interpolation=cv2.INTER_AREA).astype(np.float32)
         lit = canvas.mean(axis=2) > 1.0

@@ -29,7 +29,7 @@ import numpy as np
 
 from mc_photogrammetry.blocks.model_atlas import FACE_BASIS, FACE_SHADE, FACE_SLOTS
 from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
-from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped_polygon, project_points
+from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped_polygon_uv
 from mc_photogrammetry.reconstruction.lighting import ambient_occlusion
 from mc_photogrammetry.reconstruction.scene import SceneTransform
 from mc_photogrammetry.pipeline.contracts import RenderResult
@@ -124,6 +124,8 @@ def face_occluding_slots(palette: Sequence) -> dict[object, frozenset[str]]:
     slots: dict[object, frozenset[str]] = {}
     for item in palette:
         covered = frozenset(getattr(item, "covered_slots", ()) or ())
+        if not covered and bool(getattr(item, "full_cube", True)):
+            covered = frozenset(FACE_SLOTS)
         slots[item.state] = covered
         slots.setdefault(item.state.name, covered)
     return slots
@@ -235,25 +237,25 @@ def render_volume(
                     basis = np.asarray(FACE_BASIS[cull_slot][0], dtype=float)
                     neighbour = tuple(coordinate[index] + int(basis[index]) for index in range(3))
                     neighbour_state = blocks.get(neighbour)
-                    if neighbour_state is not None and (occluding_slots is None or cull_slot in occluding_slots.get(neighbour_state, occluding_slots.get(neighbour_state.name, frozenset()))):
+                    if neighbour_state is not None and (
+                        occluding_slots is None
+                        or _OPPOSITE_SLOT[cull_slot] in occluding_slots.get(
+                            neighbour_state, occluding_slots.get(neighbour_state.name, frozenset())
+                        )
+                    ):
                         continue
-                projected = project_clipped_polygon(centre + np.asarray(corners), camera, width=width, height=height)
+                projected, face_uv = project_clipped_polygon_uv(
+                    centre + np.asarray(corners), camera, width=width, height=height
+                )
                 if len(projected) < 3:
                     continue
                 colour = colours.get(state, colours.get(state.name, {})).get(slot, np.asarray((128.0, 128.0, 128.0)))
                 shade = FACE_SHADE.get(slot, 0.8)
                 if ambient:
                     shade *= ambient_occlusion(coordinate, slot, occupied)
-                source_quad = projected[:, :2].astype(np.float32) * scale if len(projected) == 4 else None
-                if alpha is not None and source_quad is not None:
-                    source = np.asarray(project_points(
-                        centre + np.asarray(corners), camera, width=width, height=height
-                    ), dtype=float)
-                    if len(source) == 4 and np.all(source[:, 2] > 0.05):
-                        source_quad = source[:, :2].astype(np.float32) * scale
                 faces.append((
                     projected[:, :2].astype(np.float32) * scale, projected[:, 2],
-                    np.asarray(colour, dtype=float) * shade, (coordinate, slot), alpha, source_quad,
+                    np.asarray(colour, dtype=float) * shade, (coordinate, slot), alpha, face_uv,
                 ))
             continue
         boxes = CUBE if shapes is None else shapes.get(state, shapes.get(state.name, CUBE))
@@ -276,7 +278,7 @@ def render_volume(
                         )
                     ):
                         continue
-                projected = project_clipped_polygon(
+                projected, face_uv = project_clipped_polygon_uv(
                     centre + box_face_corners(low, high, slot), camera, width=width, height=height,
                 )
                 if len(projected) < 3:
@@ -294,39 +296,19 @@ def render_volume(
                     np.asarray(colour, dtype=float) * shade,
                     (coordinate, slot),
                     None,
-                    quad if len(quad) == 4 else None,
+                    face_uv,
                 ))
 
     # Each entry is (cell, slot): the residual pass needs the face's own normal to
     # know which way to propose, and a cell alone cannot say.
     index: list[tuple[BlockCoordinate, str]] = []
-    for quad, depths, colour, owned, alpha, source_quad in faces:
+    for quad, depths, colour, owned, alpha, face_uv in faces:
         stamp = np.zeros((rows, columns), dtype=np.uint8)
         cv2.fillConvexPoly(stamp, quad.astype(np.int32), 1)
         mask = stamp.astype(bool)
         if not mask.any():
             continue
         pixel_rows, pixel_columns = np.nonzero(mask)
-        pixel_uv = None
-        if source_quad is not None:
-            try:
-                homography = cv2.getPerspectiveTransform(
-                    source_quad.astype(np.float32),
-                    np.asarray(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)), dtype=np.float32),
-                )
-                points = np.column_stack((pixel_columns + 0.5, pixel_rows + 0.5)).astype(np.float32)
-                pixel_uv = cv2.perspectiveTransform(points.reshape(-1, 1, 2), homography).reshape(-1, 2)
-                pixel_uv = np.clip(pixel_uv, 0.0, 1.0)
-                if alpha is not None:
-                    alpha_rows = np.clip(np.floor(pixel_uv[:, 1] * alpha.shape[0]).astype(int), 0, alpha.shape[0] - 1)
-                    alpha_columns = np.clip(np.floor(pixel_uv[:, 0] * alpha.shape[1]).astype(int), 0, alpha.shape[1] - 1)
-                    opaque = alpha[alpha_rows, alpha_columns] >= 0.5
-                    pixel_rows, pixel_columns = pixel_rows[opaque], pixel_columns[opaque]
-                    pixel_uv = pixel_uv[opaque]
-            except cv2.error:
-                pixel_uv = None
-        if not len(pixel_rows):
-            continue
         # A face is planar, so inverse depth is affine in screen space. This is
         # exact perspective depth at the raster sample and avoids the painter's
         # mean-depth failure where two slanted quads overlap.
@@ -339,13 +321,33 @@ def render_volume(
             )
         except np.linalg.LinAlgError:
             pixel_depth = np.full(pixel_rows.shape, float(depths.mean()), dtype=np.float64)
+        # UV/depth is affine on a perspective-projected face. It remains valid
+        # when near clipping has added vertices, unlike a homography rebuilt from
+        # the clipped polygon's apparent corners.
+        try:
+            uv_over_depth = np.linalg.solve(
+                matrix, np.asarray(face_uv[:3], dtype=np.float64) / np.maximum(depths[:3, None], 1e-6)
+            )
+            pixel_uv = np.column_stack((pixel_columns, pixel_rows, np.ones(len(pixel_rows)))) @ uv_over_depth
+            pixel_uv *= pixel_depth[:, None]
+            pixel_uv = np.clip(pixel_uv, 0.0, 1.0)
+        except np.linalg.LinAlgError:
+            pixel_uv = np.full((len(pixel_rows), 2), np.nan, dtype=np.float64)
+        if alpha is not None:
+            alpha_rows = np.clip(np.floor(pixel_uv[:, 1] * alpha.shape[0]).astype(int), 0, alpha.shape[0] - 1)
+            alpha_columns = np.clip(np.floor(pixel_uv[:, 0] * alpha.shape[1]).astype(int), 0, alpha.shape[1] - 1)
+            opaque = alpha[alpha_rows, alpha_columns] >= 0.5
+            pixel_rows, pixel_columns = pixel_rows[opaque], pixel_columns[opaque]
+            pixel_depth, pixel_uv = pixel_depth[opaque], pixel_uv[opaque]
+        if not len(pixel_rows):
+            continue
         nearer = pixel_depth < depth_buffer[pixel_rows, pixel_columns]
         if nearer.any():
             chosen_rows, chosen_columns = pixel_rows[nearer], pixel_columns[nearer]
             canvas[chosen_rows, chosen_columns] = colour
             owner[chosen_rows, chosen_columns] = len(index)
             depth_buffer[chosen_rows, chosen_columns] = pixel_depth[nearer]
-            if uv_buffer is not None and pixel_uv is not None:
+            if uv_buffer is not None:
                 uv_buffer[chosen_rows, chosen_columns] = pixel_uv[nearer]
         index.append(owned)
     if include_uv:

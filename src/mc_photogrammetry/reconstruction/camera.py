@@ -191,23 +191,56 @@ def project_clipped_polygon(
     lens prevents foreground walls from leaking the far geometry into a renderer.
     Each returned row is ``(pixel_x, pixel_y, camera_depth)``.
     """
+    projected, _uv = project_clipped_polygon_uv(
+        points, camera, width=width, height=height, near_clip=near_clip
+    )
+    return projected
+
+
+def project_clipped_polygon_uv(
+    points: Iterable[tuple[float, float, float]],
+    camera: CameraModel,
+    *,
+    width: int,
+    height: int,
+    uv: np.ndarray | None = None,
+    near_clip: float = 1e-3,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Project a clipped convex polygon while carrying perspective texture UVs.
+
+    Near-plane intersections are new polygon vertices, not new texture corners.
+    Interpolating their UVs before projection keeps cut-out masks aligned on
+    triangles, quads, and pentagons created by clipping.
+    """
     if near_clip <= 0:
         raise ValueError("near_clip must be positive")
     polygon = camera_space_points(points, camera)
     if len(polygon) < 3:
-        return np.empty((0, 3), dtype=np.float64)
+        return np.empty((0, 3), dtype=np.float64), np.empty((0, 2), dtype=np.float64)
+    if uv is None:
+        if len(polygon) != 4:
+            raise ValueError("UVs are required for a non-quad polygon")
+        uv = np.asarray(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)), dtype=np.float64)
+    else:
+        uv = np.asarray(uv, dtype=np.float64)
+    if uv.shape != (len(polygon), 2):
+        raise ValueError("UVs must have one pair per polygon vertex")
     kept: list[np.ndarray] = []
+    kept_uv: list[np.ndarray] = []
     for index, current in enumerate(polygon):
         following = polygon[(index + 1) % len(polygon)]
+        current_uv, following_uv = uv[index], uv[(index + 1) % len(uv)]
         here = current[2] >= near_clip
         there = following[2] >= near_clip
         if here:
             kept.append(current)
+            kept_uv.append(current_uv)
         if here != there:
             fraction = (near_clip - current[2]) / (following[2] - current[2])
             kept.append(current + fraction * (following - current))
+            kept_uv.append(current_uv + fraction * (following_uv - current_uv))
     if len(kept) < 3:
-        return np.empty((0, 3), dtype=np.float64)
+        return np.empty((0, 3), dtype=np.float64), np.empty((0, 2), dtype=np.float64)
     values = np.asarray(kept, dtype=np.float64)
     calibration = intrinsics_for(camera, width, height)
     focal_x, focal_y = calibration.focal_length_pixels
@@ -216,7 +249,7 @@ def project_clipped_polygon(
         principal_x + values[:, 0] * focal_x / values[:, 2],
         principal_y - values[:, 1] * focal_y / values[:, 2],
         values[:, 2],
-    ))
+    )), np.asarray(kept_uv, dtype=np.float64)
 
 
 def project_points(
