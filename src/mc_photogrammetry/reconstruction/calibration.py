@@ -63,6 +63,31 @@ fitting to all 2151. Long edges pin a vanishing point; short ones mostly vote fo
 whichever direction they happen to lie near.
 """
 
+REFINE_MARGIN = 0.02
+"""Fractional score gain required before roll or an off-centre principal point is believed.
+
+Three extra parameters can always fit noise a little better, so without a margin
+the refinement would always "find" a small roll and a shifted centre and would be
+reporting its own freedom rather than the camera. A whole screenshot genuinely has
+neither, and the refinement must come back empty-handed on one.
+"""
+
+ROLL_LIMIT = 4.0
+"""Degrees of roll searched either side of level.
+
+Minecraft's camera cannot roll at all. This exists for frames that have been
+rotated or cropped after capture, which the image scope admits, so the range is
+deliberately narrow - a wide one would mostly offer new ways to alias with yaw.
+"""
+
+PRINCIPAL_LIMIT = 0.12
+"""How far the principal point may move, as a fraction of width and height.
+
+Cropping is what moves it: cutting pixels off one edge shifts the optical centre
+by half of what was removed. A frame cropped harder than this is better handled
+by being told about the crop.
+"""
+
 GAMMA = 0.45
 CLAHE_CLIP = 3.0
 CLAHE_GRID = 16
@@ -81,6 +106,15 @@ class CalibrationResult:
     segments: int
     median_residual: float
     per_axis_inliers: tuple[int, int, int] = (0, 0, 0)
+    roll_degrees: float = 0.0
+    principal_point: tuple[float, float] | None = None
+    """Optical centre, or ``None`` where the image centre was not improved upon.
+
+    ``None`` is the honest value for a whole screenshot and is not the same as
+    "the centre was measured and happens to be the middle": it records that the
+    evidence never justified moving it.
+    """
+
     notes: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -234,13 +268,116 @@ def detect_segments(
     return segments[lengths >= minimum_length]
 
 
-def axis_directions(yaw_degrees: float, pitch_degrees: float) -> np.ndarray:
+CONTRAST_OFFSET = 2.5
+"""How far either side of a segment its contrast is sampled, in pixels."""
+
+CONTRAST_SAMPLES = 12
+"""Points along a segment at which contrast is measured."""
+
+CONTRAST_FLOOR = 0.25
+"""Weight given to a segment with no contrast across it at all.
+
+Not zero. A texture line that happens to run along a lattice direction is still
+evidence about that direction - it is drawn on a face that is genuinely oriented
+that way. Discarding it outright throws away most of what a dim frame offers,
+which is why this discounts rather than filters.
+"""
+
+
+def segment_contrast(
+    image: np.ndarray,
+    segments: np.ndarray,
+    *,
+    offset: float = CONTRAST_OFFSET,
+    samples: int = CONTRAST_SAMPLES,
+) -> np.ndarray:
+    """How strongly each segment separates what lies on either side of it.
+
+    A structural edge - a block seam, a silhouette, the join between two
+    surfaces - has different material or different vanilla face shading on its
+    two sides, so sampling across it finds a step. A line inside a single block's
+    texture has the same material and the same shading on both sides, so it does
+    not.
+
+    Direction alone cannot make this distinction, because Minecraft's textures
+    are themselves axis-aligned and their internal lines run along the very same
+    lattice directions as the seams. Contrast across the line is independent of
+    direction, which is what makes it worth measuring.
+
+    Returned as the mean absolute difference in intensity, in levels.
+    """
+    grey = image if image.ndim == 2 else image.mean(axis=2)
+    height, width = grey.shape[:2]
+    if not len(segments):
+        return np.zeros(0)
+
+    fractions = np.linspace(0.15, 0.85, samples)[None, :]
+    x0, y0 = segments[:, 0][:, None], segments[:, 1][:, None]
+    x1, y1 = segments[:, 2][:, None], segments[:, 3][:, None]
+    xs = x0 + fractions * (x1 - x0)
+    ys = y0 + fractions * (y1 - y0)
+
+    dx, dy = segments[:, 2] - segments[:, 0], segments[:, 3] - segments[:, 1]
+    length = np.maximum(np.hypot(dx, dy), 1e-9)
+    # The unit normal to each segment, along which the two sides are sampled.
+    nx, ny = (-dy / length)[:, None], (dx / length)[:, None]
+
+    def sample(px, py):
+        rows = np.clip(np.rint(py).astype(int), 0, height - 1)
+        columns = np.clip(np.rint(px).astype(int), 0, width - 1)
+        return grey[rows, columns]
+
+    near = sample(xs + nx * offset, ys + ny * offset)
+    far = sample(xs - nx * offset, ys - ny * offset)
+    return np.abs(near.astype(float) - far.astype(float)).mean(axis=1)
+
+
+def structural_weights(
+    image: np.ndarray,
+    segments: np.ndarray,
+    *,
+    floor: float = CONTRAST_FLOOR,
+    **kwargs,
+) -> np.ndarray:
+    """Per-segment confidence that a line is structure rather than texture.
+
+    Scaled against the frame's own median contrast rather than an absolute level,
+    because a fixture shot at gamma 100% has a fraction of the contrast of one
+    shot at fullbright and a fixed threshold would classify a whole scene as
+    texture. Bounded into ``[floor, 1]``.
+    """
+    contrast = segment_contrast(image, segments, **kwargs)
+    if not contrast.size:
+        return contrast
+    # The median is the scale of choice, but it goes to zero exactly when the
+    # frame is mostly texture - a thin line inside a texture has the same
+    # material on both sides, so its contrast is genuinely nothing, and a scene
+    # full of them has a zero median. That is the case this most needs to work
+    # in, so the mean stands in rather than the whole frame being called
+    # structural by a divide-by-nothing guard.
+    reference = float(np.median(contrast))
+    if reference <= 1e-6:
+        reference = float(np.mean(contrast))
+    if reference <= 1e-6:
+        return np.ones(contrast.shape)
+    scaled = contrast / (2.0 * reference)
+    return np.clip(scaled, floor, 1.0)
+
+
+def axis_directions(yaw_degrees: float, pitch_degrees: float,
+                    roll_degrees: float = 0.0) -> np.ndarray:
     """The three world axes as camera-space directions ``(right, up, forward)``.
 
     Defers to `camera.camera_space_points`, the shared world-to-camera convention,
     rather than restating it. This module derived the same rotation independently
     and the two agreed, which is reassuring and still not a reason to keep a second
     copy: a convention with two definitions has two places to drift.
+
+    ``roll_degrees`` spins the frame about the view direction. Minecraft's own
+    camera cannot roll, and `CameraModel` accordingly has nowhere to put it, so it
+    is applied here on top of the shared transform rather than pushed into a file
+    M2 owns. It exists because a *cropped or rotated* screenshot is inside the
+    stated image scope even though a raw one never is.
     """
     from mc_photogrammetry.reconstruction.camera import CameraModel, camera_space_points
 
@@ -248,23 +385,39 @@ def axis_directions(yaw_degrees: float, pitch_degrees: float) -> np.ndarray:
                          pitch_degrees=pitch_degrees, fov_degrees=70.0)
     eye = np.asarray(camera.position, dtype=float) + np.asarray(
         [0.0, camera.eye_height, 0.0])
-    return camera_space_points([tuple(eye + axis) for axis in np.eye(3)], camera)
+    axes = camera_space_points([tuple(eye + axis) for axis in np.eye(3)], camera)
+    if roll_degrees:
+        angle = np.radians(roll_degrees)
+        cos, sin = np.cos(angle), np.sin(angle)
+        right, up = axes[:, 0].copy(), axes[:, 1].copy()
+        axes[:, 0] = right * cos + up * sin
+        axes[:, 1] = -right * sin + up * cos
+    return axes
 
 
 def vanishing_points(
     focal: float, yaw_degrees: float, pitch_degrees: float,
     width: int, height: int,
+    roll_degrees: float = 0.0,
+    principal_point: tuple[float, float] | None = None,
 ) -> np.ndarray:
     """The three vanishing points, homogeneous, as ``(x, y, w)`` rows.
 
     A direction parallel to the image plane vanishes at infinity, which happens
     for the vertical axis whenever the pitch is level. Homogeneous coordinates
     carry that case instead of dividing by zero.
+
+    ``principal_point`` defaults to the image centre, which is where a whole
+    screenshot puts it. A *cropped* one does not: cutting pixels off one side
+    moves the optical centre by half that amount, and the frame is no longer
+    describable by focal length and orientation alone.
     """
+    centre_x, centre_y = principal_point or (width / 2.0, height / 2.0)
     points = []
-    for right, up, forward in axis_directions(yaw_degrees, pitch_degrees):
-        points.append((width / 2.0 * forward + right * focal,
-                       height / 2.0 * forward - up * focal,
+    for right, up, forward in axis_directions(yaw_degrees, pitch_degrees,
+                                              roll_degrees):
+        points.append((centre_x * forward + right * focal,
+                       centre_y * forward - up * focal,
                        forward))
     return np.asarray(points, dtype=float)
 
@@ -299,14 +452,77 @@ def segment_residuals(segments: np.ndarray, points: np.ndarray) -> np.ndarray:
     return out
 
 
-def _score(segments, lengths, focal, yaw, pitch, width, height, threshold):
+def _score(segments, lengths, focal, yaw, pitch, width, height, threshold,
+           roll=0.0, principal_point=None):
     residuals = segment_residuals(segments, vanishing_points(
-        focal, yaw, pitch, width, height))
+        focal, yaw, pitch, width, height, roll, principal_point))
     best = residuals.min(axis=1)
     inside = best <= threshold
     # Weighted by length: a long structural edge is stronger evidence than a
     # short texture line, and Minecraft frames are full of the latter.
     return float((lengths[inside] * (1.0 - best[inside] / threshold)).sum())
+
+
+def refine_optics(
+    segments: np.ndarray,
+    lengths: np.ndarray,
+    focal: float,
+    yaw: float,
+    pitch: float,
+    width: int,
+    height: int,
+    threshold: float,
+    *,
+    margin: float = REFINE_MARGIN,
+    roll_limit: float = ROLL_LIMIT,
+    principal_limit: float = PRINCIPAL_LIMIT,
+):
+    """Search roll and principal point, and keep them only if they earn their keep.
+
+    The main fit assumes a level camera and an optical centre at the middle of
+    the frame. Both are true of a whole Minecraft screenshot and neither is true
+    of a cropped or rotated one, which the image scope admits - cutting pixels
+    off an edge shifts the optical centre by half of what was removed, and the
+    frame stops being describable by focal length and orientation alone.
+
+    So they are searched, and then *disbelieved by default*. Three more free
+    parameters will always fit the noise a little better; the refinement is
+    accepted only when it improves the score by `margin`, which on an uncropped
+    frame it does not. Yaw and pitch are re-polished afterwards, because moving
+    the optical centre moves where the vanishing points should sit.
+
+    Returns ``(roll, principal_point, yaw, pitch, improved)``.
+    """
+    base = _score(segments, lengths, focal, yaw, pitch, width, height, threshold)
+    if base <= 0.0:
+        return 0.0, None, yaw, pitch, False
+
+    span_x, span_y = principal_limit * width, principal_limit * height
+    best = (base, 0.0, (width / 2.0, height / 2.0))
+    for roll in np.arange(-roll_limit, roll_limit + 1e-9, 0.5):
+        for dx in np.linspace(-span_x, span_x, 7):
+            for dy in np.linspace(-span_y, span_y, 7):
+                point = (width / 2.0 + dx, height / 2.0 + dy)
+                value = _score(segments, lengths, focal, yaw, pitch, width,
+                               height, threshold, roll, point)
+                if value > best[0]:
+                    best = (value, float(roll), point)
+
+    value, roll, point = best
+    if value <= base * (1.0 + margin):
+        return 0.0, None, yaw, pitch, False
+
+    # Moving the optical centre moves where the vanishing points belong, so the
+    # orientation is worth re-polishing against the new optics.
+    for span, step in ((1.0, 0.25), (0.3, 0.05)):
+        for candidate_yaw in np.arange(yaw - span, yaw + span + 1e-9, step):
+            for candidate_pitch in np.arange(pitch - span, pitch + span + 1e-9, step):
+                found = _score(segments, lengths, focal, candidate_yaw,
+                               candidate_pitch, width, height, threshold,
+                               roll, point)
+                if found > value:
+                    value, yaw, pitch = found, float(candidate_yaw), float(candidate_pitch)
+    return roll, point, yaw, pitch, True
 
 
 def estimate_camera(
@@ -319,6 +535,8 @@ def estimate_camera(
     segments: np.ndarray | None = None,
     coarse_segments: int = COARSE_SEGMENTS,
     focal: float | None = None,
+    refine_optical_centre: bool = True,
+    weight_by_contrast: bool = False,
 ) -> CalibrationResult | None:
     """Estimate focal length, yaw and pitch from one greyscale frame.
 
@@ -334,6 +552,11 @@ def estimate_camera(
     if len(segments) < 12:
         return None
     lengths = np.hypot(segments[:, 2] - segments[:, 0], segments[:, 3] - segments[:, 1])
+    if weight_by_contrast and grey.size:
+        # Discount lines that separate nothing: they are texture drawn on a face,
+        # not the face's own edge. Whether that helps is a measurement, not an
+        # assumption, which is why it is off by default.
+        lengths = lengths * structural_weights(grey, segments)
 
     def focal_for(fov: float) -> float:
         return (height / 2.0) / np.tan(np.radians(fov) / 2.0)
@@ -379,8 +602,16 @@ def estimate_camera(
                         best = (value, candidate_focal, candidate_yaw, candidate_pitch)
 
     _value, focal, yaw, pitch = best
+
+    roll, principal_point = 0.0, None
+    if refine_optical_centre:
+        roll, principal_point, yaw, pitch, improved = refine_optics(
+            segments, lengths, focal, yaw, pitch, width, height, threshold)
+        if not improved:
+            roll, principal_point = 0.0, None
+
     residuals = segment_residuals(segments, vanishing_points(
-        focal, yaw, pitch, width, height))
+        focal, yaw, pitch, width, height, roll, principal_point))
     owner = residuals.argmin(axis=1)
     closest = residuals.min(axis=1)
     inside = closest <= threshold
@@ -395,5 +626,11 @@ def estimate_camera(
         segments=int(len(segments)),
         median_residual=float(np.median(closest[inside])) if inside.any() else float("nan"),
         per_axis_inliers=counts,
-        notes=("yaw is modulo 90 degrees: one view cannot name the horizontal axes",),
+        roll_degrees=float(roll),
+        principal_point=principal_point,
+        notes=("yaw is modulo 90 degrees: one view cannot name the horizontal axes",)
+        + (() if principal_point is None else
+           (f"optical centre moved to {principal_point[0]:.0f},"
+            f"{principal_point[1]:.0f} and roll to {roll:.2f} deg; "
+            "the frame is cropped or rotated",)),
     )

@@ -229,3 +229,133 @@ def test_a_session_shares_one_focal_length_and_the_median_sets_it():
     assert len(focals) == 1, "every view in a session must end on one focal length"
     assert focals.pop() == pytest.approx(_focal(70.0), rel=0.02)
     assert any("session median" in note for note in results["c.png"].notes)
+
+
+def test_a_whole_screenshot_does_not_invent_roll_or_a_shifted_centre():
+    """The refinement must come back empty-handed when nothing is wrong.
+
+    Three extra free parameters can always fit noise a little better, so without
+    a margin the estimator would report a small roll and a shifted optical centre
+    on every frame - describing its own freedom rather than the camera. A whole
+    Minecraft screenshot genuinely has neither.
+    """
+    camera = _camera(23.0, -14.0, 70.0)
+    segments = _lattice_segments(camera)
+    found = estimate_camera(np.zeros((HEIGHT, WIDTH), np.uint8), segments=segments)
+    assert found is not None
+    assert found.roll_degrees == 0.0
+    assert found.principal_point is None, "an uncropped frame needs no new centre"
+
+
+def test_a_cropped_frame_has_its_optical_centre_recovered():
+    """Cropping moves the optical centre, and nothing else can absorb it.
+
+    Cutting pixels off one edge shifts the centre by half of what was removed.
+    The frame then cannot be described by focal length and orientation alone,
+    which is the case the milestone means by refining the assumption when the
+    evidence supports it.
+    """
+    camera = _camera(23.0, -14.0, 70.0)
+    full = _lattice_segments(camera)
+    cut_x, cut_y = 260, 140
+    kept = full - np.asarray([cut_x, cut_y, cut_x, cut_y], dtype=float)
+    inside = ((kept[:, [0, 2]] >= 0).all(axis=1) & (kept[:, [1, 3]] >= 0).all(axis=1))
+    kept = kept[inside]
+    assert len(kept) > 40, "the crop left too little to fit"
+
+    width, height = WIDTH - cut_x, HEIGHT - cut_y
+    true_centre = (WIDTH / 2.0 - cut_x, HEIGHT / 2.0 - cut_y)
+    found = estimate_camera(np.zeros((height, width), np.uint8), segments=kept)
+    assert found is not None
+    assert found.principal_point is not None, "the shifted centre was not detected"
+    assert found.principal_point[0] == pytest.approx(true_centre[0], abs=0.2 * width)
+    assert found.principal_point[1] == pytest.approx(true_centre[1], abs=0.2 * height)
+
+
+def test_roll_turns_the_frame_and_is_carried_through_the_axes():
+    # World +Y has no sideways component at zero roll; rolling the camera must
+    # give it one, or the parameter is not reaching the geometry.
+    upright = axis_directions(30.0, -10.0, 0.0)[1]
+    rolled = axis_directions(30.0, -10.0, 25.0)[1]
+    assert abs(upright[0]) < 1e-12
+    assert abs(rolled[0]) > 0.3
+    assert np.allclose(rolled @ rolled, 1.0), "roll must stay a rotation"
+
+
+def test_the_principal_point_moves_the_vanishing_points_with_it():
+    shifted = vanishing_points(_focal(70.0), 20.0, -12.0, WIDTH, HEIGHT,
+                               0.0, (WIDTH / 2.0 + 60.0, HEIGHT / 2.0))
+    centred = vanishing_points(_focal(70.0), 20.0, -12.0, WIDTH, HEIGHT)
+    for (x1, y1, w1), (x0, y0, w0) in zip(shifted, centred):
+        if abs(w0) < 1e-12:
+            continue
+        assert (x1 / w1) == pytest.approx(x0 / w0 + 60.0, abs=1e-6)
+        assert (y1 / w1) == pytest.approx(y0 / w0, abs=1e-6)
+
+
+def _drawn(width=400, height=400):
+    """A wall of one material, with a genuine seam through the middle of it.
+
+    Left and right halves are different materials, so the join between them is a
+    structural edge. Both halves carry fine internal lines of their own, which
+    run in the same direction and are not.
+    """
+    image = np.zeros((height, width), np.float32)
+    image[:, : width // 2] = 60.0
+    image[:, width // 2:] = 190.0
+    image[:, ::9] += 12.0          # texture lines inside both materials
+    return image
+
+
+def test_contrast_separates_a_real_seam_from_lines_inside_a_texture():
+    """Direction cannot make this distinction; Minecraft textures are axis-aligned
+    and their internal lines run along the same lattice directions as the seams."""
+    from mc_photogrammetry.reconstruction.calibration import segment_contrast
+
+    image = _drawn()
+    seam = np.asarray([[200.0, 20.0, 200.0, 380.0]])         # the material join
+    texture = np.asarray([[108.0, 20.0, 108.0, 380.0]])      # a line within one
+    assert segment_contrast(image, seam)[0] > 5 * segment_contrast(image, texture)[0]
+
+
+def test_structural_weights_are_relative_to_the_frames_own_contrast():
+    """A gamma-100% fixture has a fraction of the contrast of a fullbright one.
+
+    An absolute threshold would call an entire dim scene texture, so the scale is
+    the frame's own median.
+    """
+    from mc_photogrammetry.reconstruction.calibration import (
+        CONTRAST_FLOOR,
+        structural_weights,
+    )
+
+    image = _drawn()
+    segments = np.asarray([[200.0, 20.0, 200.0, 380.0],
+                           [108.0, 20.0, 108.0, 380.0],
+                           [306.0, 20.0, 306.0, 380.0]])
+    weights = structural_weights(image, segments)
+    assert weights.shape == (3,)
+    assert (weights >= CONTRAST_FLOOR).all() and (weights <= 1.0).all()
+    assert weights[0] > weights[1], "the seam should outrank the texture line"
+
+    faint = structural_weights(image * 0.1, segments)
+    assert faint[0] > faint[1], "a dim frame must still rank the seam first"
+
+
+def test_a_texture_line_is_discounted_and_not_discarded():
+    # It still lies on a face that is genuinely oriented that way, so it is
+    # evidence about direction even though it is not an edge.
+    from mc_photogrammetry.reconstruction.calibration import (
+        CONTRAST_FLOOR,
+        structural_weights,
+    )
+
+    flat = np.full((200, 200), 100.0, np.float32)
+    segments = np.asarray([[100.0, 20.0, 100.0, 180.0]])
+    assert structural_weights(flat, segments)[0] >= CONTRAST_FLOOR > 0.0
+
+
+def test_contrast_on_no_segments_is_empty_rather_than_an_error():
+    from mc_photogrammetry.reconstruction.calibration import segment_contrast
+
+    assert segment_contrast(np.zeros((10, 10), np.float32), np.zeros((0, 4))).size == 0
