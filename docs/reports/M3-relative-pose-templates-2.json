@@ -1,6 +1,6 @@
 {
   "fixture": "templates 2",
-  "generated": "2026-09-08T11:55:54-0500",
+  "generated": "2026-09-08T17:20:00-0500",
   "environment": {
     "python": "3.12.10",
     "pycolmap": "4.2.0",
@@ -17,7 +17,7 @@
     "strict": "Minecraft repeats textures, so trade recall for fewer wrong matches"
   },
   "masks": ".masks\\templates-2",
-  "note": "translation is recovered as a direction only; two views cannot fix its length, and no scale is claimed",
+  "note": "a pose hypothesis is what the library returned, not a validated pose; graph connectivity is not camera registration. Translation is a direction only, since two views fix no length.",
   "runs": [
     {
       "configuration": "baseline",
@@ -27,8 +27,8 @@
         "matching": {}
       },
       "seconds": {
-        "extraction": 2.3160793781280518,
-        "matching": 1.4991023540496826
+        "extraction": 2.5655012130737305,
+        "matching": 1.6963598728179932
       },
       "features": {
         "2026-09-02_13.22.14.png": 7619,
@@ -45,7 +45,8 @@
           "inliers": 83,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
               -0.5602043443419369,
@@ -79,7 +80,8 @@
           "inliers": 27,
           "configuration": "CALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
               0.4212703836863071,
@@ -113,11 +115,12 @@
           "inliers": 30,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 30 inliers"
         }
       ],
-      "resolved_pairs": 2,
+      "pose_hypotheses": 2,
+      "validated_poses": 0,
       "components": [
         [
           "2026-09-02_13.22.14.png",
@@ -126,12 +129,12 @@
         ]
       ],
       "largest_component": 3,
-      "registered": [
+      "graph_connected": [
         "2026-09-02_13.22.14.png",
         "2026-09-02_13.24.24.png",
         "2026-09-02_13.24.33.png"
       ],
-      "excluded": []
+      "isolated": []
     },
     {
       "configuration": "dense",
@@ -145,8 +148,8 @@
         "matching": {}
       },
       "seconds": {
-        "extraction": 2.6986000537872314,
-        "matching": 4.562000751495361
+        "extraction": 3.5072593688964844,
+        "matching": 5.43471097946167
       },
       "features": {
         "2026-09-02_13.22.14.png": 15890,
@@ -163,7 +166,8 @@
           "inliers": 100,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
               -0.5973929425272502,
@@ -197,7 +201,7 @@
           "inliers": 116,
           "configuration": "PLANAR_OR_PANORAMIC",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration PLANAR_OR_PANORAMIC with 116 inliers"
         },
         {
@@ -209,7 +213,8 @@
           "inliers": 47,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
               0.9756790000368896,
@@ -235,7 +240,8 @@
           "scale": "unresolved: two views fix direction only"
         }
       ],
-      "resolved_pairs": 2,
+      "pose_hypotheses": 2,
+      "validated_poses": 0,
       "components": [
         [
           "2026-09-02_13.22.14.png",
@@ -244,12 +250,12 @@
         ]
       ],
       "largest_component": 3,
-      "registered": [
+      "graph_connected": [
         "2026-09-02_13.22.14.png",
         "2026-09-02_13.24.24.png",
         "2026-09-02_13.24.33.png"
       ],
-      "excluded": []
+      "isolated": []
     },
     {
       "configuration": "strict",
@@ -262,8 +268,8 @@
         }
       },
       "seconds": {
-        "extraction": 2.257002592086792,
-        "matching": 1.5008833408355713
+        "extraction": 3.217566967010498,
+        "matching": 1.8008403778076172
       },
       "features": {
         "2026-09-02_13.22.14.png": 7619,
@@ -280,7 +286,8 @@
           "inliers": 41,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
               -0.5518859224442876,
@@ -314,7 +321,8 @@
           "inliers": 22,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
               0.9048910513663291,
@@ -348,7 +356,8 @@
           "inliers": 28,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
               0.9999033289680453,
@@ -374,7 +383,8 @@
           "scale": "unresolved: two views fix direction only"
         }
       ],
-      "resolved_pairs": 3,
+      "pose_hypotheses": 3,
+      "validated_poses": 0,
       "components": [
         [
           "2026-09-02_13.22.14.png",
@@ -383,16 +393,16 @@
         ]
       ],
       "largest_component": 3,
-      "registered": [
+      "graph_connected": [
         "2026-09-02_13.22.14.png",
         "2026-09-02_13.24.24.png",
         "2026-09-02_13.24.33.png"
       ],
-      "excluded": []
+      "isolated": []
     }
   ],
   "scored": {
-    "note": "evaluation only; the manifest is scaffolding, never read during estimation. Translation is compared as a direction and only up to sign, because two views fix no scale.",
+    "note": "evaluation only; the manifest is scaffolding, never read during estimation. Rotations and translation directions are compared in COLMAP's image-down frame. Translation length is unrecoverable from two views; its direction and sign are not.",
     "manifest_sha256": "4f743e4fc478430f608e0e879f73cd4a3dc9ce50c726841d2da897be78be6126",
     "pairs": [
       {
@@ -403,10 +413,10 @@
         ],
         "two_view_config": "UNCALIBRATED",
         "inliers": 83,
-        "rotation_error_deg": 50.63797981355534,
+        "rotation_error_deg": 23.490894064552347,
         "baseline_metres": 11.42716062720763,
-        "translation_direction_error_deg": 45.79007278211058,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 79.6714527340169,
+        "translation_error_ignoring_sign_deg": 79.6714527340169
       },
       {
         "configuration": "baseline",
@@ -416,10 +426,10 @@
         ],
         "two_view_config": "CALIBRATED",
         "inliers": 27,
-        "rotation_error_deg": 90.66928768045257,
+        "rotation_error_deg": 140.38523932276613,
         "baseline_metres": 9.323625904121227,
-        "translation_direction_error_deg": 80.01805705811037,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 96.62932758323275,
+        "translation_error_ignoring_sign_deg": 83.37067241676725
       },
       {
         "configuration": "dense",
@@ -429,10 +439,10 @@
         ],
         "two_view_config": "UNCALIBRATED",
         "inliers": 100,
-        "rotation_error_deg": 67.0762757794329,
+        "rotation_error_deg": 40.223028983622726,
         "baseline_metres": 11.42716062720763,
-        "translation_direction_error_deg": 37.80079894823449,
-        "direction_sign_ambiguous": false
+        "translation_direction_error_deg": 94.3426444400566,
+        "translation_error_ignoring_sign_deg": 85.65735555994341
       },
       {
         "configuration": "dense",
@@ -442,10 +452,10 @@
         ],
         "two_view_config": "UNCALIBRATED",
         "inliers": 47,
-        "rotation_error_deg": 165.20532737528768,
+        "rotation_error_deg": 162.72794334644846,
         "baseline_metres": 12.503199590504957,
-        "translation_direction_error_deg": 45.605715950873346,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 116.1798812702162,
+        "translation_error_ignoring_sign_deg": 63.820118729783815
       },
       {
         "configuration": "strict",
@@ -455,10 +465,10 @@
         ],
         "two_view_config": "UNCALIBRATED",
         "inliers": 41,
-        "rotation_error_deg": 70.47975105540823,
+        "rotation_error_deg": 43.138098608294946,
         "baseline_metres": 11.42716062720763,
-        "translation_direction_error_deg": 32.31093948547213,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 90.24595092429777,
+        "translation_error_ignoring_sign_deg": 89.75404907570223
       },
       {
         "configuration": "strict",
@@ -468,10 +478,10 @@
         ],
         "two_view_config": "UNCALIBRATED",
         "inliers": 22,
-        "rotation_error_deg": 56.961544880142135,
+        "rotation_error_deg": 47.983062506566846,
         "baseline_metres": 9.323625904121227,
-        "translation_direction_error_deg": 69.32050994504455,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 61.97116174670226,
+        "translation_error_ignoring_sign_deg": 61.97116174670226
       },
       {
         "configuration": "strict",
@@ -481,10 +491,10 @@
         ],
         "two_view_config": "UNCALIBRATED",
         "inliers": 28,
-        "rotation_error_deg": 175.2659636347215,
+        "rotation_error_deg": 175.29525528466087,
         "baseline_metres": 12.503199590504957,
-        "translation_direction_error_deg": 86.52746300682314,
-        "direction_sign_ambiguous": false
+        "translation_direction_error_deg": 82.40815446754938,
+        "translation_error_ignoring_sign_deg": 82.40815446754938
       }
     ]
   }

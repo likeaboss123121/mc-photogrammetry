@@ -122,6 +122,21 @@ def rotation_from(yaw_degrees, pitch_degrees, roll_degrees=0.0) -> np.ndarray:
     return np.stack([rolled_right, rolled_up, pitched_forward])
 
 
+IMAGE_DOWN = np.diag([1.0, -1.0, 1.0])
+"""Maps between this project's image-up camera frame and COLMAP's image-down one.
+
+The two differ by a flip of the vertical axis, so a rotation that is exactly
+right in one frame is wrong in the other. Comparing them directly gave a perfect
+synthetic pair 20 degrees of error, which is a defect in the scoring and not in
+the pose. Being its own inverse, the same matrix converts either way.
+"""
+
+
+def to_image_down(rotation: np.ndarray) -> np.ndarray:
+    """A project-frame rotation expressed the way COLMAP would express it."""
+    return IMAGE_DOWN @ rotation @ IMAGE_DOWN
+
+
 def angle_between(a: np.ndarray, b: np.ndarray) -> float:
     trace = np.clip((np.trace(a @ b.T) - 1.0) / 2.0, -1.0, 1.0)
     return float(np.degrees(np.arccos(trace)))
@@ -174,7 +189,7 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path,
         raw = handle.read_matches(images[first].image_id, images[second].image_id)
         record = {"views": [first, second], "raw_matches": int(len(raw))}
         if len(raw) < 8:
-            record.update(resolved=False, reason="too few raw matches",
+            record.update(pose_hypothesis=False, reason="too few raw matches",
                           inliers=0, configuration="NONE")
             pairs.append(record)
             continue
@@ -193,7 +208,7 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path,
 
         if configuration in UNRESOLVED or inliers < 15:
             record.update(
-                resolved=False,
+                pose_hypothesis=False,
                 reason=("no translation exists between these views"
                         if configuration.startswith("PAN")
                         else f"configuration {configuration} with {inliers} inliers"),
@@ -210,7 +225,7 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path,
                 camera_for(entries[second]), points2, geometry)
         pose = geometry.cam2_from_cam1
         if pose is None:
-            record.update(resolved=False,
+            record.update(pose_hypothesis=False,
                           reason=f"{configuration} geometry yielded no pose")
             pairs.append(record)
             continue
@@ -218,7 +233,8 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path,
         direction = np.asarray(pose.translation, dtype=float)
         norm = float(np.linalg.norm(direction))
         record.update(
-            resolved=True,
+            pose_hypothesis=True,
+            validated=False,
             relative_rotation=np.asarray(pose.rotation.matrix()).tolist(),
             translation_direction=(direction / norm).tolist() if norm > 0 else None,
             scale="unresolved: two views fix direction only",
@@ -251,12 +267,13 @@ def run(fixture: Path, calibration: dict, name: str, workspace: Path,
         "seconds": {"extraction": extracted, "matching": matched},
         "features": features,
         "pairs": pairs,
-        "resolved_pairs": len(edges),
+        "pose_hypotheses": len(edges),
+        "validated_poses": 0,
         "components": grouped,
         "largest_component": len(grouped[0]) if grouped else 0,
-        "registered": sorted(set(itertools.chain.from_iterable(
+        "graph_connected": sorted(set(itertools.chain.from_iterable(
             group for group in grouped if len(group) > 1))),
-        "excluded": sorted(group[0] for group in grouped if len(group) == 1),
+        "isolated": sorted(group[0] for group in grouped if len(group) == 1),
     }
 
 
@@ -287,13 +304,13 @@ def main(argv=None) -> int:
             print(f"[{name}] {CONFIGURATIONS[name]['why']}", flush=True)
             result = run(folder, calibration, name, workspace, args.masks)
             runs.append(result)
-            print(f"    {result['resolved_pairs']}/{len(result['pairs'])} pairs resolved, "
+            print(f"    {result['pose_hypotheses']}/{len(result['pairs'])} pose hypotheses, "
                   f"largest component {result['largest_component']}/"
                   f"{len(result['features'])} views, "
                   f"{result['seconds']['extraction'] + result['seconds']['matching']:.0f}s",
                   flush=True)
             for pair in result["pairs"]:
-                mark = "ok  " if pair.get("resolved") else "SKIP"
+                mark = "hyp " if pair.get("pose_hypothesis") else "SKIP"
                 print(f"      {mark} {pair['views'][0][-12:]} - {pair['views'][1][-12:]}"
                       f"  raw {pair['raw_matches']:5d}  inliers {pair.get('inliers', 0):5d}"
                       f"  {pair.get('configuration', '-'):<20}"
@@ -311,8 +328,9 @@ def main(argv=None) -> int:
                                  "sha256": digest(args.calibration)},
         "declared_configurations": {k: v["why"] for k, v in CONFIGURATIONS.items()},
         "masks": str(args.masks) if args.masks else None,
-        "note": "translation is recovered as a direction only; two views cannot "
-                "fix its length, and no scale is claimed",
+        "note": "a pose hypothesis is what the library returned, not a validated "
+                "pose; graph connectivity is not camera registration. Translation "
+                "is a direction only, since two views fix no length.",
         "runs": runs,
     }
 
@@ -322,40 +340,49 @@ def main(argv=None) -> int:
         scored = []
         for result in runs:
             for pair in result["pairs"]:
-                if not pair.get("resolved"):
+                if not pair.get("pose_hypothesis"):
                     continue
                 a, b = pair["views"]
                 if a not in poses or b not in poses:
                     continue
                 first = rotation_from(poses[a]["yaw_degrees"], poses[a]["pitch_degrees"])
                 second = rotation_from(poses[b]["yaw_degrees"], poses[b]["pitch_degrees"])
+                # COLMAP works image-down; this project works image-up. The
+                # reference is converted into COLMAP's frame rather than the
+                # library's answer being read in ours.
+                wanted_rotation = to_image_down(second @ first.T)
                 got = np.asarray(pair["relative_rotation"], dtype=float)
                 row = {"configuration": result["configuration"],
                        "views": [a, b],
                        "two_view_config": pair["configuration"],
                        "inliers": pair["inliers"],
-                       "rotation_error_deg": angle_between(got, second @ first.T)}
+                       "rotation_error_deg": angle_between(got, wanted_rotation)}
 
-                # Translation has no scale, but its *direction* is comparable.
-                # The true baseline in the first camera's frame is the second
-                # eye minus the first, rotated into that frame.
+                # For cam2_from_cam1 the translation is proportional to
+                # R2_cv @ (C1 - C2): the first camera's centre seen from the
+                # second, in the second's frame. Length is unrecoverable from two
+                # views, but the direction and its sign are not, once cheirality
+                # has chosen a solution.
                 if pair.get("translation_direction"):
-                    baseline = (np.asarray(poses[b]["position"], dtype=float)
-                                - np.asarray(poses[a]["position"], dtype=float))
+                    centres = (np.asarray(poses[a]["position"], dtype=float),
+                               np.asarray(poses[b]["position"], dtype=float))
+                    baseline = centres[0] - centres[1]
                     length = float(np.linalg.norm(baseline))
                     if length > 1e-6:
-                        wanted = first @ (baseline / length)
+                        wanted = to_image_down(second) @ (baseline / length)
                         mine = np.asarray(pair["translation_direction"], dtype=float)
                         cosine = float(np.clip(np.dot(mine, wanted), -1.0, 1.0))
                         row["baseline_metres"] = length
                         row["translation_direction_error_deg"] = float(
+                            np.degrees(np.arccos(cosine)))
+                        row["translation_error_ignoring_sign_deg"] = float(
                             np.degrees(np.arccos(abs(cosine))))
-                        row["direction_sign_ambiguous"] = bool(cosine < 0)
                 scored.append(row)
         payload["scored"] = {
             "note": "evaluation only; the manifest is scaffolding, never read "
-                    "during estimation. Translation is compared as a direction "
-                    "and only up to sign, because two views fix no scale.",
+                    "during estimation. Rotations and translation directions are "
+                    "compared in COLMAP's image-down frame. Translation length is "
+                    "unrecoverable from two views; its direction and sign are not.",
             "manifest_sha256": digest(manifest),
             "pairs": scored,
         }
@@ -363,13 +390,15 @@ def main(argv=None) -> int:
             rotations = [row["rotation_error_deg"] for row in scored]
             directions = [row["translation_direction_error_deg"] for row in scored
                           if "translation_direction_error_deg" in row]
-            print(f"\n  scored {len(scored)} resolved pairs; median relative "
+            print(f"\n  scored {len(scored)} pose hypotheses; median relative "
                   f"rotation error {np.median(rotations):.2f} deg")
+            print(f"  within 5 deg: "
+                  f"{sum(1 for r in rotations if r <= 5.0)}/{len(rotations)}")
             if directions:
                 print(f"  median translation direction error "
                       f"{np.median(directions):.2f} deg over {len(directions)} pairs")
         else:
-            print("\n  nothing resolved, so nothing to score")
+            print("\n  no pose hypotheses, so nothing to score")
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)

@@ -1,6 +1,6 @@
 {
   "fixture": "templates 6",
-  "generated": "2026-09-08T11:57:38-0500",
+  "generated": "2026-09-08T17:20:32-0500",
   "environment": {
     "python": "3.12.10",
     "pycolmap": "4.2.0",
@@ -17,7 +17,7 @@
     "strict": "Minecraft repeats textures, so trade recall for fewer wrong matches"
   },
   "masks": ".masks\\templates-6",
-  "note": "translation is recovered as a direction only; two views cannot fix its length, and no scale is claimed",
+  "note": "a pose hypothesis is what the library returned, not a validated pose; graph connectivity is not camera registration. Translation is a direction only, since two views fix no length.",
   "runs": [
     {
       "configuration": "baseline",
@@ -27,8 +27,8 @@
         "matching": {}
       },
       "seconds": {
-        "extraction": 3.514045000076294,
-        "matching": 2.578073740005493
+        "extraction": 4.2031848430633545,
+        "matching": 3.239224672317505
       },
       "features": {
         "2026-09-05_18.01.09.png": 5315,
@@ -46,7 +46,7 @@
           "inliers": 106,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 106 inliers"
         },
         {
@@ -58,7 +58,7 @@
           "inliers": 114,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 114 inliers"
         },
         {
@@ -70,7 +70,7 @@
           "inliers": 43,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 43 inliers"
         },
         {
@@ -79,11 +79,11 @@
             "2026-09-05_18.01.18.png"
           ],
           "raw_matches": 434,
-          "inliers": 220,
+          "inliers": 221,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 220 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 221 inliers"
         },
         {
           "views": [
@@ -91,31 +91,32 @@
             "2026-09-05_18.01.22.png"
           ],
           "raw_matches": 149,
-          "inliers": 67,
+          "inliers": 72,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
-              0.30420122150742146,
-              -0.7703450810782458,
-              0.5603838620909276
+              0.35797925894493177,
+              -0.8266207832175964,
+              0.4342222137546221
             ],
             [
-              0.6364970168952587,
-              0.6020434568677155,
-              0.48209462092644007
+              0.6427928423774055,
+              0.5554711818719488,
+              0.5275122063973079
             ],
             [
-              -0.7087546573510679,
-              0.21002888396913902,
-              0.6734647010659494
+              -0.677250479478319,
+              0.09027650227222886,
+              0.7301930848644618
             ]
           ],
           "translation_direction": [
-            -0.8081040669666386,
-            -0.1593576482758845,
-            -0.5670740312234004
+            -0.6941800394031107,
+            -0.1477647419672341,
+            -0.7044711874346974
           ],
           "scale": "unresolved: two views fix direction only"
         },
@@ -125,14 +126,15 @@
             "2026-09-05_18.01.22.png"
           ],
           "raw_matches": 216,
-          "inliers": 139,
+          "inliers": 142,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 139 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 142 inliers"
         }
       ],
-      "resolved_pairs": 1,
+      "pose_hypotheses": 1,
+      "validated_poses": 0,
       "components": [
         [
           "2026-09-05_18.01.14.png",
@@ -146,11 +148,11 @@
         ]
       ],
       "largest_component": 2,
-      "registered": [
+      "graph_connected": [
         "2026-09-05_18.01.14.png",
         "2026-09-05_18.01.22.png"
       ],
-      "excluded": [
+      "isolated": [
         "2026-09-05_18.01.09.png",
         "2026-09-05_18.01.18.png"
       ]
@@ -167,8 +169,8 @@
         "matching": {}
       },
       "seconds": {
-        "extraction": 4.223268985748291,
-        "matching": 7.9658448696136475
+        "extraction": 5.372325897216797,
+        "matching": 9.81865406036377
       },
       "features": {
         "2026-09-05_18.01.09.png": 12074,
@@ -186,7 +188,7 @@
           "inliers": 118,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 118 inliers"
         },
         {
@@ -195,11 +197,11 @@
             "2026-09-05_18.01.18.png"
           ],
           "raw_matches": 322,
-          "inliers": 146,
+          "inliers": 140,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 146 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 140 inliers"
         },
         {
           "views": [
@@ -210,7 +212,7 @@
           "inliers": 75,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 75 inliers"
         },
         {
@@ -219,11 +221,11 @@
             "2026-09-05_18.01.18.png"
           ],
           "raw_matches": 563,
-          "inliers": 229,
+          "inliers": 228,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 229 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 228 inliers"
         },
         {
           "views": [
@@ -231,31 +233,32 @@
             "2026-09-05_18.01.22.png"
           ],
           "raw_matches": 299,
-          "inliers": 101,
+          "inliers": 107,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
-              0.9999739478933337,
-              0.004866724134831882,
-              -0.005330903377084403
+              0.9999883437885543,
+              0.0034121782808101343,
+              -0.003416039578815992
             ],
             [
-              -0.004868193948677132,
-              0.9999881157480496,
-              -0.0002627743205852117
+              -0.0034108384964056716,
+              0.9999941038896891,
+              0.00039795302374998206
             ],
             [
-              0.00532956117315754,
-              0.0002887193463218874,
-              0.9999857561079761
+              0.0034173773241342313,
+              -0.00038629682582472084,
+              0.9999940861360065
             ]
           ],
           "translation_direction": [
-            -0.5764319774249707,
-            -0.6574212862401683,
-            0.4853075600073226
+            -0.6195012424693039,
+            -0.6515006296570375,
+            0.43790996807046156
           ],
           "scale": "unresolved: two views fix direction only"
         },
@@ -265,14 +268,15 @@
             "2026-09-05_18.01.22.png"
           ],
           "raw_matches": 436,
-          "inliers": 255,
+          "inliers": 254,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 255 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 254 inliers"
         }
       ],
-      "resolved_pairs": 1,
+      "pose_hypotheses": 1,
+      "validated_poses": 0,
       "components": [
         [
           "2026-09-05_18.01.14.png",
@@ -286,11 +290,11 @@
         ]
       ],
       "largest_component": 2,
-      "registered": [
+      "graph_connected": [
         "2026-09-05_18.01.14.png",
         "2026-09-05_18.01.22.png"
       ],
-      "excluded": [
+      "isolated": [
         "2026-09-05_18.01.09.png",
         "2026-09-05_18.01.18.png"
       ]
@@ -306,8 +310,8 @@
         }
       },
       "seconds": {
-        "extraction": 3.5079028606414795,
-        "matching": 2.5826163291931152
+        "extraction": 4.311279058456421,
+        "matching": 3.2433066368103027
       },
       "features": {
         "2026-09-05_18.01.09.png": 5315,
@@ -322,11 +326,11 @@
             "2026-09-05_18.01.14.png"
           ],
           "raw_matches": 151,
-          "inliers": 98,
+          "inliers": 93,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 98 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 93 inliers"
         },
         {
           "views": [
@@ -334,11 +338,11 @@
             "2026-09-05_18.01.18.png"
           ],
           "raw_matches": 116,
-          "inliers": 97,
+          "inliers": 93,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 97 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 93 inliers"
         },
         {
           "views": [
@@ -349,7 +353,7 @@
           "inliers": 38,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 38 inliers"
         },
         {
@@ -361,7 +365,7 @@
           "inliers": 204,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
+          "pose_hypothesis": false,
           "reason": "configuration WATERMARK with 204 inliers"
         },
         {
@@ -370,31 +374,32 @@
             "2026-09-05_18.01.22.png"
           ],
           "raw_matches": 85,
-          "inliers": 57,
+          "inliers": 51,
           "configuration": "UNCALIBRATED",
           "triangulation_angle_deg": -1.0,
-          "resolved": true,
+          "pose_hypothesis": true,
+          "validated": false,
           "relative_rotation": [
             [
-              0.4240740072191659,
-              -0.7553260117898427,
-              0.4996437253831269
+              0.9998905109310622,
+              -0.012750608058418529,
+              0.0075092039631342285
             ],
             [
-              0.5973416904024259,
-              0.6479718612153306,
-              0.4725625588007507
+              0.012693047694494938,
+              0.9998900709109191,
+              0.007663721940578742
             ],
             [
-              -0.6806938675412403,
-              0.09805652954694533,
-              0.7259757404383136
+              -0.00760609559791586,
+              -0.007567568162747116,
+              0.9999424379542342
             ]
           ],
           "translation_direction": [
-            -0.6971974042219423,
-            -0.2622044011517493,
-            -0.6672065883688786
+            -0.7430946299586443,
+            0.49861198718164995,
+            -0.44631430311540754
           ],
           "scale": "unresolved: two views fix direction only"
         },
@@ -404,14 +409,15 @@
             "2026-09-05_18.01.22.png"
           ],
           "raw_matches": 151,
-          "inliers": 128,
+          "inliers": 129,
           "configuration": "WATERMARK",
           "triangulation_angle_deg": -1.0,
-          "resolved": false,
-          "reason": "configuration WATERMARK with 128 inliers"
+          "pose_hypothesis": false,
+          "reason": "configuration WATERMARK with 129 inliers"
         }
       ],
-      "resolved_pairs": 1,
+      "pose_hypotheses": 1,
+      "validated_poses": 0,
       "components": [
         [
           "2026-09-05_18.01.14.png",
@@ -425,18 +431,18 @@
         ]
       ],
       "largest_component": 2,
-      "registered": [
+      "graph_connected": [
         "2026-09-05_18.01.14.png",
         "2026-09-05_18.01.22.png"
       ],
-      "excluded": [
+      "isolated": [
         "2026-09-05_18.01.09.png",
         "2026-09-05_18.01.18.png"
       ]
     }
   ],
   "scored": {
-    "note": "evaluation only; the manifest is scaffolding, never read during estimation. Translation is compared as a direction and only up to sign, because two views fix no scale.",
+    "note": "evaluation only; the manifest is scaffolding, never read during estimation. Rotations and translation directions are compared in COLMAP's image-down frame. Translation length is unrecoverable from two views; its direction and sign are not.",
     "manifest_sha256": "836ad62f99c5d960cd98c10cf8f850372c5b571be1edd14ff5935fd89027f70f",
     "pairs": [
       {
@@ -446,11 +452,11 @@
           "2026-09-05_18.01.22.png"
         ],
         "two_view_config": "UNCALIBRATED",
-        "inliers": 67,
-        "rotation_error_deg": 99.59017271880514,
+        "inliers": 72,
+        "rotation_error_deg": 34.20131878977607,
         "baseline_metres": 15.792719841748834,
-        "translation_direction_error_deg": 31.976470906274095,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 64.98764691914299,
+        "translation_error_ignoring_sign_deg": 64.98764691914299
       },
       {
         "configuration": "dense",
@@ -459,11 +465,11 @@
           "2026-09-05_18.01.22.png"
         ],
         "two_view_config": "UNCALIBRATED",
-        "inliers": 101,
-        "rotation_error_deg": 86.28521781857734,
+        "inliers": 107,
+        "rotation_error_deg": 86.45856926428941,
         "baseline_metres": 15.792719841748834,
-        "translation_direction_error_deg": 87.35319680125637,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 38.879318257052,
+        "translation_error_ignoring_sign_deg": 38.879318257052
       },
       {
         "configuration": "strict",
@@ -472,11 +478,11 @@
           "2026-09-05_18.01.22.png"
         ],
         "two_view_config": "UNCALIBRATED",
-        "inliers": 57,
-        "rotation_error_deg": 97.48200079277974,
+        "inliers": 51,
+        "rotation_error_deg": 85.43978310272684,
         "baseline_metres": 15.792719841748834,
-        "translation_direction_error_deg": 21.812944671909698,
-        "direction_sign_ambiguous": true
+        "translation_direction_error_deg": 59.486396560385494,
+        "translation_error_ignoring_sign_deg": 59.486396560385494
       }
     ]
   }
