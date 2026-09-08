@@ -522,26 +522,44 @@ def refine_optics(
     frame it does not. Yaw and pitch are re-polished afterwards, because moving
     the optical centre moves where the vanishing points should sit.
 
-    Returns ``(roll, principal_point, yaw, pitch, improved)``.
+    Returns ``(roll, principal_point, yaw, pitch, improved, focal)``. The focal
+    length comes back because it is refitted alongside the roll.
     """
     base = _score(segments, lengths, focal, yaw, pitch, width, height, threshold)
     if base <= 0.0:
-        return 0.0, None, yaw, pitch, False
+        return 0.0, None, yaw, pitch, False, focal
 
+    # All four of these trade off against one another, so none can be settled
+    # while the others are held at values chosen without it. The main search
+    # assumes a level camera with a centred lens, and absorbs any real roll or
+    # crop into a wrong focal - on a 3 degree synthetic roll it returned 588px
+    # for a true 514 - after which the correct roll scores *worse* than zero.
+    # Fixing them in a set order merely moves which one gets absorbed, so they
+    # are alternated instead, each sweep re-fitting the focal alongside.
+    centred = (width / 2.0, height / 2.0)
     span_x, span_y = principal_limit * width, principal_limit * height
-    best = (base, 0.0, (width / 2.0, height / 2.0))
-    for roll in np.arange(-roll_limit, roll_limit + 1e-9, 0.5):
+    scales = np.arange(0.80, 1.2501, 0.025)
+
+    value, roll, point = base, 0.0, centred
+    for _round in range(2):
+        for candidate_roll in np.arange(-roll_limit, roll_limit + 1e-9, 0.5):
+            for scale in scales:
+                found = _score(segments, lengths, focal * scale, yaw, pitch,
+                               width, height, threshold, candidate_roll, point)
+                if found > value:
+                    value, roll, focal = found, float(candidate_roll), focal * scale
+
         for dx in np.linspace(-span_x, span_x, 7):
             for dy in np.linspace(-span_y, span_y, 7):
-                point = (width / 2.0 + dx, height / 2.0 + dy)
-                value = _score(segments, lengths, focal, yaw, pitch, width,
-                               height, threshold, roll, point)
-                if value > best[0]:
-                    best = (value, float(roll), point)
+                candidate = (width / 2.0 + dx, height / 2.0 + dy)
+                for scale in scales:
+                    found = _score(segments, lengths, focal * scale, yaw, pitch,
+                                   width, height, threshold, roll, candidate)
+                    if found > value:
+                        value, point, focal = found, candidate, focal * scale
 
-    value, roll, point = best
     if value <= base * (1.0 + margin):
-        return 0.0, None, yaw, pitch, False
+        return 0.0, None, yaw, pitch, False, focal
 
     # Moving the optical centre moves where the vanishing points belong, so the
     # orientation is worth re-polishing against the new optics.
@@ -553,7 +571,10 @@ def refine_optics(
                                roll, point)
                 if found > value:
                     value, yaw, pitch = found, float(candidate_yaw), float(candidate_pitch)
-    return roll, point, yaw, pitch, True
+
+    if point == centred:
+        point = None
+    return roll, point, yaw, pitch, True, focal
 
 
 def estimate_camera(
@@ -636,9 +657,11 @@ def estimate_camera(
 
     roll, principal_point = 0.0, None
     if refine_optical_centre:
-        roll, principal_point, yaw, pitch, improved = refine_optics(
+        roll, principal_point, yaw, pitch, improved, refined_focal = refine_optics(
             segments, lengths, focal, yaw, pitch, width, height, threshold)
-        if not improved:
+        if improved:
+            focal = refined_focal
+        else:
             roll, principal_point = 0.0, None
 
     residuals = segment_residuals(segments, vanishing_points(
