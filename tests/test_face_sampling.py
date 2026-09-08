@@ -1,13 +1,20 @@
+import base64
+from io import BytesIO
+
 import numpy as np
 import pytest
 
+from mc_photogrammetry.domain.models import BlockState
+from mc_photogrammetry.export.attribution import box_face_corners
 from mc_photogrammetry.reconstruction.camera import CameraModel
+from mc_photogrammetry.reconstruction.facade import PaletteColor
 from mc_photogrammetry.reconstruction.face_sampling import (
     PATCH_SIZE,
     DEPTH_SCALE,
     default_face_corners,
     quad_area,
     rectify_face,
+    rectify_face_valid,
     sample_visible_faces,
 )
 from mc_photogrammetry.reconstruction.scene import SceneTransform
@@ -59,6 +66,49 @@ def test_rectify_face_rejects_malformed_input():
         rectify_face(image, np.zeros((4, 2), dtype=np.float32), size=1)
 
 
+def test_rectify_face_valid_divides_rgb_by_surviving_coverage():
+    """Invalid black pixels must not darken a valid resampled face."""
+    image = np.zeros((128, 128, 3), dtype=np.uint8)
+    valid = np.zeros((128, 128), dtype=bool)
+    valid[:, ::8] = True
+    image[valid] = 160
+    quad = np.asarray([[0, 0], [128, 0], [128, 128], [0, 128]], dtype=np.float32)
+
+    patch, output_valid, coverage = rectify_face_valid(image, quad, valid)
+
+    assert output_valid.all()
+    assert np.allclose(patch, 160.0, atol=1.0)
+    assert float(coverage.mean()) == pytest.approx(0.125, abs=0.01)
+
+
+def test_rectify_face_valid_is_invariant_to_masked_source_colour():
+    valid = np.zeros((64, 64), dtype=bool)
+    valid[:, ::4] = True
+    first = np.zeros((64, 64, 3), dtype=np.uint8)
+    second = np.full((64, 64, 3), 17, dtype=np.uint8)
+    first[valid] = second[valid] = (160, 120, 80)
+    quad = np.asarray([[0.25, 0.25], [63.25, 0.25], [63.25, 63.25], [0.25, 63.25]], dtype=np.float32)
+
+    first_patch, first_valid, first_coverage = rectify_face_valid(first, quad, valid)
+    second_patch, second_valid, second_coverage = rectify_face_valid(second, quad, valid)
+
+    assert np.array_equal(first_valid, second_valid)
+    assert np.allclose(first_coverage, second_coverage)
+    assert np.allclose(first_patch[first_valid], second_patch[second_valid])
+
+
+def test_rectify_face_valid_keeps_the_observed_part_at_an_image_edge():
+    image = np.full((128, 128, 3), 160, dtype=np.uint8)
+    valid = np.ones((128, 128), dtype=bool)
+    quad = np.asarray([[-32, 0], [96, 0], [96, 128], [-32, 128]], dtype=np.float32)
+
+    patch, output_valid, coverage = rectify_face_valid(image, quad, valid)
+
+    assert output_valid.any() and not output_valid.all()
+    assert np.allclose(patch[output_valid], 160.0, atol=1.0)
+    assert float(coverage[output_valid].min()) > 0.01
+
+
 def test_default_face_corners_lie_on_their_own_face():
     for slot, axis, sign in (("up", 1, 0.5), ("down", 1, -0.5), ("east", 0, 0.5), ("west", 0, -0.5)):
         corners = default_face_corners(slot)
@@ -105,6 +155,7 @@ def test_sample_visible_faces_keeps_the_unmasked_part_of_a_hud_overlapped_face()
     scene = SceneTransform((0, 0, 0), (2, 2, 2))
     mask = np.zeros((100, 100), dtype=bool)
     mask[42:44, 42:59] = True
+    image[mask] = 0
     samples = sample_visible_faces(
         {(0, 0, 0)}, camera, scene, image, gui_mask=mask, minimum_area=1.0, shrink=1.0
     )
@@ -113,6 +164,42 @@ def test_sample_visible_faces_keeps_the_unmasked_part_of_a_hud_overlapped_face()
     north = next(sample for sample in samples if sample.slot == "north")
     assert north.valid is not None and not north.valid.all()
     assert north.pixels.shape[0] < north.patch.shape[0] * north.patch.shape[1]
+    assert np.allclose(north.rgb, 128.0, atol=1.0)
+
+
+def test_sample_visible_faces_uses_exact_alpha_tested_model_ownership():
+    """A model cut-out must not become sampling evidence just because its cell is occupied."""
+    from PIL import Image
+
+    alpha = np.zeros((16, 16), dtype=np.uint8)
+    alpha[:, 8:] = 255
+    encoded_buffer = BytesIO()
+    Image.fromarray(alpha, mode="L").save(encoded_buffer, format="PNG")
+    encoded = base64.b64encode(encoded_buffer.getvalue()).decode("ascii")
+    state = BlockState("minecraft:cutout")
+    corners = tuple(
+        tuple(float(value) for value in point)
+        for point in box_face_corners((0, 0, 0), (1, 1, 1), "north")
+    )
+    palette = (
+        PaletteColor(state, (160, 160, 160), model_faces=(
+            ("north", corners, (0, 0, -1), None, encoded),
+        )),
+    )
+    image = np.full((100, 100, 3), 160, dtype=np.uint8)
+    camera = CameraModel((0.5, 0.5, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+
+    samples = sample_visible_faces(
+        {(0, 0, 0)}, camera, SceneTransform((0, 0, 0), (2, 2, 2)), image,
+        blocks={(0, 0, 0): state}, palette=palette, minimum_area=1.0,
+        minimum_visible_fraction=0.1, shrink=1.0,
+    )
+
+    assert len(samples) == 1
+    sample = samples[0]
+    assert sample.slot == "north"
+    assert sample.valid is not None and sample.valid.any() and not sample.valid.all()
+    assert np.allclose(sample.patch[sample.valid], 160.0, atol=1.0)
 
 
 def test_sample_visible_faces_rectifies_the_front_part_of_a_near_plane_face():

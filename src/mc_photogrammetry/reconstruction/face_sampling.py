@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from mc_photogrammetry.blocks.model_atlas import FACE_BASIS, FACE_SLOTS
-from mc_photogrammetry.domain.models import BlockCoordinate
+from mc_photogrammetry.domain.models import BlockCoordinate, BlockState
 from .camera import CameraModel, camera_space_points, intrinsics_for, project_clipped_polygon_uv
 from .scene import SceneTransform
 
@@ -58,10 +58,19 @@ class FaceSample:
     """
     valid: np.ndarray | None = None
     """Face-patch pixels surviving ownership and GUI masking."""
+    coverage: np.ndarray | None = None
+    """Fractional source ownership surviving each rectified patch pixel."""
 
     @property
     def pixels(self) -> np.ndarray:
         return self.patch.reshape(-1, 3) if self.valid is None else self.patch[self.valid]
+
+    @property
+    def weights(self) -> np.ndarray:
+        if self.coverage is None:
+            return np.ones(len(self.pixels), dtype=np.float32)
+        valid = np.ones(self.coverage.shape, dtype=bool) if self.valid is None else self.valid
+        return self.coverage[valid]
 
     @property
     def observed_patch(self) -> np.ndarray:
@@ -69,12 +78,15 @@ class FaceSample:
         if self.valid is None or self.valid.all():
             return self.patch
         result = self.patch.copy()
-        result[~self.valid] = self.pixels.mean(axis=0) if self.pixels.size else 0.0
+        result[~self.valid] = self.rgb if self.pixels.size else 0.0
         return result
 
     @property
     def rgb(self) -> np.ndarray:
-        return self.pixels.mean(axis=0)
+        pixels, weights = self.pixels, self.weights
+        if not len(pixels) or float(weights.sum()) <= 1e-6:
+            return np.zeros(3, dtype=np.float32)
+        return np.average(pixels, axis=0, weights=weights).astype(np.float32)
 
 
 def default_face_corners(slot: str) -> np.ndarray:
@@ -128,8 +140,13 @@ def rectify_face(image: np.ndarray, quad: np.ndarray, size: int = PATCH_SIZE) ->
 
 def rectify_face_valid(
     image: np.ndarray, quad: np.ndarray, source_valid: np.ndarray, size: int = PATCH_SIZE
-) -> tuple[np.ndarray, np.ndarray] | None:
-    """Rectify a patch and the source-pixel ownership mask through one warp."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    """Rectify RGB, validity and fractional ownership through one warp.
+
+    RGB is multiplied by source ownership before interpolation, then divided by
+    the interpolated ownership. This prevents invalid black (or HUD) pixels from
+    darkening a partially observed output pixel.
+    """
     if source_valid.shape != image.shape[:2]:
         raise ValueError("source_valid must match the image dimensions")
     if quad.shape != (4, 2) or size < 2:
@@ -145,18 +162,23 @@ def rectify_face_valid(
         [[0.0, 0.0], [native, 0.0], [native, native], [0.0, native]], dtype=np.float32
     )
     transform = cv2.getPerspectiveTransform(quad.astype(np.float32), destination)
+    source_coverage = source_valid.astype(np.float32)
+    weighted = image.astype(np.float32) * source_coverage[..., None]
     patch = cv2.warpPerspective(
-        image, transform, (native, native), flags=cv2.INTER_LINEAR,
-        borderMode=cv2.BORDER_REPLICATE,
-    )
-    valid = cv2.warpPerspective(
-        source_valid.astype(np.uint8), transform, (native, native), flags=cv2.INTER_NEAREST,
+        weighted, transform, (native, native), flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT, borderValue=0,
-    ).astype(bool)
+    )
+    coverage = cv2.warpPerspective(
+        source_coverage, transform, (native, native), flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT, borderValue=0,
+    )
     if native != size:
         patch = cv2.resize(patch, (size, size), interpolation=cv2.INTER_AREA)
-        valid = cv2.resize(valid.astype(np.float32), (size, size), interpolation=cv2.INTER_AREA) > 0.01
-    return patch.astype(np.float32), valid
+        coverage = cv2.resize(coverage, (size, size), interpolation=cv2.INTER_AREA)
+    valid = coverage > 0.01
+    np.divide(patch, coverage[..., None], out=patch, where=valid[..., None])
+    patch[~valid] = 0.0
+    return patch.astype(np.float32), valid, coverage.astype(np.float32)
 
 
 def _hidden_by(
@@ -242,6 +264,8 @@ def sample_visible_faces(
     rejections: MutableMapping[str, int] | None = None,
     occluding_slots: Mapping[BlockCoordinate, frozenset[str]] | None = None,
     depth_scale: float = DEPTH_SCALE,
+    blocks: Mapping[BlockCoordinate, BlockState] | None = None,
+    palette=None,
 ) -> list[FaceSample]:
     """Rectify every block face this camera can actually see.
 
@@ -249,6 +273,12 @@ def sample_visible_faces(
     them, and shrunk about their centre so a camera-pose error does not pull a
     neighbouring block into the sample. ``shrink`` trades resolution for that
     tolerance and should be set from how well the poses are actually known.
+
+    Supplying both ``blocks`` and ``palette`` switches ownership to the shared
+    exact-model renderer. The caller still receives rectified face patches, but
+    only pixels that the same alpha-tested model renderer attributes to that
+    cell/slot are evidence. Coordinate-only callers retain the cube fallback
+    while geometry is still unknown.
     """
     try:
         import cv2
@@ -256,6 +286,10 @@ def sample_visible_faces(
         return []
     if not 0.0 < shrink <= 1.0:
         raise ValueError("shrink must be within (0, 1]")
+    if (blocks is None) != (palette is None):
+        raise ValueError("blocks and palette must be supplied together for exact-model sampling")
+    if blocks is not None:
+        coordinates = set(blocks)
 
     def reject(reason: str) -> None:
         if rejections is not None:
@@ -264,10 +298,23 @@ def sample_visible_faces(
     height, width = image.shape[:2]
     eye = np.asarray(camera.position, dtype=float) + np.asarray([0.0, camera.eye_height, 0.0])
     quads: list[tuple[float, np.ndarray, np.ndarray, BlockCoordinate, str, float, np.ndarray]] = []
+    exact_faces = None
+    if blocks is not None:
+        from mc_photogrammetry.export.attribution import face_model_faces
+
+        exact_faces = face_model_faces(palette)
     for coordinate in coordinates:
         center = np.asarray(scene.to_world(coordinate), dtype=float) + 0.5
-        for slot in FACE_SLOTS:
-            normal = np.asarray(FACE_BASIS[slot][0], dtype=float)
+        state = None if blocks is None else blocks[coordinate]
+        records = () if exact_faces is None else exact_faces.get(state, exact_faces.get(state.name, ()))
+        specs = (
+            ((record[0], np.asarray(record[2], dtype=float), center + np.asarray(record[1], dtype=float))
+             for record in records)
+            if records else
+            ((slot, np.asarray(FACE_BASIS[slot][0], dtype=float), center + default_face_corners(slot))
+             for slot in FACE_SLOTS)
+        )
+        for slot, normal, world_corners in specs:
             towards = eye - center
             if float(normal @ towards) <= 0.05:
                 reject("back_facing")
@@ -278,12 +325,11 @@ def sample_visible_faces(
                 coordinate[1] + int(normal[1]),
                 coordinate[2] + int(normal[2]),
             )
-            if _hidden_by(neighbour, slot, coordinates, occluding_slots):
+            if blocks is None and _hidden_by(neighbour, slot, coordinates, occluding_slots):
                 reject("neighbour_occupied")
                 continue
-            world_corners = center + default_face_corners(slot)
             projected, _uv = project_clipped_polygon_uv(world_corners, camera, width=width, height=height)
-            if len(projected) < 3:
+            if len(projected) < 3 or len(world_corners) != 4:
                 reject("behind_camera")
                 continue
             quad = projected[:, :2].astype(np.float32)
@@ -311,7 +357,25 @@ def sample_visible_faces(
     # quantised a face's visible share into a handful of samples. A face is
     # planar, so its inverse depth is affine across the screen and can be
     # interpolated exactly.
-    buffer = _nearest_surface(quads, width, height, depth_scale)
+    buffer = None
+    exact_owners: dict[tuple[BlockCoordinate, str], np.ndarray] = {}
+    if blocks is not None:
+        from mc_photogrammetry.export.attribution import (
+            face_colours, face_model_faces, face_occluding_slots, face_shapes, render_result,
+        )
+
+        rendered, face_index = render_result(
+            blocks, scene, camera, width, height, face_colours(palette), face_shapes(palette),
+            scale=depth_scale, occluding_slots=face_occluding_slots(palette),
+            model_faces=face_model_faces(palette),
+        )
+        for identifier, owned in enumerate(face_index):
+            exact_owners[owned] = np.logical_or(
+                exact_owners.get(owned, np.zeros(rendered.ownership.shape, dtype=bool)),
+                rendered.ownership == identifier,
+            )
+    else:
+        buffer = _nearest_surface(quads, width, height, depth_scale)
 
     samples: list[FaceSample] = []
     for index, (depth, quad, _depths, coordinate, slot, facing, texture_quad) in enumerate(quads):
@@ -319,7 +383,19 @@ def sample_visible_faces(
         if area < minimum_area:
             reject("minimum_area")
             continue
-        visible = float((buffer == index).sum()) / (depth_scale * depth_scale)
+        if blocks is not None:
+            default_owner = np.zeros(
+                (
+                    max(1, int(round(height * depth_scale))),
+                    max(1, int(round(width * depth_scale))),
+                ),
+                dtype=bool,
+            )
+            source_owner = exact_owners.get((coordinate, slot), default_owner)
+        else:
+            assert buffer is not None
+            source_owner = buffer == index
+        visible = float(source_owner.sum()) / (depth_scale * depth_scale)
         # The raster buffer already clips to the frame. Compare surviving pixels
         # with the in-frame footprint, not the original face area, so an edge
         # face can still contribute its unobscured portion.
@@ -332,7 +408,7 @@ def sample_visible_faces(
         if visible < minimum_visible_fraction * in_frame_area:
             reject("visible_fraction")
             continue
-        source_valid = buffer == index
+        source_valid = source_owner
         if source_valid.shape != image.shape[:2]:
             source_valid = cv2.resize(
                 source_valid.astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST
@@ -345,7 +421,7 @@ def sample_visible_faces(
         if rectified is None:
             reject("rectify_failed")
             continue
-        patch, valid = rectified
+        patch, valid, coverage = rectified
         if not valid.any():
             reject("gui_mask")
             continue
@@ -353,7 +429,7 @@ def sample_visible_faces(
         samples.append(
             FaceSample(
                 coordinate, slot, patch, area, depth,
-                min(1.0, visible / max(area, 1e-6)), facing, valid,
+                min(1.0, visible / max(area, 1e-6)), facing, valid, coverage,
             )
         )
     return samples

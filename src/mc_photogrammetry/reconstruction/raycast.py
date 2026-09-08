@@ -714,7 +714,7 @@ def reconstruct_scene_surfaces(
             # still be recognised, because half the patch stops matching the
             # other half.
             observed_patch = sample.observed_patch
-            uniformity = _face_uniformity(observed_patch)
+            uniformity = _face_uniformity(observed_patch, sample.coverage)
             if uniformity > max_face_variation:
                 face_rejections["uniformity"] = face_rejections.get("uniformity", 0) + 1
                 continue
@@ -743,9 +743,9 @@ def reconstruct_scene_surfaces(
                 weight *= float(max(sample.facing, 0.0) ** obliquity_power)
             weight /= 1.0 + uniformity / max(uniformity_scale, 1e-6)
             raw.append((
-                frame_id, sample.coordinate, np.median(pixels, axis=0),
-                _patch_descriptor(observed_patch), sample.slot, weight,
-                _normalised_pattern(observed_patch), sample.area,
+                frame_id, sample.coordinate, sample.rgb,
+                _patch_descriptor(observed_patch, sample.coverage), sample.slot, weight,
+                _normalised_pattern(observed_patch, sample.coverage), sample.area,
             ))
 
     # Pass three: blocks whose faces were all too small, clipped or hidden behind
@@ -1272,7 +1272,7 @@ def _dominant_face_slot(
     return (("east", "west"), ("up", "down"), ("south", "north"))[axis][0 if positive else 1]
 
 
-def _face_uniformity(patch: np.ndarray) -> float:
+def _face_uniformity(patch: np.ndarray, coverage: np.ndarray | None = None) -> float:
     """Largest appearance gap between the quadrants of a face patch.
 
     One block face is one material, so its quadrants should agree. A large gap
@@ -1282,11 +1282,15 @@ def _face_uniformity(patch: np.ndarray) -> float:
     half = patch.shape[0] // 2
     if half < 1:
         return 0.0
-    quadrants = [
-        np.median(patch[y : y + half, x : x + half].reshape(-1, 3), axis=0)
-        for y in (0, half)
-        for x in (0, half)
-    ]
+    quadrants = []
+    for y in (0, half):
+        for x in (0, half):
+            pixels = patch[y : y + half, x : x + half].reshape(-1, 3)
+            weights = None if coverage is None else coverage[y : y + half, x : x + half].reshape(-1)
+            if weights is not None and float(weights.sum()) > 1e-6:
+                quadrants.append(np.average(pixels, axis=0, weights=weights))
+            else:
+                quadrants.append(np.mean(pixels, axis=0))
     return max(
         _appearance_distance(first, second)
         for index, first in enumerate(quadrants)
@@ -1414,10 +1418,14 @@ def _palette_face_textures(
     }
 
 
-def _normalised_pattern(patch: np.ndarray) -> np.ndarray | None:
+def _normalised_pattern(patch: np.ndarray, coverage: np.ndarray | None = None) -> np.ndarray | None:
     """Zero-mean, unit-norm luminance of a face patch, or ``None`` if it is flat."""
     luminance = patch.mean(axis=2).reshape(-1)
-    centred = luminance - luminance.mean()
+    weights = None if coverage is None else coverage.reshape(-1)
+    mean = float(np.average(luminance, weights=weights)) if weights is not None and float(weights.sum()) > 1e-6 else float(luminance.mean())
+    centred = luminance - mean
+    if weights is not None:
+        centred = centred * np.sqrt(np.clip(weights, 0.0, 1.0))
     norm = float(np.linalg.norm(centred))
     if norm < 1e-3:
         return None
@@ -2696,16 +2704,20 @@ def _texture_pattern_distance(observed: np.ndarray, encoded: str) -> float:
     return float(np.linalg.norm(actual_centered / actual_scale - expected_centered / expected_scale) / np.sqrt(actual.size))
 
 
-def _patch_descriptor(patch: np.ndarray) -> tuple[float, ...]:
+def _patch_descriptor(patch: np.ndarray, coverage: np.ndarray | None = None) -> tuple[float, ...]:
     pixels = patch.astype(np.float32).reshape(-1, 3)
+    weights = None if coverage is None else coverage.reshape(-1)
     normalized = pixels / np.maximum(pixels.sum(axis=1, keepdims=True), 1.0)
-    histogram = np.histogram(normalized[:, 0], bins=4, range=(0.0, 1.0), density=True)[0]
+    histogram = np.histogram(normalized[:, 0], bins=4, range=(0.0, 1.0), weights=weights, density=True)[0]
     luminance = pixels.mean(axis=1)
+    average = float(np.average(luminance, weights=weights)) if weights is not None and float(weights.sum()) > 1e-6 else float(luminance.mean())
+    variance = (float(np.average((luminance - average) ** 2, weights=weights))
+                if weights is not None and float(weights.sum()) > 1e-6 else float(luminance.var()))
     if patch.ndim == 2:
         gradients = np.abs(np.diff(luminance)).mean() if len(luminance) > 1 else 0.0
     else:
         gradients = np.abs(np.diff(patch.astype(np.float32).mean(axis=2), axis=0)).mean()
-    return tuple(float(value) for value in (*histogram, luminance.mean() / 255.0, luminance.std() / 255.0, gradients / 255.0))
+    return tuple(float(value) for value in (*histogram, average / 255.0, np.sqrt(variance) / 255.0, gradients / 255.0))
 
 
 def _rectify_projected_face(
