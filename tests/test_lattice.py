@@ -311,3 +311,86 @@ def test_measure_plane_reports_the_extent_it_actually_used():
     assert samples > 0
     assert extent != 1.0, "the extent should have become the region's own span"
     assert extent > 0.0
+
+
+def test_a_stated_length_gives_the_distance_to_the_plane():
+    """One image fixes a plane's shape and never its size.
+
+    A wall twice as far away with blocks twice as big is the same picture, so
+    distance has to come from something outside the image. A length the user
+    states is the cheapest such thing: no correspondence, no second view, and
+    nothing that Minecraft's repetition can defeat.
+    """
+    from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
+
+    width, height, focal = 800, 800, 500.0
+    axes = axis_directions(0.0, 0.0)
+    normal, first, second = plane_basis(2, axes)
+
+    # Two points four blocks apart on a wall six blocks away, projected by hand.
+    distance, apart = 6.0, 4.0
+    a = normal * distance
+    b = normal * distance + first * apart
+    def pixel(point):
+        return (width / 2.0 + point[0] * focal / point[2],
+                height / 2.0 - point[1] * focal / point[2])
+
+    found = scale_from_known_length(pixel(a), pixel(b), apart, 2, axes, focal,
+                                    (width, height))
+    assert found == pytest.approx(distance, rel=1e-6)
+
+
+def test_the_stated_length_scales_the_answer_linearly():
+    # Saying two points are twice as far apart puts the wall twice as far away.
+    from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
+
+    axes = axis_directions(0.0, 0.0)
+    args = ((520.0, 400.0), (620.0, 400.0), 2, axes, 500.0, (800, 800))
+    one = scale_from_known_length(args[0], args[1], 3.0, *args[2:])
+    two = scale_from_known_length(args[0], args[1], 6.0, *args[2:])
+    assert two == pytest.approx(2.0 * one, rel=1e-9)
+
+
+def test_a_nonsense_length_is_refused_rather_than_scaled():
+    from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
+
+    axes = axis_directions(0.0, 0.0)
+    assert scale_from_known_length((400.0, 400.0), (500.0, 400.0), 0.0, 2, axes,
+                                   500.0, (800, 800)) is None
+    # The same point twice states nothing about scale.
+    assert scale_from_known_length((400.0, 400.0), (400.0, 400.0), 3.0, 2, axes,
+                                   500.0, (800, 800)) is None
+
+
+def test_a_known_distance_settles_the_block_versus_texel_reading():
+    """The ambiguity this module has carried since it was written.
+
+    Both readings are consistent with one image and differ by sixteen. A stated
+    length picks the true one, and the loser is kept so the ambiguity stays in
+    the record rather than being quietly deleted.
+    """
+    from mc_photogrammetry.reconstruction.lattice import resolve_hypotheses
+
+    ranked = period_hypotheses(estimate_period(_striped(512, 32.0)),
+                               extent=2.0, samples=512)
+    block, texel = ranked.hypotheses[0], ranked.hypotheses[1]
+    assert block.plane_distance != pytest.approx(texel.plane_distance)
+
+    settled = resolve_hypotheses(ranked, texel.plane_distance)
+    assert settled.best.interpretation == texel.interpretation
+    assert len(settled.hypotheses) == 2, "the alternative must be retained"
+
+    other = resolve_hypotheses(ranked, block.plane_distance)
+    assert other.best.interpretation == block.interpretation
+
+
+def test_a_distance_agreeing_with_neither_reading_changes_no_ranking():
+    # A length that supports neither hypothesis is not evidence for the closer
+    # one; the ordering is left exactly as the image left it.
+    from mc_photogrammetry.reconstruction.lattice import resolve_hypotheses
+
+    ranked = period_hypotheses(estimate_period(_striped(512, 32.0)),
+                               extent=2.0, samples=512)
+    settled = resolve_hypotheses(ranked, 10_000.0)
+    assert [h.interpretation for h in settled.hypotheses] == \
+           [h.interpretation for h in ranked.hypotheses]

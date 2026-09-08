@@ -128,6 +128,106 @@ def sampling_for(extent: float, focal: float,
     return int(max(64, min(8192, round(2.0 * extent * focal * oversample))))
 
 
+def plane_coordinates(
+    points,
+    axis: int,
+    axis_matrix: np.ndarray,
+    focal: float,
+    image_size: tuple[int, int],
+    *,
+    principal_point: tuple[float, float] | None = None,
+) -> np.ndarray | None:
+    """Where image points land on the unit-distance plane, as ``(u, v)`` rows.
+
+    The same mapping `plane_window` uses, exposed because a user pointing at two
+    places on a wall needs it too.
+    """
+    width, height = image_size
+    centre_x, centre_y = principal_point or (width / 2.0, height / 2.0)
+    normal, first, second = plane_basis(axis, axis_matrix)
+    pixels = np.atleast_2d(np.asarray(points, dtype=float))
+    rays = np.stack([(pixels[:, 0] - centre_x) / focal,
+                     -(pixels[:, 1] - centre_y) / focal,
+                     np.ones(pixels.shape[0], dtype=float)], axis=1)
+    projected = rays @ normal
+    side = 1.0 if float(np.sum(projected > 0)) >= float(np.sum(projected < 0)) else -1.0
+    denominator = projected * side
+    if not np.all(np.abs(denominator) > 1e-9):
+        return None
+    on_plane = rays / denominator[:, None]
+    return np.stack([on_plane @ first, on_plane @ second], axis=1)
+
+
+def scale_from_known_length(
+    point_a,
+    point_b,
+    blocks_apart: float,
+    axis: int,
+    axis_matrix: np.ndarray,
+    focal: float,
+    image_size: tuple[int, int],
+    *,
+    principal_point: tuple[float, float] | None = None,
+) -> float | None:
+    """Distance to a plane, from a length the user states across it.
+
+    One image fixes a plane's *shape* and never its size: a wall twice as far
+    away with blocks twice as big is the same picture. Everything else in this
+    module works around that by reading the block grid, which leaves the
+    block-versus-texel ambiguity because both readings are consistent with the
+    same picture.
+
+    A stated length settles it outright and needs no correspondence, no second
+    view and no feature matching - which is what makes it the cheapest thing to
+    ask of a user, and the one constraint that survives Minecraft's repetition.
+    The user names two points on one surface and says how many blocks apart they
+    are; the plane's distance follows, because separation on the unit-distance
+    plane scales exactly with distance.
+
+    Both points must lie on the *same* plane. That is the user's assertion and
+    this cannot check it.
+    """
+    if blocks_apart <= 0.0:
+        return None
+    coordinates = plane_coordinates([point_a, point_b], axis, axis_matrix, focal,
+                                    image_size, principal_point=principal_point)
+    if coordinates is None or coordinates.shape[0] != 2:
+        return None
+    separation = float(np.linalg.norm(coordinates[1] - coordinates[0]))
+    if separation <= 1e-9:
+        return None
+    return blocks_apart / separation
+
+
+def resolve_hypotheses(
+    estimate: PeriodEstimate,
+    known_distance: float,
+    *,
+    tolerance: float = 0.25,
+) -> PeriodEstimate:
+    """Reorder the readings by which one a known distance actually supports.
+
+    `period_hypotheses` keeps both the block and texel readings because a single
+    image cannot separate them. A stated length can: whichever reading lands
+    nearer the distance it implies is the true one, and the loser is retained
+    rather than deleted so the ambiguity stays visible in the record.
+    """
+    if not estimate.hypotheses or known_distance <= 0.0:
+        return estimate
+    ranked = sorted(estimate.hypotheses,
+                    key=lambda h: abs(h.plane_distance - known_distance))
+    best = ranked[0]
+    agrees = abs(best.plane_distance - known_distance) <= tolerance * known_distance
+    return PeriodEstimate(
+        period_pixels=estimate.period_pixels,
+        phase_pixels=estimate.phase_pixels,
+        strength=estimate.strength,
+        block_supports=estimate.block_supports,
+        coarse_support=estimate.coarse_support,
+        hypotheses=tuple(ranked) if agrees else estimate.hypotheses,
+    )
+
+
 def plane_window(
     mask: np.ndarray,
     axis: int,
