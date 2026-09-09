@@ -1245,9 +1245,19 @@ def reconstruct_scene_surfaces(
             diagnostics=diagnostics,
             max_candidate_renders=partial_fit_max_renders,
         )
+        fit_support = (
+            diagnostics.get("shape_fit_supporting_frames", {})
+            if diagnostics is not None else {}
+        )
         for coordinate, state in fitted.items():
+            if state is None:
+                # ``None`` is an explicit, evidence-backed deletion from the
+                # sparse volume; an absent fit entry still means "retain".
+                volume.blocks.pop(coordinate, None)
+                continue
+            frame_ids = fit_support.get(str(coordinate), sorted(frames))
             volume.set(coordinate, BlockObservation(
-                state=state, confidence=0.0, frame_ids=sorted(frames)))
+                state=state, confidence=0.0, frame_ids=list(frame_ids)))
         if diagnostics is not None:
             diagnostics["residual_proposals"] = len(wanted)
             diagnostics["shapes_fitted"] = len(fitted)

@@ -133,7 +133,7 @@ def test_the_brighter_of_two_materials_wins_on_a_bright_photograph():
     blocks = {**floor, target: BlockState("minecraft:white_carpet")}
     fitted = fit_states([target], blocks, scene, {"a.png": camera},
                         {"a.png": photo}, palette)
-    if fitted:
+    if fitted and fitted[target] is not None:
         assert fitted[target].name == "minecraft:white_carpet"
 
 
@@ -220,6 +220,20 @@ def test_face_texture_sampling_rejects_an_excluded_usable_region():
     ) == []
 
 
+def test_face_texture_sampling_treats_missing_owned_slots_as_invisible():
+    from mc_photogrammetry.reconstruction.shape_fit import _face_patches
+
+    scene = _scene()
+    camera = CameraModel((2.5, 3.5, -4.0), yaw_degrees=0.0,
+                         pitch_degrees=35.0, fov_degrees=90.0)
+    image = np.full((120, 120, 3), 160, dtype=np.uint8)
+
+    assert _face_patches(
+        scene, camera, (2, 1, 3), CARPET, image, 1.0,
+        owner_masks={},
+    ) == []
+
+
 def test_the_shape_does_not_change_with_the_texture_weight():
     """Silhouette decides the shape; grain only decides the material.
 
@@ -237,7 +251,7 @@ def test_the_shape_does_not_change_with_the_texture_weight():
     for weight in (0.0, 1.0, 64.0):
         fitted = fit_states([target], blocks, scene, {"a.png": camera},
                             {"a.png": photo}, palette, texture_weight=weight)
-        if target in fitted:
+        if target in fitted and fitted[target] is not None:
             shapes.add("slab" if "slab" in fitted[target].name else "carpet")
     assert len(shapes) <= 1, f"the texture weight moved the shape: {shapes}"
 
@@ -252,7 +266,8 @@ def test_the_joint_mode_still_names_a_block():
                         {"a.png": np.full((120, 120, 3), 240, dtype=np.uint8)},
                         palette, shape_from_silhouette=False)
     for state in fitted.values():
-        assert state.name.startswith("minecraft:")
+        if state is not None:
+            assert state.name.startswith("minecraft:")
 
 
 def test_slab_beats_carpet_regardless_of_palette_order():
@@ -339,6 +354,64 @@ def test_an_empty_proposal_can_recover_a_real_slab():
     )
 
     assert fitted[target] == slab.state
+
+
+def test_air_can_explicitly_delete_an_occupied_cell():
+    """An occupied cell is removed when the photographed background wins."""
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = (carpet, slab)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    colours = face_colours(palette)
+    photo, _owner, _index, _depth = render_volume(
+        {}, scene, camera, 120, 120, colours, face_shapes(palette), scale=1.0,
+        ambient=True, occluding_slots=face_occluding_slots(palette),
+        model_faces=face_model_faces(palette),
+    )
+
+    fitted = fit_states(
+        [target], {target: slab.state}, scene, {"floor.png": camera},
+        {"floor.png": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert fitted[target] is None
+
+
+def test_all_excluded_pixels_abstain_without_a_fit():
+    palette, camera, floor = _fit_scene()
+    target = (2, 1, 3)
+    fitted = fit_states(
+        [target], floor, _scene(), {"blank.png": camera},
+        {"blank.png": np.zeros((120, 120, 3), dtype=np.uint8)}, palette,
+        usable_masks={"blank.png": np.zeros((120, 120), dtype=bool)},
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert fitted == {}
+
+
+@pytest.mark.parametrize("gain", (0.5, 1.5))
+def test_air_and_candidates_share_the_same_exposure_gain(gain):
+    palette, camera, floor = _fit_scene()
+    scene = _scene()
+    target = (2, 1, 3)
+    colours = face_colours(palette)
+    photo, _owner, _index, _depth = render_volume(
+        floor, scene, camera, 120, 120, colours, face_shapes(palette),
+        scale=1.0, ambient=True, occluding_slots=face_occluding_slots(palette),
+        model_faces=face_model_faces(palette),
+    )
+    frame = np.clip(np.rint(photo * gain), 0, 255).astype(np.uint8)
+
+    fitted = fit_states(
+        [target], floor, scene, {"floor.png": camera}, {"floor.png": frame},
+        palette, scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert target not in fitted
 
 
 def test_a_correct_cube_is_retained_over_partial_alternatives():

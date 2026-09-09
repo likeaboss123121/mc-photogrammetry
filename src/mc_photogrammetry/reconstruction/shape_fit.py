@@ -154,6 +154,72 @@ def _gradient(image: np.ndarray) -> np.ndarray:
     return np.sqrt(dx * dx + dy * dy)
 
 
+def _frame_masks(
+    frame_id: str,
+    image_shape: tuple[int, int],
+    scaled_shape: tuple[int, int],
+    usable_masks: Mapping[str, np.ndarray] | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the fixed usable domain at source and render resolutions.
+
+    An explicitly supplied mask is authoritative.  A missing mask for a frame is
+    treated as unusable rather than silently turning that frame into evidence.
+    The default GUI mask is kept for the ordinary diagnostic path.
+    """
+    import cv2
+
+    height, width = image_shape
+    if usable_masks is None:
+        from mc_photogrammetry.vision.gui_mask import create_gui_mask
+
+        source = ~create_gui_mask(height, width)
+    else:
+        supplied = usable_masks.get(frame_id)
+        if supplied is None:
+            source = np.zeros((height, width), dtype=bool)
+        else:
+            source = np.asarray(supplied, dtype=bool)
+            if source.shape != (height, width):
+                raise ValueError("usable mask must match the image dimensions")
+    if source.shape == scaled_shape:
+        return source, source.copy()
+    # Keep only output pixels whose source footprint is wholly usable.  This
+    # prevents an excluded HUD/pixel from bleeding into a downsampled score.
+    coverage = cv2.resize(
+        source.astype(np.float32), (scaled_shape[1], scaled_shape[0]),
+        interpolation=cv2.INTER_AREA,
+    )
+    scaled = coverage >= (1.0 - 1e-6)
+    return source, scaled
+
+
+def _score_image(
+    rendered: np.ndarray,
+    photo: np.ndarray,
+    valid: np.ndarray,
+    edge_weight: float,
+    photo_edges: np.ndarray,
+) -> float | None:
+    """Score one hypothesis over a fixed domain without invalid-edge leakage."""
+    import cv2
+
+    if valid.shape != rendered.shape[:2] or not valid.any():
+        return None
+    difference = np.linalg.norm(rendered - photo, axis=2)
+    if edge_weight > 0.0:
+        # Scharr reads a 3x3 neighbourhood.  Only use gradients whose complete
+        # neighbourhood is usable, so HUD/excluded pixels cannot affect them.
+        safe_gradient = valid & cv2.erode(
+            valid.astype(np.uint8), np.ones((3, 3), dtype=np.uint8),
+            iterations=1,
+        ).astype(bool)
+        if safe_gradient.any():
+            difference[safe_gradient] += edge_weight * np.abs(
+                _gradient(rendered)[safe_gradient] - photo_edges[safe_gradient]
+            )
+    return float(difference[valid].mean())
+
+
 def _window(scene, camera, coordinate, shape, scale):
     """Bounding box and silhouette mask of one cell, as this camera sees it."""
     import cv2
@@ -273,10 +339,13 @@ def _face_patches(
                 valid &= usable_mask
             if owner_masks is not None:
                 owner = owner_masks.get(slot)
-                if owner is not None:
-                    if owner.shape != (height, width):
-                        raise ValueError("owner mask must match the image dimensions")
-                    valid &= owner
+                # An explicitly supplied ownership map is authoritative.  A
+                # missing slot means that no pixels are owned by this face.
+                if owner is None:
+                    continue
+                if owner.shape != (height, width):
+                    raise ValueError("owner mask must match the image dimensions")
+                valid &= owner
             rectified = rectify_face_valid(image, quad, valid)
             if rectified is None:
                 continue
@@ -329,7 +398,7 @@ def fit_states(
     usable_masks: Mapping[str, np.ndarray] | None = None,
     diagnostics: MutableMapping[str, object] | None = None,
     max_candidate_renders: int | None = None,
-) -> dict[BlockCoordinate, BlockState]:
+) -> dict[BlockCoordinate, BlockState | None]:
     """Best partial state for each cell, judged against the photographs.
 
     ``blocks`` is the scene the cells stand in; the cells themselves are excluded
@@ -377,6 +446,8 @@ def fit_states(
     targets = set(cells)
     background_blocks = {c: s for c, s in blocks.items() if c not in targets}
     backgrounds, photos, edges, gains = {}, {}, {}, {}
+    source_masks: dict[str, np.ndarray] = {}
+    scaled_masks: dict[str, np.ndarray] = {}
     for frame_id, image in frames.items():
         camera = cameras.get(frame_id)
         if camera is None:
@@ -386,9 +457,27 @@ def fit_states(
                                            height, colours, block_shapes, scale,
                                            ambient=True, occluding_slots=occluding_slots,
                                            model_faces=model_faces)
-        photo = cv2.resize(image, (canvas.shape[1], canvas.shape[0]),
-                           interpolation=cv2.INTER_AREA).astype(np.float32)
-        lit = canvas.mean(axis=2) > 1.0
+        source_mask, usable_mask = _frame_masks(
+            frame_id, image.shape[:2], canvas.shape[:2], usable_masks,
+        )
+        # Downsample only usable source pixels.  A normal area resize would let
+        # excluded pixels influence neighbouring valid pixels at the boundary.
+        source_weight = source_mask.astype(np.float32)
+        weighted = cv2.resize(
+            image.astype(np.float32) * source_weight[..., None],
+            (canvas.shape[1], canvas.shape[0]), interpolation=cv2.INTER_AREA,
+        )
+        weights = cv2.resize(
+            source_weight, (canvas.shape[1], canvas.shape[0]),
+            interpolation=cv2.INTER_AREA,
+        )
+        photo = np.divide(
+            weighted, weights[..., None],
+            out=np.zeros_like(weighted), where=weights[..., None] > 1e-6,
+        )
+        source_masks[frame_id] = source_mask
+        scaled_masks[frame_id] = usable_mask
+        lit = (canvas.mean(axis=2) > 1.0) & usable_mask
         gain = (float(np.median(photo[lit].mean(axis=1)))
                 / max(float(np.median(canvas[lit].mean(axis=1))), 1e-6)) if lit.any() else 1.0
         backgrounds[frame_id] = canvas * gain
@@ -396,7 +485,8 @@ def fit_states(
         edges[frame_id] = _gradient(photo)
         gains[frame_id] = gain
 
-    chosen: dict[BlockCoordinate, BlockState] = {}
+    chosen: dict[BlockCoordinate, BlockState | None] = {}
+    supporting_frames: dict[BlockCoordinate, list[str]] = {}
     working_blocks = dict(blocks)
     for coordinate in cells:
         current_state = working_blocks.get(coordinate)
@@ -413,6 +503,8 @@ def fit_states(
                 scale, ambient=True, occluding_slots=occluding_slots,
                 model_faces=model_faces,
             )
+            # Air/current/candidates must use the same exposure convention.
+            context_backgrounds[frame_id] *= gains[frame_id]
             count("context_renders")
         # Render this cell as a full cube once to determine the scoring region.
         # It is deliberately independent of every hypothesis. Pixels where the
@@ -436,6 +528,7 @@ def fit_states(
             )
             count("probe_renders")
             usable = _coordinate_ownership(probe_render.ownership, probe_index, coordinate)
+            usable &= scaled_masks[frame_id]
             if int(usable.sum()) >= MINIMUM_PIXELS:
                 views.append((frame_id, camera, usable))
         if not views:
@@ -446,17 +539,17 @@ def fit_states(
         # Air is the unchanged background for an empty proposal. Existing
         # blocks get their own baseline below; either way, a proposal must beat
         # what is already there before it can alter the scene.
-        air_score = 0.0
+        air_scores = []
         for frame_id, _camera, usable in views:
-            difference = np.linalg.norm(
-                context_backgrounds[frame_id] - photos[frame_id], axis=2
+            score = _score_image(
+                context_backgrounds[frame_id], photos[frame_id], usable,
+                edge_weight, edges[frame_id],
             )
-            if edge_weight > 0.0:
-                difference = difference + edge_weight * np.abs(
-                    _gradient(context_backgrounds[frame_id]) - edges[frame_id]
-                )
-            air_score += float(difference[usable].mean())
-        air_score /= len(views)
+            if score is not None:
+                air_scores.append(score)
+        if not air_scores:
+            continue
+        air_score = float(np.mean(air_scores))
         baseline_score = air_score
         if current_state is not None:
             current_scores = []
@@ -469,20 +562,19 @@ def fit_states(
                     occluding_slots=occluding_slots, model_faces=model_faces,
                 )
                 painted = rendered.colour * gains[frame_id]
-                difference = np.linalg.norm(painted - photos[frame_id], axis=2)
-                if edge_weight > 0.0:
-                    difference = difference + edge_weight * np.abs(
-                        _gradient(painted) - edges[frame_id]
-                    )
-                current_scores.append(float(difference[usable].mean()))
+                score = _score_image(
+                    painted, photos[frame_id], usable, edge_weight, edges[frame_id],
+                )
+                if score is not None:
+                    current_scores.append(score)
             if current_scores:
                 baseline_score = float(np.mean(current_scores))
 
-        ranked: list[tuple[float, float, BlockState | None]] = [
-            (air_score, air_score, None)
+        ranked: list[tuple[float, float, float, BlockState | None]] = [
+            (air_score, air_score, air_score, None)
         ]
         if current_state is not None:
-            ranked.append((baseline_score, baseline_score, current_state))
+            ranked.append((baseline_score, baseline_score, baseline_score, current_state))
         for key, boxes in shapes.items():
             # The grain the candidate's own faces would show, gathered once per
             # shape and scored for every material that shares it.
@@ -498,14 +590,7 @@ def fit_states(
                         frames[frame_id].shape[:2], scale,
                     )
                     count("ownership_renders")
-                    if usable_masks is not None:
-                        mask = usable_masks.get(frame_id)
-                    else:
-                        from mc_photogrammetry.vision.gui_mask import create_gui_mask
-
-                        mask = ~create_gui_mask(
-                            frames[frame_id].shape[0], frames[frame_id].shape[1]
-                        )
+                    mask = source_masks[frame_id]
                     for slot, patch, weight, _valid, coverage in _face_patches(
                             scene, camera, coordinate, boxes, frames[frame_id], scale,
                             usable_mask=mask, owner_masks=owner_masks):
@@ -523,7 +608,9 @@ def fit_states(
                 if total_weight > 0.0:
                     texture_cost = pooled / total_weight
 
-            plain_best, joint_best, joint_state = None, None, None
+            plain_best, plain_state = None, None
+            joint_best, joint_state = None, None
+            plain_scores: dict[BlockState, float] = {}
             for state in materials[key]:
                 if (
                     max_candidate_renders is not None
@@ -544,48 +631,62 @@ def fit_states(
                     )
                     count("candidate_renders")
                     painted = rendered.colour * gains[frame_id]
-                    difference = np.linalg.norm(painted - photos[frame_id], axis=2)
-                    if edge_weight > 0.0:
-                        difference = difference + edge_weight * np.abs(
-                            _gradient(painted) - edges[frame_id])
-                    total += float(difference[usable].mean())
-                    counted += 1
+                    score = _score_image(
+                        painted, photos[frame_id], usable, edge_weight, edges[frame_id],
+                    )
+                    if score is not None:
+                        total += score
+                        counted += 1
                 if not counted:
                     continue
                 plain = total / counted
+                plain_scores[state] = plain
                 score = plain
                 if texture_cost is not None:
                     position = positions.get(state)
                     if position is not None:
                         score += texture_weight * float(texture_cost[position])
                 if plain_best is None or plain < plain_best:
-                    plain_best = plain
+                    plain_best, plain_state = plain, state
                 if joint_best is None or score < joint_best:
                     joint_best, joint_state = score, state
             if joint_state is not None:
-                ranked.append((plain_best, joint_best, joint_state))
+                # The selected material must itself pass the rendered evidence
+                # test; do not authorize it with another material's plain score.
+                selected_plain = plain_scores[joint_state]
+                shape_score = plain_best if shape_from_silhouette else joint_best
+                ranked.append((shape_score, selected_plain, joint_best, joint_state))
             if capped:
                 break
         if ranked:
             # Silhouette answers "which shape", grain answers "which material".
             # Letting the grain vote on the shape as well cost 2.9pp of family.
-            order = 0 if shape_from_silhouette else 1
-            best = min(ranked, key=lambda entry: entry[order])
-            plain_score, _joint_score, best_state = best
+            order = 0 if shape_from_silhouette else 2
+            _shape_score, selected_plain, _joint_score, best_state = min(
+                ranked, key=lambda entry: entry[order]
+            )
             # Keep air and the current state on ties or when a candidate does
             # not improve the rendered evidence. Returning only accepted edits
             # lets the caller preserve empty cells and existing geometry.
-            if best_state is not None and best_state == current_state:
+            if best_state is None and current_state is not None and selected_plain + 1e-6 < baseline_score:
+                # Explicit deletion is distinct from "no proposal": the caller
+                # must remove an occupied cell when air is the validated winner.
+                chosen[coordinate] = None
+                working_blocks.pop(coordinate, None)
+                supporting_frames[coordinate] = [frame_id for frame_id, _camera, _usable in views]
+            elif best_state is not None and best_state == current_state:
                 # Report the retained state for callers that use this function
                 # as a per-cell decision, while leaving the volume unchanged.
                 chosen[coordinate] = current_state
                 working_blocks[coordinate] = current_state
+                supporting_frames[coordinate] = [frame_id for frame_id, _camera, _usable in views]
             elif (
                 best_state is not None
-                and plain_score + 1e-6 < baseline_score
+                and selected_plain + 1e-6 < baseline_score
             ):
                 chosen[coordinate] = best_state
                 working_blocks[coordinate] = best_state
+                supporting_frames[coordinate] = [frame_id for frame_id, _camera, _usable in views]
         if capped:
             break
     if diagnostics is not None:
@@ -595,4 +696,8 @@ def fit_states(
         diagnostics["shape_fit_candidate_render_cap"] = max_candidate_renders
         diagnostics["shape_fit_candidate_render_cap_reached"] = capped
         diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
+        diagnostics["shape_fit_supporting_frames"] = {
+            str(coordinate): frames
+            for coordinate, frames in supporting_frames.items()
+        }
     return chosen
