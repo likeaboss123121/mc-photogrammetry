@@ -362,3 +362,32 @@ def test_a_correct_cube_is_retained_over_partial_alternatives():
     )
 
     assert fitted[target] == stone.state
+
+
+def test_shape_fit_reports_render_work_and_honours_a_candidate_cap():
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = (slab, carpet)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    photo, _owner, _index, _depth = render_volume(
+        {target: slab.state}, scene, camera, 120, 120, face_colours(palette),
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+    diagnostics = {}
+
+    fit_states(
+        [target], {}, scene, {"slab.png": camera},
+        {"slab.png": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=1.0,
+        diagnostics=diagnostics, max_candidate_renders=1,
+    )
+
+    assert diagnostics["shape_fit_context_renders"] >= 1
+    assert diagnostics["shape_fit_probe_renders"] >= 1
+    assert diagnostics["shape_fit_ownership_renders"] >= 1
+    assert diagnostics["shape_fit_candidate_renders"] == 1
+    assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
+    assert diagnostics["shape_fit_seconds"] >= 0.0

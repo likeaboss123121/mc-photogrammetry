@@ -55,6 +55,16 @@ def test_visible_multiview_exposes_opt_in_partial_shape_fitting():
     assert args.fit_partial_shapes is True
 
 
+def test_visible_multiview_exposes_partial_render_work_cap():
+    from mc_photogrammetry.cli import build_parser
+
+    args = build_parser().parse_args([
+        "reconstruct-visible-multiview", "images", "--partial-fit-max-renders", "17",
+    ])
+
+    assert args.partial_fit_max_renders == 17
+
+
 def test_calibrated_multiview_defaults_to_normal_mode_without_sidecars():
     from mc_photogrammetry.cli import build_parser
 

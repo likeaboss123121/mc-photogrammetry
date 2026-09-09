@@ -47,7 +47,8 @@ and only then the material by grain kept both. Together: 69.6% family unchanged,
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Mapping, Sequence
+import time
+from typing import Mapping, MutableMapping, Sequence
 
 import numpy as np
 
@@ -326,6 +327,8 @@ def fit_states(
     shape_from_silhouette: bool = True,
     families: Sequence[str] = PARTIAL_FAMILIES,
     usable_masks: Mapping[str, np.ndarray] | None = None,
+    diagnostics: MutableMapping[str, object] | None = None,
+    max_candidate_renders: int | None = None,
 ) -> dict[BlockCoordinate, BlockState]:
     """Best partial state for each cell, judged against the photographs.
 
@@ -333,6 +336,21 @@ def fit_states(
     from the background so each is judged against the same picture.
     """
     import cv2
+
+    if max_candidate_renders is not None and max_candidate_renders < 0:
+        raise ValueError("max_candidate_renders cannot be negative")
+
+    started = time.perf_counter()
+    render_counts = {
+        "context_renders": 0,
+        "probe_renders": 0,
+        "ownership_renders": 0,
+        "candidate_renders": 0,
+    }
+    capped = False
+
+    def count(name: str) -> None:
+        render_counts[name] += 1
 
     shapes, materials = candidate_states(
         palette, families, include_full_cubes=True
@@ -395,6 +413,7 @@ def fit_states(
                 scale, ambient=True, occluding_slots=occluding_slots,
                 model_faces=model_faces,
             )
+            count("context_renders")
         # Render this cell as a full cube once to determine the scoring region.
         # It is deliberately independent of every hypothesis. Pixels where the
         # cube is hidden by the surrounding scene cannot be evidence for any
@@ -415,6 +434,7 @@ def fit_states(
                 colours, block_shapes, scale, ambient=True,
                 occluding_slots=occluding_slots, model_faces=model_faces,
             )
+            count("probe_renders")
             usable = _coordinate_ownership(probe_render.ownership, probe_index, coordinate)
             if int(usable.sum()) >= MINIMUM_PIXELS:
                 views.append((frame_id, camera, usable))
@@ -477,6 +497,7 @@ def fit_states(
                         colours, block_shapes, occluding_slots, model_faces,
                         frames[frame_id].shape[:2], scale,
                     )
+                    count("ownership_renders")
                     if usable_masks is not None:
                         mask = usable_masks.get(frame_id)
                     else:
@@ -504,6 +525,12 @@ def fit_states(
 
             plain_best, joint_best, joint_state = None, None, None
             for state in materials[key]:
+                if (
+                    max_candidate_renders is not None
+                    and render_counts["candidate_renders"] >= max_candidate_renders
+                ):
+                    capped = True
+                    break
                 table = colours.get(state.name, {})
                 if not table:
                     continue
@@ -515,6 +542,7 @@ def fit_states(
                         candidate_blocks, scene, camera, width, height, colours, block_shapes, scale,
                         ambient=True, occluding_slots=occluding_slots, model_faces=model_faces,
                     )
+                    count("candidate_renders")
                     painted = rendered.colour * gains[frame_id]
                     difference = np.linalg.norm(painted - photos[frame_id], axis=2)
                     if edge_weight > 0.0:
@@ -536,6 +564,8 @@ def fit_states(
                     joint_best, joint_state = score, state
             if joint_state is not None:
                 ranked.append((plain_best, joint_best, joint_state))
+            if capped:
+                break
         if ranked:
             # Silhouette answers "which shape", grain answers "which material".
             # Letting the grain vote on the shape as well cost 2.9pp of family.
@@ -556,4 +586,13 @@ def fit_states(
             ):
                 chosen[coordinate] = best_state
                 working_blocks[coordinate] = best_state
+        if capped:
+            break
+    if diagnostics is not None:
+        diagnostics.update({
+            f"shape_fit_{name}": value for name, value in render_counts.items()
+        })
+        diagnostics["shape_fit_candidate_render_cap"] = max_candidate_renders
+        diagnostics["shape_fit_candidate_render_cap_reached"] = capped
+        diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
     return chosen

@@ -111,6 +111,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--fit-partial-shapes", action="store_true",
         help="opt in to renderer-backed fitting of slabs, stairs, carpets and other partial models",
     )
+    surfaces.add_argument(
+        "--partial-fit-max-renders", type=int,
+        help="optional work cap for partial-shape candidate renders (developer validation)",
+    )
     surfaces.add_argument("--minecraft-jar", type=Path, help="local Minecraft client JAR for texture palette")
 
     compare = commands.add_parser("compare", help="compare a candidate to a reference litematic")
@@ -386,6 +390,7 @@ def main() -> int:
             adjacency_min_neighbors=args.adjacency_min_neighbors,
             fit_partial_shapes=args.fit_partial_shapes,
             shape_palette=shape_palette,
+            partial_fit_max_renders=args.partial_fit_max_renders,
         )
         if not volume.blocks:
             raise SystemExit("No visible surface blocks landed inside the calibrated scene.")

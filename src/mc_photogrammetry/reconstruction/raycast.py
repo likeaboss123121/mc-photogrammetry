@@ -493,6 +493,7 @@ def reconstruct_scene_surfaces(
     extra_proposals: set[BlockCoordinate] | None = None,
     fit_partial_shapes: bool = FIT_PARTIAL_SHAPES,
     shape_palette: tuple[PaletteColor, ...] | None = None,
+    partial_fit_max_renders: int | None = None,
     proposal_limit: int = PROPOSAL_LIMIT,
     dim_spread_threshold: float = DIM_SPREAD_THRESHOLD,
     light_cast: tuple[float, float, float] = LIGHT_CAST,
@@ -1241,6 +1242,8 @@ def reconstruct_scene_surfaces(
         fitted = fit_states(
             list(wanted), settled, scene, cameras, frames, fitting,
             usable_masks=usable_masks,
+            diagnostics=diagnostics,
+            max_candidate_renders=partial_fit_max_renders,
         )
         for coordinate, state in fitted.items():
             volume.set(coordinate, BlockObservation(
