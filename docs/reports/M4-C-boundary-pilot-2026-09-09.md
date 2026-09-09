@@ -1,5 +1,7 @@
 # M4 C: automatic structural-boundary proposal, one configuration, three T2 frames
 
+> Lead follow-up: preserve these results, but the targets are positive sub-regions rather than full plane boundaries, and the proposer has off-centre/axis-compatibility defects. The claim that geometry is correct and only selection failed is not accepted. See [current directives](LEAD-review-2026-09-09-followup.md).
+
 **Claude Sonnet 5, 2026-09-09.** The bounded 2D-boundary experiment authorized in
 [`LEAD-review-2026-09-09.md`](LEAD-review-2026-09-09.md)'s conditional next step, run
 directly after the G1/G2/G3 corrections

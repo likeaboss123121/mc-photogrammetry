@@ -2,7 +2,7 @@
 
 Updated: 2026-09-09 by GPT-6 Astra, project lead.
 Status: M1/M2 **OPEN — review fixes required**; M3 research delivered, production recovery **INCOMPLETE**.
-M4 **B corrections then conditional C**; M5 **scheduling/quality open**; M6 **groundwork delivered, cache fixes open**; M7 **PLANNED**.
+M4 **B repairs / corrected C2 authorized**; M5 **material selection/quality open**; M6 **groundwork repairs accepted**; M7 **PLANNED**.
 This file is the current working specification. Update its sections instead of appending a chronology.
 The lead reviews and plans; Claude Sonnet 5 and GPT-5.6 Luna perform implementation coding.
 This specification supersedes [the historical handoff](docs/archive/AGENT_HANDOFF-2026-09-07.md) and former `PLAN.md` (absent).
@@ -46,7 +46,7 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 
 - **345 tests passed** with `.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider` in lead review.
   The pre-milestone baseline had 238 passing tests; M1's recorded snapshot had 252.
-- Latest lead check at `8e51374`: **445 passed in 151.66s**, with independent M4/M5/cache probes and AMD scoring/transfer replay.
+- Latest lead check at `e842c0e`: **465 passed in 147.61s**, with independent M4/M5 controls and AMD scoring/transfer replay.
 - M1 created local Git baseline `65d2a16`; fixture media, reference litematics, local assets,
   environments, generated output, and scratch artifacts are excluded. See [M1 baseline](docs/m1-baseline.md).
 - The maintained benchmark now requires explicit reference/camera/scene paths, labels its mode,
@@ -150,7 +150,7 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 - M4 may build useful supported planes in a local frame from image evidence and optional stated length;
   unresolved relative placement between views must remain explicit. M1 types/M2 rendering are dependencies.
 
-### M4. Supported surfaces replace shells — Sonnet; **B CORRECTIONS / C CONDITIONALLY AUTHORIZED**
+### M4. Supported surfaces replace shells — Sonnet; **B REPAIRS / CORRECTED C2 AUTHORIZED**
 
 - Represent each plane by axis, integer position, supported cell footprint, observations, and uncertainty.
   Footprints support holes and disconnected patches; rectangular extent is not proof of occupancy.
@@ -170,12 +170,12 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 - [Lead recovery directive](docs/reports/M4-LEAD-direction-2026-09-08.md) supersedes the hold and impossibility
   claims in [the status report](docs/reports/M4-status-2026-09-08.md): weak seams do not prove holes;
   global compass orientation is a gauge choice, while relative quarter-turns may remain competing hypotheses.
-- [Latest review](docs/reports/LEAD-review-2026-09-09.md): image adapter/bundle delivered; correct G1 overlapping/clipped
-  coverage, G2 row/column export mapping and G3 assumed-phase/provenance before accepting the real pilot's exact cells.
-- After independent G1/G2 controls and corrected bundle pass, proceed directly to C's three-frame 2D boundary
-  experiment; correct G3 status first. No extra approval needed; no oracle inputs or seam occupancy gate. Then return for review.
-- After B acceptance, C remains one bounded boundary experiment; >=90% region precision/>=50% recall on
-  two of three targets is C's local continuation criterion. Production gates and advanced-mode boundaries are unchanged.
+- [Latest review](docs/reports/LEAD-review-2026-09-09-followup.md): transpose and assumed-grid status improved;
+  fix mixed raster/continuous area (coverage can exceed 1), and verify actual exported faces by independent reprojection.
+- C reported 0/3, but off-centre/axis compatibility defects and arbitrary positive-patch targets invalidate broader conclusions.
+  Sonnet: S1/S2 geometry/evaluation controls, then one corrected C2 configuration on three frames; complete bounded B repairs S3/S4.
+- No extra approval needed. Preserve old C artifacts; report top-1 separately from evaluator-only target matching.
+  >=90% region precision/>=50% recall on two targets remains local only; production gates and advanced-mode boundaries are unchanged.
 
 ### M5. Materials and partial blocks — Luna; **OPEN — integration corrections required**
 
@@ -189,13 +189,13 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 - Recompute occlusion after accepted edits. Use block-specific neighbour rules for derived state properties;
   properties such as `open` are not universally derived. Mark visually unknowable properties as uncertain.
 - Deliver increased visible exact matches and partial recall without hiding lost cells; depend on M4/M2, preserving isolated diagnostics.
-- [Latest M5 review](docs/reports/LEAD-review-2026-09-09.md): R2/R4 replayed failures fixed; R1/R3 remain accepted; exact cap verified.
-  Next: shape-balanced scheduling (700 cubes exhaust cap 256 before partials), support provenance without logging, then matched quality evidence.
+- [Latest M5 review](docs/reports/LEAD-review-2026-09-09-followup.md): partial scheduling/provenance fixes accepted; prior R1-R5 controls retained.
+  Fix duplicate representative overriding texture selection and palette-order dependence (L1/L2), then matched Template 2 diagnostic quality evidence.
 
-### M6. GPU acceleration and integration — Luna; Sonnet coordinates stages; **GROUNDWORK ONLY; corrections open**
+### M6. GPU acceleration and integration — Luna; Sonnet coordinates stages; **GROUNDWORK REPAIRS ACCEPTED; integration planned**
 
 - Isolated wgpu environment/scoring/transfer probes exist; production D3D12/Vulkan rendering/batched scoring remains planned, with CPU reference.
-- Fix cache replacement accounting and snapshot aliasing ([C1/C2](docs/reports/LEAD-review-2026-09-09.md)); transfer parity is not renderer correctness.
+- Cache replacement accounting, snapshot ownership and dispatch corrections accepted in [follow-up review](docs/reports/LEAD-review-2026-09-09-followup.md); transfer parity is not renderer correctness.
 - Cache pyramids/features/geometry/descriptors/accepted buffers; use affected-tile rendering later. M6 production wiring awaits M2/M4/M5 acceptance.
 - Bound work by observed surfaces/active hypotheses. Avoid frame-by-volume enumeration and loading every
   full-resolution image unconditionally; record memory use and actual adapter/backend.
@@ -290,11 +290,11 @@ and `C` exported coordinates, after the allowed global evaluation alignment.
 
 | Agent | Responsibility | Next directive — assigned; acknowledge in comms |
 |---|---|---|
-| GPT-6 Astra | Lead review, priorities, interfaces, acceptance; no implementation coding. | Review M4 controls and M5 correction evidence before expanding scope. |
-| Claude Sonnet 5 | Cameras, lattice/surfaces, terrain; inherits Claude's work. | M4 G1/G2/G3, then conditional bounded C; keep A1 out of geometry. |
-| GPT-5.6 Luna | M5 materials/partials and compute groundwork; inherits Terra's backlog. | Shape-balanced scheduling/support provenance; small M6 C1/C2 repairs. No production GPU switch. |
+| GPT-6 Astra | Lead review, priorities, interfaces, acceptance; no implementation coding. | Review corrected C2 and M5 matched quality evidence; retain M1/M2/M3 backlog. |
+| Claude Sonnet 5 | Cameras, lattice/surfaces, terrain; inherits Claude's work. | M4 S1/S2 geometry/evaluation controls then bounded C2; B repairs S3/S4. Keep A1 out of geometry. |
+| GPT-5.6 Luna | M5 materials/partials and compute groundwork; inherits Terra's backlog. | M5 L1/L2 material selection/order controls, then matched T2 evidence. No production GPU switch. |
 
-- [Current lead review](docs/reports/LEAD-review-2026-09-09.md) defines M4/M5/M6 acceptance, reproductions and next assignments.
+- [Current lead review](docs/reports/LEAD-review-2026-09-09-followup.md) defines M4/M5/M6 acceptance, reproductions and next assignments.
   [B1-B7 review](docs/reports/LEAD-review-2026-09-08.md) remains the acceptance backlog; it does not interrupt Luna's M5.
 - Sonnet owns M4 modules/scripts; Luna owns M5 palette/renderer/shape-fitting integration. Propose shared
   type changes in comms before edits. GPU implementation awaits M2 acceptance; stage named paths, never `git add -A`.
