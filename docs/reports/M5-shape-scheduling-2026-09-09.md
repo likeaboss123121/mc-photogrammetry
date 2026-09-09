@@ -26,8 +26,7 @@ supporting frames for each accepted edit. The raycast integration consumes that
 required result channel directly, so enabling optional diagnostics cannot change
 block provenance or silently fall back to every input frame.
 
-Focused shape-fit, raycast, and CLI tests pass. The workspace currently has 466
-collected tests, and the final full `.venv` run passes all 467. No fixture sweep
+Focused shape-fit, raycast, and CLI tests pass. The workspace currently has 483 collected tests, and the final full `.venv` run passes all 483. No fixture sweep
 or production-quality claim is made by this bounded control.
 
 ## L1/L2 material-selection correction
@@ -41,5 +40,7 @@ per shape, preserving the global render budget and palette-order independence.
 
 Forward, reversed, and shuffled two-material slab controls all select the
 evidence-matching material; cube-heavy slab/carpet/cube controls and multiview cap
-controls remain green. The final full `.venv` run passes all 467 collected tests.
+controls remain green. The final full `.venv` run passes all 483 collected tests.
+
+
 
