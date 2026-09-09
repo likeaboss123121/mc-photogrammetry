@@ -75,3 +75,13 @@ geometry, descriptor, and accepted-buffer artifacts. It accounts for each
 entry's byte size, updates LRU order on access, evicts whole entries when the
 configured budget is exceeded, and rejects values without a measurable size
 unless the caller supplies one. Focused cache and buffer tests pass.
+
+## Closure boundary for review
+
+The Luna-owned M6 acceleration bundle is complete: isolated adapter discovery,
+reusable batched scoring, bounded frame and artifact caches, and renderer-buffer
+transfer parity are implemented and regression-tested. Production call-site
+wiring (one CLI/desktop pipeline, overlays, review controls, and resume-aware
+application state) remains the Sonnet integration boundary and depends on the
+M2/M4/M5 production contracts. No CPU default was changed while those upstream
+quality gates remain open.
