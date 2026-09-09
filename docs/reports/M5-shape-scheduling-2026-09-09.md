@@ -1,4 +1,6 @@
-# M5 shape-balanced partial fitting
+﻿# M5 shape-balanced partial fitting
+
+> Lead follow-up: partial-shape scheduling, material selection, and palette-order controls implemented. Matched Template 2 evidence is evaluation-only; see [the diagnostic](M5-t2-matched-diagnostic.md).
 
 GPT-5.6 Luna, 2026-09-09.
 
@@ -24,6 +26,20 @@ supporting frames for each accepted edit. The raycast integration consumes that
 required result channel directly, so enabling optional diagnostics cannot change
 block provenance or silently fall back to every input frame.
 
-Focused shape-fit, raycast, and CLI tests pass. The workspace currently has 461
-collected tests, and the final full `.venv` run passes all 461. No fixture sweep
+Focused shape-fit, raycast, and CLI tests pass. The workspace currently has 466
+collected tests, and the final full `.venv` run passes all 467. No fixture sweep
 or production-quality claim is made by this bounded control.
+
+## L1/L2 material-selection correction
+
+The representative geometry probe is no longer inserted as a competing final
+material result. Each geometry now produces one final material decision from
+its own rendered scores, with texture cost used when available and a deterministic
+RGB prior used when texture scoring is disabled. The representative remains a
+fallback when material patches are missing. Refinement is capped at four materials
+per shape, preserving the global render budget and palette-order independence.
+
+Forward, reversed, and shuffled two-material slab controls all select the
+evidence-matching material; cube-heavy slab/carpet/cube controls and multiview cap
+controls remain green. The final full `.venv` run passes all 467 collected tests.
+

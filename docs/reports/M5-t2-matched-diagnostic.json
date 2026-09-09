@@ -1,0 +1,548 @@
+{
+  "template": "Template 2",
+  "mode": "supplied-camera diagnostic",
+  "reference": "templates 2\\Template 2.litematic",
+  "camera_manifest": "templates 2\\cameras.json",
+  "scene": "templates 2\\scene.json",
+  "masks": {
+    "2026-09-02_13.22.14.png": "docs\\evaluation_masks\\templates-2\\2026-09-02_13.22.14.json",
+    "2026-09-02_13.24.24.png": "docs\\evaluation_masks\\templates-2\\2026-09-02_13.24.24.json",
+    "2026-09-02_13.24.33.png": "docs\\evaluation_masks\\templates-2\\2026-09-02_13.24.33.json"
+  },
+  "frozen_cell_set": {
+    "baseline_settled_cells": 814,
+    "residual_proposals": 40,
+    "coordinates": [
+      [
+        1,
+        1,
+        12
+      ],
+      [
+        1,
+        3,
+        10
+      ],
+      [
+        2,
+        1,
+        1
+      ],
+      [
+        2,
+        1,
+        2
+      ],
+      [
+        2,
+        1,
+        13
+      ],
+      [
+        2,
+        1,
+        14
+      ],
+      [
+        3,
+        1,
+        3
+      ],
+      [
+        3,
+        1,
+        4
+      ],
+      [
+        3,
+        1,
+        13
+      ],
+      [
+        3,
+        1,
+        14
+      ],
+      [
+        3,
+        1,
+        15
+      ],
+      [
+        4,
+        1,
+        1
+      ],
+      [
+        4,
+        1,
+        2
+      ],
+      [
+        4,
+        1,
+        3
+      ],
+      [
+        4,
+        1,
+        4
+      ],
+      [
+        4,
+        1,
+        13
+      ],
+      [
+        4,
+        1,
+        14
+      ],
+      [
+        4,
+        1,
+        15
+      ],
+      [
+        4,
+        3,
+        8
+      ],
+      [
+        5,
+        1,
+        4
+      ],
+      [
+        5,
+        1,
+        13
+      ],
+      [
+        5,
+        1,
+        14
+      ],
+      [
+        5,
+        2,
+        8
+      ],
+      [
+        6,
+        1,
+        2
+      ],
+      [
+        6,
+        1,
+        3
+      ],
+      [
+        6,
+        1,
+        4
+      ],
+      [
+        6,
+        1,
+        10
+      ],
+      [
+        6,
+        1,
+        13
+      ],
+      [
+        6,
+        1,
+        14
+      ],
+      [
+        6,
+        1,
+        15
+      ],
+      [
+        6,
+        2,
+        1
+      ],
+      [
+        6,
+        2,
+        2
+      ],
+      [
+        6,
+        2,
+        9
+      ],
+      [
+        6,
+        3,
+        1
+      ],
+      [
+        6,
+        3,
+        10
+      ],
+      [
+        7,
+        1,
+        1
+      ],
+      [
+        7,
+        1,
+        2
+      ],
+      [
+        7,
+        2,
+        1
+      ],
+      [
+        7,
+        2,
+        10
+      ],
+      [
+        7,
+        3,
+        7
+      ]
+    ]
+  },
+  "settings": {
+    "palette": "VanillaJarTextureProvider.canonical_palette",
+    "jar": "C:\\Users\\Likea\\AppData\\Roaming\\.minecraft\\versions\\1.21.5\\1.21.5.jar",
+    "fit_partial_shapes": true,
+    "partial_fit_max_renders": 256,
+    "proposal_limit": 40,
+    "correct_light_cast": true
+  },
+  "before": {
+    "blocks": 814,
+    "exact_all": 678,
+    "partial_total": 69,
+    "partial_exact": 0,
+    "partial_recall": 0.0,
+    "correct_coords": 678,
+    "seconds": 108.28022439987399,
+    "reconstruction_diagnostics": {
+      "proposed_cells": 23,
+      "proposed_cells_new": 23,
+      "face_rejections": {
+        "accepted": 1211,
+        "back_facing": 7119,
+        "behind_camera": 192,
+        "gui_mask": 155,
+        "neighbour_occupied": 5105,
+        "off_frame": 389,
+        "uniformity": 228,
+        "visible_fraction": 67
+      },
+      "resolved_face_samples": 1071,
+      "fallback_samples": 2771,
+      "blocks_with_resolved_face": 556,
+      "blocks_from_fallback_only": 1277,
+      "mean_upward_evidence_share": 0.03332018633732564,
+      "coords_with_any_observation": 1833,
+      "blocks_seen_only_from_above": 59,
+      "scene_spread": 1.482,
+      "frame_exposure_gains": {
+        "2026-09-02_13.22.14.png": 1.0136,
+        "2026-09-02_13.24.24.png": 1.0195,
+        "2026-09-02_13.24.33.png": 0.9677
+      },
+      "detected_emitters": 0,
+      "scene_brightness": 0.967,
+      "merged_coordinates": 1833,
+      "restored_after_pruning": 23
+    }
+  },
+  "after": {
+    "blocks": 818,
+    "exact_all": 678,
+    "partial_total": 69,
+    "partial_exact": 0,
+    "partial_recall": 0.0,
+    "correct_coords": 678,
+    "seconds": 566.7518941999879,
+    "shape_fit_seconds": 458.4716698001139,
+    "shape_fit_diagnostics": {
+      "shape_fit_background_renders": 3,
+      "shape_fit_context_renders": 33,
+      "shape_fit_probe_renders": 28,
+      "shape_fit_ownership_renders": 96,
+      "shape_fit_current_renders": 0,
+      "shape_fit_candidate_renders": 256,
+      "shape_fit_candidate_render_cap": 256,
+      "shape_fit_candidate_render_cap_reached": true,
+      "shape_fit_render_work": 416,
+      "shape_fit_seconds": 458.458977,
+      "shape_fit_considered_shapes": [
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:bamboo_block",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:spruce_wood",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:spruce_wood",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:spruce_wood",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:smooth_sandstone",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:white_stained_glass",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:oak_wood",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:spruce_log",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:brown_stained_glass",
+        "minecraft:vault",
+        "minecraft:honey_block",
+        "minecraft:slime_block",
+        "minecraft:spruce_wood"
+      ],
+      "shape_fit_material_refinements": [
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:bookshelf",
+        "minecraft:bookshelf",
+        "minecraft:bookshelf",
+        "minecraft:oak_log",
+        "minecraft:oak_log",
+        "minecraft:oak_log",
+        "minecraft:orange_glazed_terracotta",
+        "minecraft:orange_glazed_terracotta",
+        "minecraft:orange_glazed_terracotta",
+        "minecraft:orange_glazed_terracotta",
+        "minecraft:orange_glazed_terracotta",
+        "minecraft:orange_glazed_terracotta",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:dark_oak_planks",
+        "minecraft:dark_oak_planks",
+        "minecraft:dark_oak_planks",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:stripped_dark_oak_log",
+        "minecraft:stripped_dark_oak_log",
+        "minecraft:stripped_dark_oak_log",
+        "minecraft:dark_oak_log",
+        "minecraft:dark_oak_log",
+        "minecraft:dark_oak_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:dark_oak_planks",
+        "minecraft:dark_oak_planks",
+        "minecraft:dark_oak_planks",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:birch_planks",
+        "minecraft:birch_planks",
+        "minecraft:birch_planks",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:crafter",
+        "minecraft:crafter",
+        "minecraft:crafter",
+        "minecraft:crafter",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:stripped_birch_log",
+        "minecraft:stripped_birch_log",
+        "minecraft:stripped_birch_wood",
+        "minecraft:stripped_birch_log",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:loom",
+        "minecraft:loom",
+        "minecraft:loom",
+        "minecraft:piston",
+        "minecraft:piston",
+        "minecraft:piston",
+        "minecraft:crafting_table",
+        "minecraft:crafting_table",
+        "minecraft:crafting_table",
+        "minecraft:smoker",
+        "minecraft:smoker",
+        "minecraft:smoker",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:dark_oak_planks",
+        "minecraft:dark_oak_planks",
+        "minecraft:dark_oak_planks",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_wood",
+        "minecraft:spruce_wood",
+        "minecraft:spruce_wood",
+        "minecraft:dark_oak_log",
+        "minecraft:dark_oak_log",
+        "minecraft:dark_oak_log",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:birch_log",
+        "minecraft:birch_log",
+        "minecraft:spruce_log",
+        "minecraft:spruce_log",
+        "minecraft:dark_oak_log",
+        "minecraft:dark_oak_log",
+        "minecraft:stripped_dark_oak_log",
+        "minecraft:stripped_dark_oak_log",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:vault",
+        "minecraft:dark_oak_planks",
+        "minecraft:dark_oak_planks",
+        "minecraft:spruce_log"
+      ],
+      "shape_fit_unresolved_budget_exits": [
+        {
+          "coordinate": [
+            1,
+            3,
+            10
+          ],
+          "phase": "material_refinement"
+        }
+      ],
+      "shape_fit_supporting_frames": {
+        "(2, 1, 1)": [
+          "2026-09-02_13.24.24.png"
+        ],
+        "(6, 2, 1)": [
+          "2026-09-02_13.24.24.png"
+        ],
+        "(5, 1, 14)": [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.24.png",
+          "2026-09-02_13.24.33.png"
+        ],
+        "(4, 1, 14)": [
+          "2026-09-02_13.22.14.png",
+          "2026-09-02_13.24.33.png"
+        ]
+      }
+    }
+  },
+  "delta": {
+    "lost_correct_cells": 0,
+    "additions": 4,
+    "deletions": 0,
+    "added_coordinates": [
+      [
+        2,
+        1,
+        1
+      ],
+      [
+        4,
+        1,
+        14
+      ],
+      [
+        5,
+        1,
+        14
+      ],
+      [
+        6,
+        2,
+        1
+      ]
+    ],
+    "deleted_coordinates": []
+  },
+  "production_promotion": false
+}
