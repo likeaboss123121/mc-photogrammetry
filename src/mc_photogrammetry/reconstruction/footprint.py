@@ -164,22 +164,31 @@ material guess. Nothing about this module infers what block is actually
 there - only that the geometry is real."""
 
 
-def footprint_to_volume(footprint: DeclaredFootprint):
-    """A `BlockVolume` for the footprint's resolved cells - `supported`
-    cells get the neutral placeholder, `opening` cells get an explicit
-    `minecraft:air` observation, and `unknown` cells are left out entirely.
+def footprint_to_volume(footprint: DeclaredFootprint, *, include_confirmed_openings: bool = False):
+    """A `BlockVolume` for the footprint's resolved cells.
 
-    That last point is a real, worth-stating limitation rather than a design
-    choice this module can fully honour: the litematic format itself has no
-    third state. A cell that is absent from the exported region reads back,
-    on any loader, as air - identical to a declared opening that also reads
-    back as air. Within the litematic alone, an unknown cell that happens to
-    fall inside the bounding box of the cells that *were* set is
-    indistinguishable from a confirmed opening. The evidence sidecar (the
-    per-cell `declared`/`geometry` record this function does not produce, but
-    that a caller should save alongside the volume) is where that
-    distinction actually survives - not the exported geometry file, which
-    this module does not pretend otherwise about.
+    ``supported`` cells get the neutral placeholder. ``unknown`` cells are
+    always left out - not a hole, not a fill, unresolved. ``opening`` cells
+    are left out too by default: an independent export/readback probe found
+    that an explicit `minecraft:air` observation is still counted as a block
+    by the existing exporter's metadata (`Metadata.TotalBlocks` came out 11
+    for a control with 10 actual solids), so including it made the exported
+    file's own header lie about how many blocks it holds. Pass
+    ``include_confirmed_openings=True`` to get the old behaviour back if a
+    caller specifically needs the air written into the volume itself - the
+    default keeps the file's solid-block count honest and pushes the
+    opening/unknown distinction fully onto the evidence sidecar.
+
+    That sidecar dependency is a real, worth-stating limitation rather than a
+    design choice this module can fully honour: the litematic format itself
+    has no third state. A cell that is absent from the exported region reads
+    back, on any loader, as air - identical, once read back, to a declared
+    opening that was written as explicit air. Within the litematic alone, an
+    unknown cell is indistinguishable from a confirmed opening either way.
+    The evidence sidecar (the per-cell `declared`/`geometry` record this
+    function does not produce, but that a caller should save alongside the
+    volume) is where that distinction actually survives - not the exported
+    geometry file, which this module does not pretend otherwise about.
     """
     from mc_photogrammetry.domain.models import BlockObservation, BlockState, BlockVolume
 
@@ -188,8 +197,8 @@ def footprint_to_volume(footprint: DeclaredFootprint):
         if cell.geometry == SUPPORTED:
             volume.set(cell_to_block(footprint, cell.cell),
                       BlockObservation(state=BlockState(NEUTRAL_PLACEHOLDER)))
-        elif cell.geometry == GEOMETRY_OPENING:
+        elif cell.geometry == GEOMETRY_OPENING and include_confirmed_openings:
             volume.set(cell_to_block(footprint, cell.cell),
                       BlockObservation(state=BlockState("minecraft:air")))
-        # UNKNOWN: omitted. Not a hole, not a fill - unresolved.
+        # UNKNOWN: always omitted. OPENING: omitted by default - see above.
     return volume
