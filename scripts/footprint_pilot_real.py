@@ -81,12 +81,11 @@ def main(argv=None) -> int:
     from mc_photogrammetry.reconstruction.lattice import scale_from_known_length
     from mc_photogrammetry.reconstruction.footprint import (
         FOREGROUND_OCCLUSION, GEOMETRY_OPENING, OPENING, SUPPORTED, UNKNOWN,
-        VISIBLE, block_to_cell, build_footprint, cell_to_block, footprint_to_volume)
+        VISIBLE, build_footprint, cell_to_block, footprint_to_volume)
     from mc_photogrammetry.reconstruction.footprint_adapter import (
         LatticeTransform, RegionEvidence, cell_corners_pixels, pixel_to_lateral,
         declared_labels_from_evidence, rasterize_cells)
     from mc_photogrammetry.export.litematic import LitematicExporter
-    from mc_photogrammetry.export.compare import load_litematic
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     frame_id = annotation["frame"]
@@ -230,6 +229,8 @@ def main(argv=None) -> int:
     (args.out_dir / "evidence.json").write_text(json.dumps(evidence_record, indent=2), encoding="utf-8")
 
     litematic_path = None
+    reprojected_world: dict[tuple[int, int], list] = {}
+    minimum = None
     if footprint.of(SUPPORTED):
         volume = footprint_to_volume(footprint)
         litematic_path = args.out_dir / "pilot.litematic"
@@ -237,22 +238,40 @@ def main(argv=None) -> int:
                                    name="footprint pilot, real image (HYPOTHETICAL GRID)",
                                    description=("M4 B real-image pilot, Template 2 - assumed-grid "
                                                 "developer diagnostic, not a resolved reconstruction"))
-        snapshot = load_litematic(litematic_path)
-        # A single-region litematic always writes Position (0, 0, 0) - a
-        # tested invariant (export.validation), not a bug: single-region
-        # files store a shape local to its own minimum corner, since
-        # litematics are meant to be relocatable. Read-back coordinates are
-        # shifted by the exported volume's own minimum corner relative to
-        # what cell_to_block produced; add that back before inverting.
-        expected_cells = {c.cell for c in footprint.of(SUPPORTED)}
-        exported_blocks = {cell_to_block(footprint, cell) for cell in expected_cells}
-        minimum = tuple(min(block[axis] for block in exported_blocks) for axis in range(3))
-        readback_cells = {block_to_cell(footprint, tuple(local[i] + minimum[i] for i in range(3)))
-                          for local, state in snapshot.blocks.items()
-                          if state.name != "minecraft:air"}
-        assert readback_cells == expected_cells, (readback_cells, expected_cells)
-        print(f"read-back verification OK: {len(expected_cells)} solid blocks in "
-             f"{litematic_path.name} match their pre-export cells")
+        # footprint.cell is local (0-indexed from min(rows)/min(columns)),
+        # while transform's lattice is indexed in the original world
+        # rows/columns, so row_offset/column_offset translate between them -
+        # see `reproject_exported_volume`'s own docstring for why this
+        # reprojects from the file's own block values rather than
+        # round-tripping the pre-export footprint's cell_to_block/
+        # block_to_cell (the gap a lead follow-up review named directly in
+        # an earlier version of this check).
+        from mc_photogrammetry.reconstruction.footprint_adapter import reproject_exported_volume
+
+        reprojected_world, minimum = reproject_exported_volume(
+            transform, footprint, litematic_path,
+            row_offset=min(rows), column_offset=min(columns))
+        print(f"read-back verification OK: {len(reprojected_world)} solid blocks in "
+             f"{litematic_path.name} independently reproject to their pre-export cells")
+
+        export_transform_record = {
+            "minimum_shift": list(minimum),
+            "row_offset": min(rows), "column_offset": min(columns),
+            "axis": transform.axis, "side": transform.side,
+            "face_coordinate": export_face_coordinate,
+            "lateral_origin": [0, 0], "period": 1.0,
+            "note": "the export-local-to-reconstruction transform: how a block "
+                    "coordinate actually read out of pilot.litematic maps back to "
+                    "a cell on transform.json's camera-space lattice. Add "
+                    "minimum_shift to a read-back local block coordinate, run "
+                    "block_to_cell (giving footprint.py's own local, "
+                    "0-indexed-from-row_offset/column_offset cell), then add "
+                    "row_offset/column_offset to reach the world cell "
+                    "transform.json's lattice and cell_corners_pixels expect.",
+        }
+        export_transform_record["content_sha256"] = _content_hash(export_transform_record)
+        (args.out_dir / "export_transform.json").write_text(
+            json.dumps(export_transform_record, indent=2), encoding="utf-8")
 
     write_status(
         "assumed_grid_diagnostic",
@@ -277,9 +296,11 @@ def main(argv=None) -> int:
              "without assuming a grid alignment.",
     )
 
-    # Overlay: extent/occlusion regions and every candidate cell's resolved
-    # geometry (from the in-memory footprint, since opening/unknown cells have
-    # nothing in the litematic to read back), on the actual photograph.
+    # Overlay: extent/occlusion regions, plus every candidate cell's resolved
+    # geometry - SUPPORTED cells draw the corners `reprojected_world` computed
+    # from blocks actually read out of pilot.litematic; opening/unknown cells
+    # have nothing in the file to read back, so those still come from the
+    # in-memory footprint, labelled as such rather than implied file-verified.
     image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
     overlay = image.copy()
     cv2.fillPoly(overlay, [np.array(annotation["visible_extent_polygon"], dtype=np.int32)],
@@ -289,12 +310,21 @@ def main(argv=None) -> int:
     image = cv2.addWeighted(overlay, 0.2, image, 0.8, 0)
     verdict_colours = {SUPPORTED: (60, 200, 60), GEOMETRY_OPENING: (60, 60, 220), UNKNOWN: (140, 140, 140)}
     for cell in footprint.cells:
-        world_cell = (cell.cell[0] + min(rows), cell.cell[1] + min(columns))
-        corners = cell_corners_pixels(transform, world_cell)
+        file_derived = cell.geometry == SUPPORTED and cell.cell in reprojected_world
+        if file_derived:
+            corners = reprojected_world[cell.cell]
+        else:
+            world_cell = (cell.cell[0] + min(rows), cell.cell[1] + min(columns))
+            corners = cell_corners_pixels(transform, world_cell)
         if corners is None:
             continue
         pts = np.array([[round(x), round(y)] for x, y in corners], dtype=np.int32)
-        cv2.polylines(image, [pts], True, verdict_colours.get(cell.geometry, (0, 0, 0)), 2)
+        thickness = 4 if file_derived else 2
+        cv2.polylines(image, [pts], True, verdict_colours.get(cell.geometry, (0, 0, 0)), thickness)
+    if reprojected_world:
+        cv2.putText(image,
+                   "thick outline = corners reprojected from pilot.litematic's own blocks",
+                   (15, size[1] - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 128, 255), 2)
     p0, p1 = [round(v) for v in points[0]], [round(v) for v in points[1]]
     cv2.line(image, p0, p1, (0, 255, 255), 3)
     cv2.putText(image, f"{blocks_apart:.0f} blocks ({length['confidence']} confidence)",
@@ -303,7 +333,7 @@ def main(argv=None) -> int:
                (15, size[1] - 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 128, 255), 3)
     cv2.imwrite(str(args.out_dir / "overlay.png"), image)
     print(f"wrote transform.json, regions.json, evidence.json, result.json, overlay.png"
-         f"{', pilot.litematic' if litematic_path else ''} to {args.out_dir}")
+         f"{', export_transform.json, pilot.litematic' if litematic_path else ''} to {args.out_dir}")
     return 0
 
 

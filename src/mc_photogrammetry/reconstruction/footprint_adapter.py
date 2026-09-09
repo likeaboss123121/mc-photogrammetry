@@ -31,6 +31,16 @@ from mc_photogrammetry.reconstruction.footprint import (
 )
 from mc_photogrammetry.reconstruction.lattice import plane_basis
 
+RESOLVABLE_AREA_PIXELS = 1.0
+"""A cell whose true (shoelace) projected area is smaller than one pixel
+cannot be measured by counting whole raster pixels at all - even a single
+rounded pixel is already several times the cell's own continuous area, so
+no coverage ratio computed against it is trustworthy at any threshold.
+Such a cell is never declared, regardless of what its raw ratio says -
+"retain uncertainty below resolvable area" rather than report a number
+integer rasterization cannot actually back up.
+"""
+
 VISIBLE_COVERAGE_THRESHOLD = 0.6
 """Share of a cell's projected area a single label must cover before that
 label is declared for the cell. Below this, more than one thing is going on
@@ -158,6 +168,69 @@ def cell_corners_pixels(transform: LatticeTransform, cell: tuple[int, int]) -> l
     return pixels
 
 
+def reproject_exported_volume(
+    transform: LatticeTransform,
+    footprint,
+    litematic_path,
+    *,
+    row_offset: int = 0,
+    column_offset: int = 0,
+) -> tuple[dict[tuple[int, int], list[tuple[float, float]]], tuple[int, int, int]]:
+    """Read a litematic back and independently reproject every solid block it
+    actually contains through ``transform`` - not the pre-export footprint's
+    own `cell_to_block`/`block_to_cell` round trip on the same in-memory
+    cell set. A lead review named that gap directly: an earlier verification
+    read the file only to confirm which cells came back, then recomputed
+    their pixel corners from the *pre-export* cell set, never from the block
+    values the file itself holds; every corner returned here traces back
+    through a block tuple read straight out of ``litematic_path``.
+
+    Returns ``(reprojected, minimum_shift)``. ``reprojected`` maps each
+    footprint-local ``(row, column)`` cell (`footprint.py`'s own indexing,
+    from `block_to_cell`) the file actually contains to its pixel corners.
+    ``minimum_shift`` is the exported volume's own minimum corner, added to
+    a read-back local block coordinate before `block_to_cell` - a
+    single-region litematic always stores its shape local to its own
+    minimum corner rather than an absolute position (see `export.litematic`
+    and `export.validation`; this is a tested format invariant, not a bug
+    routed around here).
+
+    ``row_offset``/``column_offset`` translate `footprint.py`'s own local
+    (0-indexed) cell space into ``transform``'s lattice coordinate space,
+    for a caller (a real-image pilot, say) whose footprint was built
+    against a translated sub-grid rather than starting at the transform's
+    own cell (0, 0).
+
+    Raises `ValueError` if the file's own solid-block cell set does not
+    match the footprint's pre-export `SUPPORTED` cells.
+    """
+    from mc_photogrammetry.reconstruction.footprint import SUPPORTED, block_to_cell, cell_to_block
+    from mc_photogrammetry.export.compare import load_litematic
+
+    snapshot = load_litematic(litematic_path)
+    expected_cells = {c.cell for c in footprint.of(SUPPORTED)}
+    exported_blocks = {cell_to_block(footprint, cell) for cell in expected_cells}
+    minimum = tuple(min(block[axis] for block in exported_blocks) for axis in range(3))
+
+    reprojected: dict[tuple[int, int], list[tuple[float, float]]] = {}
+    for local_block, state in snapshot.blocks.items():
+        if state.name == "minecraft:air":
+            continue
+        absolute_block = tuple(local_block[index] + minimum[index] for index in range(3))
+        local_cell = block_to_cell(footprint, absolute_block)
+        world_cell = (local_cell[0] + row_offset, local_cell[1] + column_offset)
+        corners = cell_corners_pixels(transform, world_cell)
+        if corners is not None:
+            reprojected[local_cell] = corners
+
+    readback_cells = set(reprojected)
+    if readback_cells != expected_cells:
+        raise ValueError(
+            f"read-back cells {sorted(readback_cells)} != pre-export supported cells "
+            f"{sorted(expected_cells)}")
+    return reprojected, minimum
+
+
 @dataclass(frozen=True)
 class RegionEvidence:
     """One image-space polygon a person drew, and what they said it means."""
@@ -221,10 +294,28 @@ def _polygon_area(polygon: list[tuple[float, float]]) -> float:
 
 
 def _rasterize_polygon(polygon: list[tuple[float, float]], shape: tuple[int, int]) -> "np.ndarray":
+    """Rasterize a polygon given in the same continuous convention
+    `_polygon_area` uses - pixel ``(x, y)`` occupies ``[x, x+1) x [y, y+1)`` -
+    into the integer pixel index grid `cv2.fillPoly` actually fills.
+
+    `cv2.fillPoly` treats an integer vertex as sitting at a pixel's own
+    index/centre and includes boundary pixels, not as a corner on the
+    continuous grid. Feeding it continuous corner coordinates directly (as
+    this module used to) silently reinterprets them as centres: a unit
+    square with corners at the continuous coordinates ``(2, 2)`` and
+    ``(3, 3)`` - true area 1 - was filled from pixel-centre ``2`` through
+    pixel-centre ``3`` inclusive and rasterized as a 2x2, 4-pixel block,
+    exactly the mismatch a lead review's independent control reproduced
+    (`rasterize_cells` returning `coverage_by_label=4.0` for a true area-1
+    cell). Shifting every coordinate by half a pixel before rounding
+    aligns the two conventions: continuous corner ``2`` becomes centre-grid
+    ``1.5``, which correctly falls between pixel centres 1 and 2 rather
+    than landing on one.
+    """
     import cv2
 
     mask = np.zeros(shape, dtype=np.uint8)
-    points = np.array([[round(x), round(y)] for x, y in polygon], dtype=np.int32)
+    points = np.array([[round(x - 0.5), round(y - 0.5)] for x, y in polygon], dtype=np.int32)
     cv2.fillPoly(mask, [points], 1)
     return mask
 
@@ -324,10 +415,11 @@ def rasterize_cells(
             outside_fraction = max(0.0, 1.0 - in_frame_pixels / full_area)
 
             declared = None
-            for label in (OPENING, FOREGROUND_OCCLUSION, VISIBLE):
-                if coverage[label] >= VISIBLE_COVERAGE_THRESHOLD:
-                    declared = label
-                    break
+            if full_area >= RESOLVABLE_AREA_PIXELS:
+                for label in (OPENING, FOREGROUND_OCCLUSION, VISIBLE):
+                    if coverage[label] >= VISIBLE_COVERAGE_THRESHOLD:
+                        declared = label
+                        break
             found.append(CellEvidence(cell, coverage, coverage_in_frame, declared,
                                       outside_fraction, conflict_fraction))
     return found

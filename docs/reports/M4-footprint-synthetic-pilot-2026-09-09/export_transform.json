@@ -1,0 +1,17 @@
+{
+  "minimum_shift": [
+    0,
+    0,
+    0
+  ],
+  "axis": 2,
+  "side": 1.0,
+  "face_coordinate": 1,
+  "lateral_origin": [
+    0,
+    0
+  ],
+  "period": 1.0,
+  "note": "the export-local-to-reconstruction transform: how a block coordinate actually read out of the litematic file maps back to a cell on transform.json's camera-space lattice. minimum_shift is added to a read-back local block coordinate before block_to_cell (see export/litematic.py - a single-region file always stores Position (0,0,0) and its shape local to its own minimum corner). face_coordinate/lateral_origin/period are the arbitrary local export convention cell_to_block/block_to_cell use, distinct from the continuous camera transform.",
+  "content_sha256": "7183345657bde7c79e57c2f7f5447bfda23281ef8a5820a1aa1136bdab4ec2a6"
+}

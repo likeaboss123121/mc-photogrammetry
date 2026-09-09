@@ -1,0 +1,19 @@
+{
+  "minimum_shift": [
+    1,
+    2,
+    0
+  ],
+  "row_offset": -3,
+  "column_offset": -6,
+  "axis": 2,
+  "side": 1.0,
+  "face_coordinate": 1,
+  "lateral_origin": [
+    0,
+    0
+  ],
+  "period": 1.0,
+  "note": "the export-local-to-reconstruction transform: how a block coordinate actually read out of pilot.litematic maps back to a cell on transform.json's camera-space lattice. Add minimum_shift to a read-back local block coordinate, run block_to_cell (giving footprint.py's own local, 0-indexed-from-row_offset/column_offset cell), then add row_offset/column_offset to reach the world cell transform.json's lattice and cell_corners_pixels expect.",
+  "content_sha256": "983514d44b0e7415aa35c43574840e2b7711fd1ccdd3b8289f4086624b002e1a"
+}

@@ -361,3 +361,194 @@ def test_g1_extreme_grazing_does_not_allocate_a_raster_sized_to_the_quad():
     # A cell this size relative to the frame has almost none of its own area
     # actually inside the photograph.
     assert evidence[0].outside_image_fraction > 0.99
+
+
+def test_s3_pixel_aligned_unit_cell_matches_its_continuous_area_exactly():
+    """A lead follow-up review's exact reproduction: identity axes, a cell
+    projecting to the pixel-aligned unit square (2,2)-(3,3) - true
+    continuous area 1 - fully covered by a matching VISIBLE polygon. The
+    old rasterizer fed continuous corner coordinates straight to
+    `cv2.fillPoly`, which treats an integer vertex as a pixel's own centre
+    and includes boundary pixels, filling pixel-centres 2 through 3
+    inclusive in both axes - a 2x2, four-pixel block - so
+    `coverage_by_label` came back 4.0 for a cell whose true area is 1.
+    """
+    axes = np.eye(3)
+    transform = LatticeTransform(axis=2, side=1.0, distance=1.0, axis_matrix=axes,
+                                 focal=1.0, principal_point=(2.0, 3.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    regions = [RegionEvidence(VISIBLE, ((2, 2), (3, 2), (3, 3), (2, 3)))]
+    evidence = rasterize_cells(transform, regions, image_size=(6, 6),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(1.0, abs=1e-6)
+    assert evidence.declared == VISIBLE
+
+
+def test_s3_a_subpixel_cell_never_wins_a_declared_verdict():
+    """A cell whose true projected area is a small fraction of a single
+    pixel cannot be measured by counting whole raster pixels at all - even
+    one rounded pixel is already several times the cell's own area, so no
+    ratio computed against it is trustworthy at any threshold. Such a cell
+    must retain uncertainty (`declared is None`) regardless of how
+    confidently a raw raster ratio would otherwise read - it is genuinely
+    below the resolution rasterization can measure, not evidence either way.
+    """
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=0.005)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    assert (x1 - x0) * (y1 - y0) < 1.0, "test setup no longer produces a sub-pixel cell"
+    visible = RegionEvidence(VISIBLE, ((x0, y0), (x1, y0), (x1, y1), (x0, y1)))
+    evidence = rasterize_cells(transform, [visible], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.declared is None
+
+
+def test_s3_a_large_multi_pixel_cell_area_measure_stays_exact():
+    """The fix must hold at ordinary cell sizes too, not just the toy
+    single-pixel reproduction - a 50-ish pixel cell fully covered by a
+    matching region should read almost exactly 1.0, the same as the
+    original half-occlusion/grazing controls already checked at their own
+    scale (kept above, unmodified by this fix)."""
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    assert (x1 - x0) > 20 and (y1 - y0) > 20, "test setup no longer produces a large cell"
+    visible = RegionEvidence(VISIBLE, ((x0, y0), (x1, y0), (x1, y1), (x0, y1)))
+    evidence = rasterize_cells(transform, [visible], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(1.0, abs=0.03)
+
+
+def test_s3_mixed_labels_within_one_cell_never_sum_past_the_cells_own_area():
+    """VISIBLE and OPENING each cover a disjoint half of one cell. Since
+    `_label_masks` already makes every label mutually exclusive, their
+    `coverage_by_label` fractions of the *same* cell must sum to no more
+    than 1 (plus whatever fraction sits outside the image) - the property
+    that motivated this fix in the first place, checked directly rather
+    than only on a single full-coverage case.
+    """
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    midpoint = (x0 + x1) / 2
+    visible = RegionEvidence(VISIBLE, ((x0, y0), (midpoint, y0), (midpoint, y1), (x0, y1)))
+    opening = RegionEvidence(OPENING, ((midpoint, y0), (x1, y0), (x1, y1), (midpoint, y1)))
+    evidence = rasterize_cells(transform, [visible, opening], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    total = (evidence.coverage_by_label[VISIBLE] + evidence.coverage_by_label[OPENING]
+            + evidence.coverage_by_label[FOREGROUND_OCCLUSION] + evidence.conflict_fraction)
+    assert total <= 1.0 + 0.05
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(0.5, abs=0.05)
+    assert evidence.coverage_by_label[OPENING] == pytest.approx(0.5, abs=0.05)
+
+
+def test_s3_a_clipped_cell_keeps_a_bounded_in_frame_coverage():
+    """A cell half outside the image (clipped, not grazing) must still
+    report a bounded, sensible `coverage_of_in_frame` for its visible
+    sliver even under the corrected rasterization convention - the earlier
+    G1 clipping control (`test_g1_a_cell_mostly_outside_the_image...`)
+    covers the 90%-outside case already; this checks a milder 50% clip."""
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(50.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    assert x0 < 0 < x1, "test setup no longer straddles the image's left edge"
+    visible = RegionEvidence(VISIBLE, ((x0, y0), (x1, y0), (x1, y1), (x0, y1)))
+    # Only x in [0, x1) is in frame - half the cell's own 100px width.
+    evidence = rasterize_cells(transform, [visible], image_size=(int(x1), 400),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(0.5, abs=0.05)
+    assert evidence.coverage_of_in_frame[VISIBLE] == pytest.approx(1.0, abs=0.05)
+
+
+def test_s4_reproject_exported_volume_matches_expected_corners_across_axes_and_signs(tmp_path):
+    """S4: `reproject_exported_volume` must independently reproject blocks
+    actually read out of a real litematic file, across all three world
+    axes and both face signs, for an asymmetric (non-square-symmetric)
+    supported footprint - the shape a row/column mix-up (G2's actual bug)
+    would misplace. Reprojected corners are checked against
+    `cell_corners_pixels` called directly on the *cell identity* the file
+    should recover, which is a different, independent formula path from
+    the export/import round trip itself.
+    """
+    from mc_photogrammetry.export.litematic import LitematicExporter
+    from mc_photogrammetry.reconstruction.footprint import (
+        SUPPORTED, build_footprint, footprint_to_volume,
+    )
+    from mc_photogrammetry.reconstruction.footprint_adapter import reproject_exported_volume
+
+    rows, columns = 3, 4
+    # Asymmetric: not a square, and not symmetric under row<->column swap -
+    # exactly the shape that could not distinguish a transposed axis
+    # convention from a correct one.
+    supported_cells = {(0, 0), (0, 3), (2, 1)}
+
+    # Which face of a plane sits in front of a given camera pose is a
+    # geometric fact, not a free choice (as `_synthetic_transform`'s own
+    # docstring notes for axis=1's pitch sign) - axis 0/2 need the camera
+    # turned to the opposite horizontal side instead, found empirically the
+    # same way: the yaw that keeps every cell of this grid in front of the
+    # camera for that axis/side.
+    poses = {
+        (0, 1.0): (270.0, -3.0), (0, -1.0): (5.0, -3.0),
+        (1, 1.0): (5.0, -40.0), (1, -1.0): (5.0, 40.0),
+        (2, 1.0): (5.0, -3.0), (2, -1.0): (185.0, -3.0),
+    }
+
+    for axis, side in ((0, 1.0), (0, -1.0), (1, 1.0), (1, -1.0), (2, 1.0), (2, -1.0)):
+        yaw, pitch = poses[(axis, side)]
+        axes = axis_directions(yaw, pitch, 2.0)
+        probe = LatticeTransform(axis=axis, side=side, distance=8.0, axis_matrix=axes,
+                                 focal=800.0, principal_point=(0.0, 0.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+        xs, ys = [], []
+        for row in range(rows):
+            for column in range(columns):
+                corners = cell_corners_pixels(probe, (row, column))
+                assert corners is not None, (axis, side, row, column)
+                xs += [p[0] for p in corners]
+                ys += [p[1] for p in corners]
+        margin = 60.0
+        principal_point = (-min(xs) + margin, -min(ys) + margin)
+        image_size = (int(max(xs) - min(xs) + 2 * margin), int(max(ys) - min(ys) + 2 * margin))
+        transform = LatticeTransform(axis=axis, side=side, distance=8.0, axis_matrix=axes,
+                                     focal=800.0, principal_point=principal_point,
+                                     lateral_origin=(0.0, 0.0), period=1.0)
+
+        declared = {cell: VISIBLE for cell in supported_cells}
+        footprint = build_footprint(axis=axis, face_coordinate=1, side=side,
+                                    lateral_origin=(0, 0), rows=rows, columns=columns,
+                                    declared=declared)
+        assert {c.cell for c in footprint.of(SUPPORTED)} == supported_cells
+
+        volume = footprint_to_volume(footprint)
+        litematic_path = tmp_path / f"s4_axis{axis}_side{int(side)}.litematic"
+        LitematicExporter().export(volume, litematic_path, name="s4 control",
+                                   description="S4 asymmetric axis/sign control")
+
+        reprojected, minimum = reproject_exported_volume(transform, footprint, litematic_path)
+
+        assert set(reprojected) == supported_cells, (axis, side, set(reprojected))
+        for cell in supported_cells:
+            expected_corners = cell_corners_pixels(transform, cell)
+            assert reprojected[cell] == expected_corners, (axis, side, cell)
+        assert isinstance(minimum, tuple) and len(minimum) == 3

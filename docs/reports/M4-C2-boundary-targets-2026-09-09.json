@@ -1,0 +1,57 @@
+{
+  "note": "Corrected per the lead follow-up review's S2 finding: M4-C-boundary-targets-2026-09-09.json described a small, deliberately safe strip inside the visible wall, not the wall's actual boundary - pixels outside that strip were neither positive nor negative, but the old scorer counted all of them as false-positive area against any candidate that covered them. This version annotates the full visible wall each frame actually shows (re-inspected at source resolution via cropped zooms, not the resized preview), with three explicit categories: `positive_polygon` (confidently this wall's own material), `negative_polygons` (confidently NOT this wall - a different wall, the floor, a foreground occluder, an opening/gap) and `uncertain_polygons` (genuinely ambiguous transitions - the wall/back-wall corner, the wall/roof-gap junction - excluded from scoring entirely rather than guessed either way, per the review's 'record uncertainty as unknown, not negative'). Corners are still hand-estimated from static crops, not pixel-exact. Frozen with a content hash before scoring; scripts/boundary_pilot_c2.py refuses to run if this file changes afterward. The proposal path never reads this file.",
+  "targets": [
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall (diamond-pattern panelling), from clear of the foreground table on the left to short of a possible corner/beam structure on the right (marked uncertain rather than asserted either way), below the ceiling/roof-gap junction and above the wall/floor seam.",
+      "positive_polygon": [[910, 230], [1280, 230], [1280, 700], [1250, 700], [1250, 825], [910, 825]],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [[0, 1369], [0, 600], [920, 830], [500, 1369]],
+          [[1250, 700], [1750, 700], [1750, 1369], [1250, 1369]],
+          [[1200, 190], [1520, 190], [1520, 530], [1200, 530]]
+        ],
+        "opening": [
+          [[1190, 0], [1651, 0], [1651, 256], [1190, 77]]
+        ]
+      },
+      "uncertain_polygons": [
+        [[900, 0], [1450, 0], [1450, 230], [900, 230]],
+        [[1260, 220], [1450, 220], [1450, 825], [1260, 825]]
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall panelling looking down the room's length, from near the camera to the back corner, above the dining table/benches and clear of the roof skylight.",
+      "positive_polygon": [[40, 135], [980, 135], [980, 550], [600, 650], [40, 750]],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [[0, 1369], [0, 650], [2560, 650], [2560, 1369]]
+        ],
+        "opening": [
+          [[1024, 141], [1344, 141], [1344, 371], [1024, 371]]
+        ]
+      },
+      "uncertain_polygons": [
+        [[960, 135], [1040, 135], [1040, 650], [960, 650]]
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall panelling from a steep downward-pitched view, from near the camera to the back corner, above the central furniture. No roof opening is visible from this angle.",
+      "positive_polygon": [[40, 135], [1000, 135], [1000, 600], [500, 700], [40, 750]],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [[700, 600], [1750, 600], [1750, 1369], [700, 1369]]
+        ],
+        "opening": []
+      },
+      "uncertain_polygons": [
+        [[1040, 135], [1120, 135], [1120, 650], [1040, 650]]
+      ]
+    }
+  ]
+}
