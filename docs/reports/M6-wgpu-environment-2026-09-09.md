@@ -66,3 +66,6 @@ UV, exact ownership and validity equality, `0.032116 s` upload, and `0.050615 s`
 readback. These timings cover a small transfer smoke test rather than a renderer
 performance claim. Sonnet can integrate this seam at the renderer boundary before
 any GPU rasterisation is enabled.
+
+The current repository suite contains 441 collected tests; the full `.venv`
+run completed successfully after this seam was added.
