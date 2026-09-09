@@ -256,9 +256,17 @@ def rasterize_cells(
                 overlap = int((cell_mask & region_mask).sum())
                 coverage[label] = overlap / cell_area
 
+            # OPENING and FOREGROUND_OCCLUSION take priority over VISIBLE: a
+            # person typically draws a broad visible-extent polygon for a
+            # whole wall, then a smaller region inside it marking a specific
+            # doorway or occluder. Where both clear the threshold, the
+            # smaller, more specific claim is the one that actually applies
+            # to that cell - checking labels in whatever order the caller
+            # happened to list their regions would make the answer depend on
+            # region list order, which is not evidence of anything.
             declared = None
-            for label, fraction in coverage.items():
-                if fraction >= VISIBLE_COVERAGE_THRESHOLD:
+            for label in (OPENING, FOREGROUND_OCCLUSION, VISIBLE):
+                if coverage.get(label, 0.0) >= VISIBLE_COVERAGE_THRESHOLD:
                     declared = label
                     break
             found.append(CellEvidence((row, column), coverage, declared, outside_fraction))

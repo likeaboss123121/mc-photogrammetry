@@ -1,0 +1,23 @@
+{
+  "note": "Image-drawn annotation for the M4 B real-image pilot, corrected per lead review. One frame, one plane, picked by looking directly at the screenshot - not read from cameras.json, the reference, or the F3 text visible in the frame.",
+  "provenance": "image_drawn",
+  "corrections_from_the_superseded_annotation": [
+    "visible_extent_polygon now starts below y=130 (original px), clear of the F3 debug text block (roughly y=0-122) - the old polygon started at y=51 and overlapped it.",
+    "the previous stated length was flagged by review as possibly wrong (the overlay showed the drawn line spanning about one wall motif, not the two-to-three intended). This annotation keeps the same landmark method (the wall's repeating nested-square motif, assumed one motif per block face) but widens the span and records the length as LOW CONFIDENCE rather than asserting it precisely - per the corrected assignment: 'if a defensible phase/length cannot be established, report that ambiguity with the mapped continuous region rather than inventing block indices.'"
+  ],
+  "frame": "2026-09-02_13.22.14.png",
+  "plane": "left wall - large, close to fronto-parallel, clearly visible",
+  "axis_candidates": [0, 2],
+  "visible_extent_polygon": [[102, 130], [1216, 130], [1216, 832], [102, 832]],
+  "occlusion_regions_image_px": [
+    {"note": "foreground object, lower-left (a light-grey/white checkered surface partly filling the frame, clearly nearer than the wall)",
+     "polygon": [[0, 700], [800, 700], [780, 1369], [0, 1369]]}
+  ],
+  "length_estimate": {
+    "points": [[275.0, 384.0], [774.0, 410.0]],
+    "points_note": "left edge of one wall motif to the left edge of a motif two positions further right, on the same wall row",
+    "blocks_apart": 2.0,
+    "confidence": "low",
+    "confidence_reason": "picking exact motif-edge pixels from a static, non-zoomable image view is imprecise; a prior attempt at this same landmark, when overlaid, appeared to span roughly one motif rather than the intended two-to-three. This estimate is not asserted as precise - the pilot reports the resulting distance and flags it as low-confidence rather than treating it as established."
+  }
+}

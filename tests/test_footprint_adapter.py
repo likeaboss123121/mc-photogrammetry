@@ -219,3 +219,33 @@ def test_texture_cannot_reach_this_module_at_all():
 
     signature = inspect.signature(footprint_adapter.rasterize_cells)
     assert "image" not in signature.parameters and "patch" not in signature.parameters
+
+
+def test_occlusion_wins_over_a_broader_overlapping_visible_region_regardless_of_order():
+    """A person typically draws one broad visible-extent polygon for a whole
+    wall, then a smaller region inside it marking a specific occluder. Where
+    both clear the coverage threshold for the same cell, the smaller, more
+    specific claim must win - and must win the same way regardless of which
+    order the two regions were listed in.
+    """
+    transform, image_size = _synthetic_transform()
+    occluded_corners = cell_corners_pixels(transform, OCCLUDED_CELL)
+    # A broad VISIBLE polygon covering the whole grid, including the cell an
+    # occlusion region also covers.
+    all_corners = []
+    for row in range(ROWS):
+        for column in range(COLUMNS):
+            all_corners += cell_corners_pixels(transform, (row, column))
+    xs = [p[0] for p in all_corners]
+    ys = [p[1] for p in all_corners]
+    broad_visible = RegionEvidence(
+        VISIBLE, ((min(xs) - 5, min(ys) - 5), (max(xs) + 5, min(ys) - 5),
+                 (max(xs) + 5, max(ys) + 5), (min(xs) - 5, max(ys) + 5)))
+    occluder = RegionEvidence(FOREGROUND_OCCLUSION, tuple(occluded_corners))
+
+    for regions in ([broad_visible, occluder], [occluder, broad_visible]):
+        evidence = rasterize_cells(transform, regions, image_size=image_size,
+                                  rows=range(ROWS), columns=range(COLUMNS))
+        by_cell = {e.cell: e for e in evidence}
+        assert by_cell[OCCLUDED_CELL].declared == FOREGROUND_OCCLUSION, (
+            "the occluder should win regardless of region list order")
