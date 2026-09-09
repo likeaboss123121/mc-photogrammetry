@@ -35,6 +35,8 @@ CPU path.
 The first batched-scoring parity probe (`scripts/probe_wgpu_scoring.py`) ran on
 the selected RX 9070 XT D3D12 device. Three fixed candidate vectors matched the
 CPU reference to a maximum absolute error of `1.91e-6` (GPU dispatch elapsed
-`0.174 s` in the latest run, including setup and readback). This is a correctness seam and a
-device smoke test, not a production performance claim; image rendering and
-texture batches still use the CPU path.
+`0.174 s` in the initial latest run, including setup and readback). The reusable
+context now keeps the native device and pipeline: the latest two-call probe
+measured `1.048 s` for context creation, `0.092 s` for the first dispatch, and
+`0.00061 s` for the second dispatch. These are smoke-test timings, not a production performance
+claim; image rendering and texture batches still use the CPU path.
