@@ -65,12 +65,18 @@ class DeclaredFootprint:
     """A footprint plane: which world axis it is perpendicular to, which side
     of it the solid material sits on, and its cells' declared labels.
 
-    ``lateral_origin`` is the world coordinate of local cell (0, 0) along the
-    two axes other than ``axis`` (in axis-index order) - a footprint's own
-    local grid is never assumed to start at world (0, 0); a nonzero origin is
-    exercised explicitly in the tests, because that is exactly the kind of
-    offset a texture-classifier-free path could still get wrong through pure
-    arithmetic, independent of whether any cue works.
+    ``lateral_origin`` is ``(u, v)``, the world coordinate of local cell
+    (0, 0)'s low corner along the two axes other than ``axis``: ``u``
+    addresses ``others[0]``, ``v`` addresses ``others[1]``, with ``others``
+    taken in ascending world-axis-index order - the same convention
+    `lattice.plane_basis` and `footprint_adapter.LatticeTransform` use, so a
+    transform built by the adapter and a footprint built from its output
+    describe the same grid rather than two independently-labelled ones. See
+    `cell_to_block` for the row/column-to-u/v mapping this depends on. A
+    footprint's own local grid is never assumed to start at world (0, 0); a
+    nonzero origin is exercised explicitly in the tests, because that is
+    exactly the kind of offset a texture-classifier-free path could still get
+    wrong through pure arithmetic, independent of whether any cue works.
     """
 
     axis: int
@@ -146,16 +152,50 @@ def cell_to_block(footprint: DeclaredFootprint, cell: tuple[int, int]) -> tuple[
     the low end, the one facing -axis, is at c itself). Astra's example -
     "plane z=1, outward normal +Z, with solids occupying cell z=0" - is the
     ``side=1`` case: ``1 - 1 = 0``, checked directly in the tests.
+
+    ``cell`` is ``(row, column)``; ``lateral_origin`` is ``(u, v)`` where
+    ``u`` addresses ``others[0]`` and ``v`` addresses ``others[1]`` -
+    ``others`` taken in ascending world-axis-index order, matching
+    `lattice.plane_basis`'s own ``(normal, first, second)`` convention, where
+    ``first = axis_matrix[others[0]]``. A lead review found this module used
+    to place **row** on ``others[0]`` and **column** on ``others[1]`` here,
+    while `footprint_adapter.cell_corners_lateral` - the only real source of
+    `cell` values - places **column** on ``u``/``others[0]`` and **row** on
+    ``v``/``others[1]``. Both sides used their own convention consistently,
+    which is exactly why nothing caught the mismatch: a symmetric test cell
+    where row and column carry the same value can't distinguish transposed
+    axes from correct ones, and the modules were never checked against a
+    single non-symmetric case until this row/column labelling was unified
+    to match the adapter's.
     """
     axis_value = footprint.face_coordinate - 1 if footprint.side > 0 else footprint.face_coordinate
     others = [i for i in range(3) if i != footprint.axis]
     row, column = cell
-    lateral = (footprint.lateral_origin[0] + row, footprint.lateral_origin[1] + column)
+    lateral = (footprint.lateral_origin[0] + column, footprint.lateral_origin[1] + row)
     block = [0, 0, 0]
     block[footprint.axis] = axis_value
     block[others[0]] = lateral[0]
     block[others[1]] = lateral[1]
     return tuple(block)
+
+
+def block_to_cell(footprint: DeclaredFootprint, block: tuple[int, int, int]) -> tuple[int, int]:
+    """The inverse of `cell_to_block`: a solid block coordinate back to its
+    ``(row, column)`` cell.
+
+    This exists so verification can start from what was actually *exported* -
+    a block coordinate read back out of a real litematic file - rather than
+    from the in-memory footprint that produced it. Reprojecting the pre-export
+    grid only checks that the code agrees with itself; reprojecting a block
+    coordinate that came from reading the file back also exercises the
+    exporter and the loader, which is the gap a lead review named directly:
+    "the overlay and scored geometry must originate from the read-back
+    volume, not the pre-export grid."
+    """
+    others = [i for i in range(3) if i != footprint.axis]
+    column = block[others[0]] - footprint.lateral_origin[0]
+    row = block[others[1]] - footprint.lateral_origin[1]
+    return (row, column)
 
 
 NEUTRAL_PLACEHOLDER = "minecraft:light_gray_wool"

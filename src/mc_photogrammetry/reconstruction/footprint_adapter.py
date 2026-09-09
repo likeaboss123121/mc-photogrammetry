@@ -174,14 +174,50 @@ class CellEvidence:
 
     cell: tuple[int, int]
     coverage_by_label: dict[str, float]
-    """Fraction of the cell's projected pixel-space area each label covers.
-    Kept even for the label that did not win, so a boundary or ambiguous cell
-    is auditable rather than only reporting the final verdict."""
+    """Each label's overlap as a fraction of the cell's *true, full* projected
+    area (via the shoelace formula, not a raster count) - the denominator a
+    decision is made against. A cell mostly outside the photograph cannot
+    reach a high fraction here even if the sliver that *is* in frame is
+    completely covered by one label, which is the property a lead review's
+    clipping reproduction (`visible=1.0` on a cell 90% outside the image)
+    found missing. Labels are mutually exclusive by construction (see
+    `rasterize_cells`): a pixel `OPENING` and `FOREGROUND_OCCLUSION` both
+    claim contributes to neither, not to whichever region a caller happened
+    to list first.
+    """
+    coverage_of_in_frame: dict[str, float]
+    """The same overlaps, but as a fraction of only the cell's in-frame
+    pixels - how confident the visible portion alone looks, kept separately
+    because it answers a different question than `coverage_by_label` and a
+    lead review asked for both rather than one silently standing in for the
+    other."""
     declared: str | None
-    """The label whose coverage cleared `VISIBLE_COVERAGE_THRESHOLD`, or
-    `None` if none did - a genuinely mixed or under-covered cell, left
-    undeclared rather than guessed."""
+    """The label whose `coverage_by_label` cleared `VISIBLE_COVERAGE_THRESHOLD`,
+    or `None` if none did - a genuinely mixed, conflicting, or under-covered
+    cell, left undeclared rather than guessed. Decided against
+    `coverage_by_label` (the full-cell denominator), never
+    `coverage_of_in_frame`."""
     outside_image_fraction: float
+    conflict_fraction: float
+    """Share of the cell's full area where a declared `OPENING` polygon and a
+    declared `FOREGROUND_OCCLUSION` polygon overlap each other - two specific
+    claims disagreeing about the same location. Excluded from every label's
+    coverage rather than resolved by priority, since neither assertion is
+    more authoritative than the other."""
+
+
+def _polygon_area(polygon: list[tuple[float, float]]) -> float:
+    """Shoelace formula: a polygon's signed area from its vertices alone, with
+    no rasterization and so no allocation bounded by the polygon's own
+    extent. A near-grazing cell can project to a quadrilateral spanning
+    hundreds of thousands of pixels on a side; measuring its area this way
+    costs the same four multiplications regardless."""
+    area = 0.0
+    for index in range(len(polygon)):
+        x0, y0 = polygon[index]
+        x1, y1 = polygon[(index + 1) % len(polygon)]
+        area += x0 * y1 - x1 * y0
+    return abs(area) / 2.0
 
 
 def _rasterize_polygon(polygon: list[tuple[float, float]], shape: tuple[int, int]) -> "np.ndarray":
@@ -193,6 +229,43 @@ def _rasterize_polygon(polygon: list[tuple[float, float]], shape: tuple[int, int
     return mask
 
 
+def _label_masks(regions: list[RegionEvidence], image_size: tuple[int, int]) -> dict[str, np.ndarray]:
+    """One mutually-exclusive label per image pixel, bounded by the image
+    itself - built once for the whole call, not per cell, and never sized by
+    a cell's own (potentially enormous) projected extent.
+
+    ``OPENING`` and ``FOREGROUND_OCCLUSION`` are drawn over ``VISIBLE``
+    (a person typically draws a broad visible-extent polygon for a whole
+    wall, then a smaller region inside it marking a specific doorway or
+    occluder - the smaller, more specific claim is the one that applies
+    where they overlap). Where ``OPENING`` and ``FOREGROUND_OCCLUSION``
+    overlap *each other*, that is a genuine conflict between two specific
+    claims - resolved to neither, not by which region a caller happened to
+    list first.
+    """
+    width, height = image_size
+    shape = (height, width)
+
+    def union(label: str) -> np.ndarray:
+        mask = np.zeros(shape, dtype=np.uint8)
+        for region in regions:
+            if region.label == label:
+                mask |= _rasterize_polygon([(p[0], p[1]) for p in region.polygon], shape)
+        return mask
+
+    visible = union(VISIBLE).astype(bool)
+    opening = union(OPENING).astype(bool)
+    occlusion = union(FOREGROUND_OCCLUSION).astype(bool)
+    conflict = opening & occlusion
+
+    return {
+        VISIBLE: visible & ~opening & ~occlusion,
+        OPENING: opening & ~occlusion,
+        FOREGROUND_OCCLUSION: occlusion & ~opening,
+        "_conflict": conflict,
+    }
+
+
 def rasterize_cells(
     transform: LatticeTransform,
     regions: list[RegionEvidence],
@@ -201,75 +274,62 @@ def rasterize_cells(
     columns: range,
 ) -> list[CellEvidence]:
     """Project every candidate cell into image space and measure how much of
-    it each declared region covers.
+    it each declared region covers, against the cell's true full area.
 
-    A cell is compared against a *local* raster crop sized to its own
-    projected bounding box, not the whole image - cheap, and exact for the
-    same reason a crop-then-fill is exact: the geometry inside the crop is
-    identical to what a full-image rasterization would produce there.
+    Every raster allocation here is bounded by ``image_size`` - the label
+    masks once, up front, and each cell's own crop clipped to the image
+    before it is ever rasterized. A cell's projected quadrilateral can be
+    far larger than the photograph itself (a near-grazing candidate,
+    especially); nothing about its own extent is used to size an array.
     """
     width, height = image_size
-    label_masks: dict[str, list[tuple[float, float]]] = {}
-    for region in regions:
-        label_masks.setdefault(region.label, []).append(region.polygon)
+    masks = _label_masks(regions, image_size)
 
     found: list[CellEvidence] = []
     for row in rows:
         for column in columns:
-            corners = cell_corners_pixels(transform, (row, column))
+            cell = (row, column)
+            corners = cell_corners_pixels(transform, cell)
             if corners is None:
-                found.append(CellEvidence((row, column), {}, None, 1.0))
+                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0))
                 continue
+            full_area = _polygon_area(corners)
+            if full_area <= 0:
+                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0))
+                continue
+
             xs = [p[0] for p in corners]
             ys = [p[1] for p in corners]
-            x0, x1 = int(np.floor(min(xs))) - 1, int(np.ceil(max(xs))) + 1
-            y0, y1 = int(np.floor(min(ys))) - 1, int(np.ceil(max(ys))) + 1
-            crop_x0, crop_y0 = max(0, x0), max(0, y0)
-            crop_x1, crop_y1 = min(width, x1), min(height, y1)
+            crop_x0 = max(0, int(np.floor(min(xs))))
+            crop_y0 = max(0, int(np.floor(min(ys))))
+            crop_x1 = min(width, int(np.ceil(max(xs))) + 1)
+            crop_y1 = min(height, int(np.ceil(max(ys))) + 1)
             if crop_x1 <= crop_x0 or crop_y1 <= crop_y0:
-                found.append(CellEvidence((row, column), {}, None, 1.0))
+                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0))
                 continue
             crop_shape = (crop_y1 - crop_y0, crop_x1 - crop_x0)
             local_corners = [(px - crop_x0, py - crop_y0) for px, py in corners]
-            cell_mask = _rasterize_polygon(local_corners, crop_shape)
-            cell_area = int(cell_mask.sum())
-            if cell_area <= 0:
-                found.append(CellEvidence((row, column), {}, None, 1.0))
-                continue
+            cell_mask = _rasterize_polygon(local_corners, crop_shape).astype(bool)
+            in_frame_pixels = int(cell_mask.sum())
 
-            # How much of the cell's own projected quad actually falls inside
-            # the photograph at all, vs. its full (possibly off-frame) extent.
-            full_x0, full_x1 = int(np.floor(min(xs))) - 1, int(np.ceil(max(xs))) + 1
-            full_y0, full_y1 = int(np.floor(min(ys))) - 1, int(np.ceil(max(ys))) + 1
-            full_shape = (max(full_y1 - full_y0, 1), max(full_x1 - full_x0, 1))
-            full_local_corners = [(px - full_x0, py - full_y0) for px, py in corners]
-            full_mask = _rasterize_polygon(full_local_corners, full_shape)
-            full_area = max(int(full_mask.sum()), 1)
-            outside_fraction = max(0.0, 1.0 - cell_area / full_area)
+            coverage: dict[str, float] = {}
+            coverage_in_frame: dict[str, float] = {}
+            for label in (VISIBLE, OPENING, FOREGROUND_OCCLUSION):
+                label_crop = masks[label][crop_y0:crop_y1, crop_x0:crop_x1]
+                overlap = int((cell_mask & label_crop).sum())
+                coverage[label] = overlap / full_area
+                coverage_in_frame[label] = overlap / in_frame_pixels if in_frame_pixels else 0.0
+            conflict_crop = masks["_conflict"][crop_y0:crop_y1, crop_x0:crop_x1]
+            conflict_fraction = int((cell_mask & conflict_crop).sum()) / full_area
+            outside_fraction = max(0.0, 1.0 - in_frame_pixels / full_area)
 
-            coverage = {}
-            for label, polygons in label_masks.items():
-                region_mask = np.zeros(crop_shape, dtype=np.uint8)
-                for polygon in polygons:
-                    local_polygon = [(px - crop_x0, py - crop_y0) for px, py in polygon]
-                    region_mask |= _rasterize_polygon(local_polygon, crop_shape)
-                overlap = int((cell_mask & region_mask).sum())
-                coverage[label] = overlap / cell_area
-
-            # OPENING and FOREGROUND_OCCLUSION take priority over VISIBLE: a
-            # person typically draws a broad visible-extent polygon for a
-            # whole wall, then a smaller region inside it marking a specific
-            # doorway or occluder. Where both clear the threshold, the
-            # smaller, more specific claim is the one that actually applies
-            # to that cell - checking labels in whatever order the caller
-            # happened to list their regions would make the answer depend on
-            # region list order, which is not evidence of anything.
             declared = None
             for label in (OPENING, FOREGROUND_OCCLUSION, VISIBLE):
-                if coverage.get(label, 0.0) >= VISIBLE_COVERAGE_THRESHOLD:
+                if coverage[label] >= VISIBLE_COVERAGE_THRESHOLD:
                     declared = label
                     break
-            found.append(CellEvidence((row, column), coverage, declared, outside_fraction))
+            found.append(CellEvidence(cell, coverage, coverage_in_frame, declared,
+                                      outside_fraction, conflict_fraction))
     return found
 
 

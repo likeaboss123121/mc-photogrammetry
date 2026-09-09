@@ -1,233 +1,58 @@
 {
-  "status": "resolved",
+  "status": "assumed_grid_diagnostic",
   "annotation_sha256": "9621bc5a07b1c69f649a8e3792128708157c16c50ef9c09135a5d87078248978",
+  "calibration_artifact_sha256": "435c19bba85c7f88cf886fae35c781cb1bf8470522673c610eb6c52fe7f32ba2",
+  "source_image_sha256": "eb22541171e030ff94d6839a6626e7160c69ae3a780f07aec0298322be665d46",
   "frame": "2026-09-02_13.22.14.png",
-  "axis": 2,
-  "side": 1.0,
-  "distance_blocks": 5.749892103195761,
+  "axis_alternatives": [
+    {
+      "axis": 0,
+      "side": 1.0,
+      "status": "inconsistent",
+      "distance_blocks": null
+    },
+    {
+      "axis": 0,
+      "side": -1.0,
+      "status": "inconsistent",
+      "distance_blocks": null
+    },
+    {
+      "axis": 2,
+      "side": 1.0,
+      "status": "resolved",
+      "distance_blocks": 5.749892103195761
+    },
+    {
+      "axis": 2,
+      "side": -1.0,
+      "status": "resolved",
+      "distance_blocks": 5.749892103195761
+    }
+  ],
   "length_confidence": "low",
-  "verdict_totals": {
+  "continuous_supported_region": {
+    "u_range": [
+      -4.807550718617827,
+      2.3713327730018174
+    ],
+    "v_range": [
+      -1.6619192880293214,
+      9.945695274826857
+    ],
+    "note": "bounds of the declared visible extent in real-world (u, v) blocks on the plane - independent of the hypothetical grid below"
+  },
+  "hypothetical_grid": {
     "unknown": 87,
     "supported": 53
   },
-  "lattice_origin_offset": [
-    -3,
-    -6
-  ],
-  "supported_cells": [
-    [
-      -1,
-      -5
-    ],
-    [
-      -1,
-      -4
-    ],
-    [
-      -1,
-      -3
-    ],
-    [
-      -1,
-      -2
-    ],
-    [
-      -1,
-      -1
-    ],
-    [
-      0,
-      -5
-    ],
-    [
-      0,
-      -4
-    ],
-    [
-      0,
-      -3
-    ],
-    [
-      0,
-      -2
-    ],
-    [
-      0,
-      -1
-    ],
-    [
+  "export_convention": {
+    "face_coordinate": 1,
+    "lateral_origin": [
       0,
       0
     ],
-    [
-      0,
-      1
-    ],
-    [
-      1,
-      -5
-    ],
-    [
-      1,
-      -4
-    ],
-    [
-      1,
-      -3
-    ],
-    [
-      1,
-      -2
-    ],
-    [
-      1,
-      -1
-    ],
-    [
-      1,
-      0
-    ],
-    [
-      1,
-      1
-    ],
-    [
-      2,
-      -5
-    ],
-    [
-      2,
-      -4
-    ],
-    [
-      2,
-      -3
-    ],
-    [
-      2,
-      -2
-    ],
-    [
-      2,
-      -1
-    ],
-    [
-      2,
-      0
-    ],
-    [
-      2,
-      1
-    ],
-    [
-      3,
-      -5
-    ],
-    [
-      3,
-      -4
-    ],
-    [
-      3,
-      -3
-    ],
-    [
-      3,
-      -2
-    ],
-    [
-      3,
-      -1
-    ],
-    [
-      3,
-      0
-    ],
-    [
-      3,
-      1
-    ],
-    [
-      4,
-      -5
-    ],
-    [
-      4,
-      -4
-    ],
-    [
-      4,
-      -3
-    ],
-    [
-      4,
-      -2
-    ],
-    [
-      4,
-      -1
-    ],
-    [
-      4,
-      0
-    ],
-    [
-      5,
-      -5
-    ],
-    [
-      5,
-      -4
-    ],
-    [
-      5,
-      -3
-    ],
-    [
-      5,
-      -2
-    ],
-    [
-      5,
-      -1
-    ],
-    [
-      6,
-      -5
-    ],
-    [
-      6,
-      -4
-    ],
-    [
-      6,
-      -3
-    ],
-    [
-      6,
-      -2
-    ],
-    [
-      7,
-      -5
-    ],
-    [
-      7,
-      -4
-    ],
-    [
-      7,
-      -3
-    ],
-    [
-      8,
-      -5
-    ],
-    [
-      8,
-      -4
-    ]
-  ],
-  "opening_cells": [],
-  "unknown_cells_in_extent": 87
+    "note": "arbitrary local export choice, distinct from the continuous camera transform in transform.json. A single-region litematic always stores its shape local to its own minimum corner (Position is always (0,0,0) - a tested convention, litematics are meant to be relocatable), so the exported file's own coordinates are not directly the ones in evidence.json's supported_blocks; read-back verification accounts for that shift."
+  },
+  "note": "lateral_origin is an unresolved, arbitrary phase choice (see module docstring and transform.json's lateral_origin_is_assumed_not_measured); the supported_blocks/opening_cells in evidence.json are a hypothetical discretization at that assumed phase, not recovered exact cells - the continuous_supported_region above is the only claim this pilot makes without assuming a grid alignment."
 }

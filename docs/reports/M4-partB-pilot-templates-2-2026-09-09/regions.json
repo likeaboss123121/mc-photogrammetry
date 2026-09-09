@@ -1,0 +1,47 @@
+{
+  "regions": [
+    {
+      "label": "visible",
+      "polygon": [
+        [
+          102,
+          130
+        ],
+        [
+          1216,
+          130
+        ],
+        [
+          1216,
+          832
+        ],
+        [
+          102,
+          832
+        ]
+      ]
+    },
+    {
+      "label": "foreground_occlusion",
+      "polygon": [
+        [
+          0,
+          700
+        ],
+        [
+          800,
+          700
+        ],
+        [
+          780,
+          1369
+        ],
+        [
+          0,
+          1369
+        ]
+      ]
+    }
+  ],
+  "content_sha256": "3a25a2aba2cbef0a9f0b53f9dae4dd039750002ddcc705303fc8a149f267f9e1"
+}

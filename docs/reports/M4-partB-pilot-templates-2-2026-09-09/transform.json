@@ -1,0 +1,39 @@
+{
+  "axis": 2,
+  "side": 1.0,
+  "distance": 5.749892103195761,
+  "axis_matrix": [
+    [
+      -0.6775180777551103,
+      0.05770714517123874,
+      -0.7332388012859152
+    ],
+    [
+      0.0,
+      0.996917333733128,
+      0.07845909572784492
+    ],
+    [
+      -0.7355061211948003,
+      -0.053157455719933674,
+      0.6754295156316187
+    ]
+  ],
+  "focal": 479.29205990454636,
+  "principal_point": [
+    1280.0,
+    684.5
+  ],
+  "lateral_origin": [
+    0.0,
+    0.0
+  ],
+  "period": 1.0,
+  "image_size": [
+    2560,
+    1369
+  ],
+  "lateral_origin_is_assumed_not_measured": true,
+  "note": "this is the continuous camera-space transform only; the separate, arbitrary block-export convention (face_coordinate/export lateral_origin) is recorded in result.json, not here - they answer different questions.",
+  "content_sha256": "45ac91ce07a5f7aeb6b3e3aa01ca5e1879541111821f237980b80e367119fddc"
+}

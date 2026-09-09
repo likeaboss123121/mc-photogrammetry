@@ -1,0 +1,2669 @@
+{
+  "cells": [
+    {
+      "cell": [
+        -3,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.39697000318286263
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.3918601234205113
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0148650390003024
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": "foreground_occlusion",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0028588569196066
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": "foreground_occlusion",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.06966757602162793
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.9303324239783721,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -3,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.5006303751421015,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.4908854166666667,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 0.4572760522691611,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.44417655786350146,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 0.2910077451982595,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.28588067814158147,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 0.12312116865519657,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.12028301886792453,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 0.005048134442395396,
+        "opening": 0.0,
+        "foreground_occlusion": 0.355209876649801
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.004980028012657571,
+        "opening": 0.0,
+        "foreground_occlusion": 0.35041759609897805
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0077039354446318
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": "foreground_occlusion",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0043956587565297
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": "foreground_occlusion",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.13139096189648494
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.8686090381035151,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -2,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.8569185330975464,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.8170157068062828,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.0287822397757536,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.0196804541746385,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 1.0231768626361284,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 0.677614984572791,
+        "opening": 0.0,
+        "foreground_occlusion": 0.31837660998782386
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.6651366120218579,
+        "opening": 0.0,
+        "foreground_occlusion": 0.31251366120218577
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.014525969787327
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": "foreground_occlusion",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.00995126807923
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": "foreground_occlusion",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.1922654268611458
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 1.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.8077345731388542,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        -1,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.8427199999578998,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.8068459657701712,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.026286013016395,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.018251521105204,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 1.0187524472122786,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 0.9545075928081193,
+        "opening": 0.0,
+        "foreground_occlusion": 0.05669467784334909
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.9439333954354914,
+        "opening": 0.0,
+        "foreground_occlusion": 0.05606660456450862
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 0.836012642027421,
+        "opening": 0.0,
+        "foreground_occlusion": 0.17210750911043204
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.8292787730548027,
+        "opening": 0.0,
+        "foreground_occlusion": 0.17072122694519734
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 0.8706492756686143,
+        "opening": 0.0,
+        "foreground_occlusion": 0.13675119513119596
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.8642533936651584,
+        "opening": 0.0,
+        "foreground_occlusion": 0.13574660633484162
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.1057677131139931,
+        "opening": 0.0,
+        "foreground_occlusion": 0.026253844903448863
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.4099444458409794,
+        "opening": 0.0,
+        "foreground_occlusion": 0.1017571202332772
+      },
+      "declared": null,
+      "outside_image_fraction": 0.7419950088675644,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        0,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.8260256869533162,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7931325640303969,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.0319454694376518,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.0217628341063798,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 1.0237388931868452,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 1.0172765431342299,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 1.0115564131874482,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 1.0087141491853662,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.17529710449652927,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.5296730359066822,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.6690465766367365,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        1,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.7943101099929427,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7804878048780488,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.0346314131420213,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.0232335120573202,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 1.0255970233705165,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 1.0159915930755428,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 1.0111040283056416,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 1.01037874940655,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.23719183267016405,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.5777478565629764,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.5894544134162281,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        2,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.7925021246056094,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7689508793208005,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.0345613653230157,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.0207721897460453,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 1.023977226627702,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 1.0187084043908092,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 1.0137875040421194,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 0.7157926163525852,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7106136852435739,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.03130143320972197,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.09237708856029467,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.6611558807756592,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        3,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.7833538862534456,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7571695760598504,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.0429093815671042,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.0174105015085955,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 1.0171340977351973,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 1.0169712063179157,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 0.730127114504028,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7213282247765006,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 0.03561262267170442,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.05559694873159482,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.35945005105169814,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        2
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.9958099746388265,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        4,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.7795419626880977,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7449920508744038,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.042269526300528,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.0242090185833217,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 1.0203152480793454,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 0.7353137775750929,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7264801758774923,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 0.03869918046799405,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.04691056459223894,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.17504338725446522,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        1
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.9556159335603784,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        2
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        5,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.7600427721879796,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.732473544973545,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.0337951513376038,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 1.026362916199315,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 0.7467981783016547,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7324630962547274,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 0.03969783419578839,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.04237361123072948,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.06314725031036794,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        0
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.8661128892647892,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        2
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        6,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.7468147037214383,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7170516304347826,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 1.0283311154077412,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 1.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 0.7608813499421487,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7357390195006379,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 0.043750075240224694,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.042995662158713956,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        -1
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.7217672776888251,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        0
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        2
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        7,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.7416549546144353,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.708217270194986,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 0.7630199296286426,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.7376016793492521,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": "visible",
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 0.043235031140577244,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.042337164750957855,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.5208956098030033,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        -1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        0
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        2
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        8,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.45422629695724176,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.43147751605995716,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 0.0451685840785632,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.04383337870950177,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.3212722383270329,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        -2
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.993082705328378,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        -1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        0
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        2
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        9,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        -6
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        -5
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        -4
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.1623020539342338,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        -3
+      ],
+      "coverage_by_label": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "coverage_of_in_frame": {
+        "visible": 0.0,
+        "opening": 0.0,
+        "foreground_occlusion": 0.0
+      },
+      "declared": null,
+      "outside_image_fraction": 0.9444320314484362,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        -2
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        -1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        0
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        1
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        2
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    },
+    {
+      "cell": [
+        10,
+        3
+      ],
+      "coverage_by_label": {},
+      "coverage_of_in_frame": {},
+      "declared": null,
+      "outside_image_fraction": 1.0,
+      "conflict_fraction": 0.0
+    }
+  ],
+  "supported_blocks": [
+    [
+      1,
+      2,
+      0
+    ],
+    [
+      1,
+      3,
+      0
+    ],
+    [
+      1,
+      4,
+      0
+    ],
+    [
+      1,
+      5,
+      0
+    ],
+    [
+      1,
+      6,
+      0
+    ],
+    [
+      1,
+      7,
+      0
+    ],
+    [
+      1,
+      8,
+      0
+    ],
+    [
+      1,
+      9,
+      0
+    ],
+    [
+      1,
+      10,
+      0
+    ],
+    [
+      1,
+      11,
+      0
+    ],
+    [
+      2,
+      2,
+      0
+    ],
+    [
+      2,
+      3,
+      0
+    ],
+    [
+      2,
+      4,
+      0
+    ],
+    [
+      2,
+      5,
+      0
+    ],
+    [
+      2,
+      6,
+      0
+    ],
+    [
+      2,
+      7,
+      0
+    ],
+    [
+      2,
+      8,
+      0
+    ],
+    [
+      2,
+      9,
+      0
+    ],
+    [
+      2,
+      10,
+      0
+    ],
+    [
+      2,
+      11,
+      0
+    ],
+    [
+      3,
+      2,
+      0
+    ],
+    [
+      3,
+      3,
+      0
+    ],
+    [
+      3,
+      4,
+      0
+    ],
+    [
+      3,
+      5,
+      0
+    ],
+    [
+      3,
+      6,
+      0
+    ],
+    [
+      3,
+      7,
+      0
+    ],
+    [
+      3,
+      8,
+      0
+    ],
+    [
+      3,
+      9,
+      0
+    ],
+    [
+      3,
+      10,
+      0
+    ],
+    [
+      4,
+      2,
+      0
+    ],
+    [
+      4,
+      3,
+      0
+    ],
+    [
+      4,
+      4,
+      0
+    ],
+    [
+      4,
+      5,
+      0
+    ],
+    [
+      4,
+      6,
+      0
+    ],
+    [
+      4,
+      7,
+      0
+    ],
+    [
+      4,
+      8,
+      0
+    ],
+    [
+      4,
+      9,
+      0
+    ],
+    [
+      5,
+      2,
+      0
+    ],
+    [
+      5,
+      3,
+      0
+    ],
+    [
+      5,
+      4,
+      0
+    ],
+    [
+      5,
+      5,
+      0
+    ],
+    [
+      5,
+      6,
+      0
+    ],
+    [
+      5,
+      7,
+      0
+    ],
+    [
+      5,
+      8,
+      0
+    ],
+    [
+      6,
+      3,
+      0
+    ],
+    [
+      6,
+      4,
+      0
+    ],
+    [
+      6,
+      5,
+      0
+    ],
+    [
+      6,
+      6,
+      0
+    ],
+    [
+      6,
+      7,
+      0
+    ],
+    [
+      7,
+      3,
+      0
+    ],
+    [
+      7,
+      4,
+      0
+    ],
+    [
+      7,
+      5,
+      0
+    ],
+    [
+      7,
+      6,
+      0
+    ]
+  ],
+  "opening_cells": [],
+  "unknown_cells": 87
+}

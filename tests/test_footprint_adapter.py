@@ -249,3 +249,115 @@ def test_occlusion_wins_over_a_broader_overlapping_visible_region_regardless_of_
         by_cell = {e.cell: e for e in evidence}
         assert by_cell[OCCLUDED_CELL].declared == FOREGROUND_OCCLUSION, (
             "the occluder should win regardless of region list order")
+
+
+def test_g1_half_occluded_cell_under_a_broad_visible_polygon_stays_undeclared():
+    """A lead review's exact reproduction: a broad VISIBLE polygon covering a
+    whole cell, with a FOREGROUND_OCCLUSION polygon over its left half. The
+    old code reported visible=1.0 (declared visible) because each label's
+    coverage was measured independently, never subtracting the occluded
+    area. Real, unobscured coverage is about 50%, below the 60% threshold -
+    the cell must stay undeclared, not confidently visible.
+    """
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    visible = RegionEvidence(VISIBLE, ((x0, y0), (x1, y0), (x1, y1), (x0, y1)))
+    occluder = RegionEvidence(FOREGROUND_OCCLUSION,
+                              ((x0, y0), ((x0 + x1) / 2, y0), ((x0 + x1) / 2, y1), (x0, y1)))
+    evidence = rasterize_cells(transform, [visible, occluder], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(0.5, abs=0.02)
+    assert evidence.declared is None
+
+
+def test_g1_a_cell_mostly_outside_the_image_cannot_be_declared_from_its_sliver():
+    """A lead review's other exact reproduction: a cell 90% outside the
+    photograph, with the small in-frame sliver entirely covered by VISIBLE.
+    The old code measured coverage against the in-frame crop alone and
+    reported visible=1.0, declared visible. Coverage-of-full-cell must be
+    the denominator a decision is made on - about 10% here, not enough - while
+    coverage-of-in-frame is still reported separately and can legitimately
+    read 1.0.
+    """
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(100.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    visible = RegionEvidence(VISIBLE, ((x0, y0), (x1, y0), (x1, y1), (x0, y1)))
+    evidence = rasterize_cells(transform, [visible], image_size=(10, 400),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(0.10, abs=0.02)
+    assert evidence.coverage_of_in_frame[VISIBLE] == pytest.approx(1.0, abs=1e-6)
+    assert evidence.declared is None
+    assert evidence.outside_image_fraction == pytest.approx(0.90, abs=0.02)
+
+
+def test_g1_an_opening_and_an_occlusion_polygon_conflicting_declares_neither():
+    """Two specific claims about the same location disagreeing is not
+    resolved by priority order - it is a genuine conflict, excluded from
+    both labels' coverage rather than one silently winning.
+    """
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    whole_cell = ((x0, y0), (x1, y0), (x1, y1), (x0, y1))
+    opening = RegionEvidence(OPENING, whole_cell)
+    occlusion = RegionEvidence(FOREGROUND_OCCLUSION, whole_cell)
+    evidence = rasterize_cells(transform, [opening, occlusion], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[OPENING] == pytest.approx(0.0, abs=1e-6)
+    assert evidence.coverage_by_label[FOREGROUND_OCCLUSION] == pytest.approx(0.0, abs=1e-6)
+    # A small cell's continuous (shoelace) area and its integer rasterization
+    # do not match to the pixel - a real, expected discretization effect, not
+    # the property under test here (that the shared area counts as conflict,
+    # not as either label).
+    assert evidence.conflict_fraction == pytest.approx(1.0, abs=0.05)
+    assert evidence.declared is None
+
+
+def test_g1_extreme_grazing_does_not_allocate_a_raster_sized_to_the_quad():
+    """A near-grazing cell's own projected quadrilateral - not a hand-drawn
+    region, the *cell itself* - can span well over a million pixels even
+    though the photograph is a couple of thousand wide, if the cell sits
+    close enough to the plane's vanishing direction. Column 90 of this
+    rotation does exactly that (found by walking columns until the span blew
+    up): about 1.5 million pixels wide, over a thousand times the width of
+    any real image this project renders. `_polygon_area` (shoelace) must
+    size the cell without ever allocating an array as large as its own
+    extent - checked by requiring the call to complete quickly, not by
+    inspecting memory directly.
+    """
+    import time
+
+    axes = axis_directions(5.0, -3.0, 2.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=8.0, axis_matrix=axes,
+                                 focal=800.0, principal_point=(960.0, 540.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 90))
+    assert corners is not None
+    xs = [p[0] for p in corners]
+    assert max(xs) - min(xs) > 1_000_000, "test setup no longer produces an extreme span"
+
+    started = time.perf_counter()
+    evidence = rasterize_cells(transform, [], image_size=(1920, 1080),
+                               rows=range(1), columns=range(90, 91))
+    elapsed = time.perf_counter() - started
+    assert elapsed < 2.0, f"took {elapsed:.2f}s - looks like it rasterized the full quad"
+    # A cell this size relative to the frame has almost none of its own area
+    # actually inside the photograph.
+    assert evidence[0].outside_image_fraction > 0.99

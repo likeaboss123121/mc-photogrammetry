@@ -118,7 +118,9 @@ def build(out_dir: Path) -> None:
 
     evidence_record = {
         "cells": [{"cell": list(e.cell), "coverage_by_label": e.coverage_by_label,
-                   "declared": e.declared, "outside_image_fraction": e.outside_image_fraction}
+                   "coverage_of_in_frame": e.coverage_of_in_frame,
+                   "declared": e.declared, "outside_image_fraction": e.outside_image_fraction,
+                   "conflict_fraction": e.conflict_fraction}
                   for e in evidence],
         "resolved": [{"cell": list(c.cell), "declared": c.declared, "geometry": c.geometry}
                     for c in footprint.cells],
@@ -134,18 +136,78 @@ def build(out_dir: Path) -> None:
                                name="footprint pilot control",
                                description="M4 B synthetic image-adapter control")
 
-    _write_overlay(out_dir / "overlay.png", transform, regions, footprint, image_size)
+    _verify_readback(out_dir / "control.litematic", footprint, transform)
+    _write_overlay(out_dir / "overlay.png", transform, regions, footprint, image_size,
+                   readback_path=out_dir / "control.litematic")
 
     print(f"supported={len(footprint.of(SUPPORTED))} opening={len(footprint.of(GEOMETRY_OPENING))} "
           f"unknown={len(footprint.of(UNKNOWN))}")
     print(f"wrote transform.json, regions.json, evidence.json, control.litematic, overlay.png to {out_dir}")
 
 
-def _write_overlay(path, transform, regions, footprint, image_size):
+def _verify_readback(litematic_path: Path, footprint, transform) -> None:
+    """Read the exported litematic back and reproject its own blocks through
+    the saved transform - not the pre-export footprint object.
+
+    A lead review named this gap directly: drawing/checking the in-memory
+    footprint before it is even exported cannot catch a bug in the exporter
+    or the loader, since both sides of that comparison never touched the
+    file. This loads the real file with the project's real reader and
+    inverts `cell_to_block` (`block_to_cell`) on what it actually contains.
+
+    A single-region litematic always writes ``Position`` as (0, 0, 0) - a
+    tested invariant (`export.validation`), not a bug: litematics are meant
+    to be relocatable, so a single region's blocks are stored as a shape
+    local to its own minimum corner, not tied to any absolute coordinate.
+    (Checked directly while adding this verification: a block written at
+    (3, -2, -1) reads back as (3, 0, 0) - not a round-trip failure, the
+    documented behaviour.) Read-back block coordinates are therefore shifted
+    by the volume's own minimum corner relative to what was exported; this
+    adds that same shift back before inverting, rather than expecting an
+    exact absolute-coordinate match the format was never going to give.
+    """
+    from mc_photogrammetry.reconstruction.footprint import SUPPORTED, block_to_cell, cell_to_block
+    from mc_photogrammetry.reconstruction.footprint_adapter import cell_corners_pixels
+    from mc_photogrammetry.export.compare import load_litematic
+
+    snapshot = load_litematic(litematic_path)
+    expected_cells = {c.cell for c in footprint.of(SUPPORTED)}
+    exported_blocks = {cell_to_block(footprint, cell) for cell in expected_cells}
+    minimum = tuple(min(block[axis] for block in exported_blocks) for axis in range(3))
+
+    readback_cells = {block_to_cell(footprint, tuple(local[i] + minimum[i] for i in range(3)))
+                      for local, state in snapshot.blocks.items() if state.name != "minecraft:air"}
+    assert readback_cells == expected_cells, (
+        f"read-back cells {sorted(readback_cells)} != pre-export supported cells "
+        f"{sorted(expected_cells)}")
+
+    mismatches = []
+    for cell in expected_cells:
+        source_corners = cell_corners_pixels(transform, cell)
+        block = cell_to_block(footprint, cell)
+        reread_cell = block_to_cell(footprint, block)
+        reread_corners = cell_corners_pixels(transform, reread_cell)
+        if source_corners != reread_corners:
+            mismatches.append(cell)
+    assert not mismatches, f"read-back reprojection disagreed for cells {mismatches}"
+    print(f"read-back verification OK: {len(expected_cells)} solid blocks in "
+         f"{litematic_path.name} match their pre-export cells and reproject identically")
+
+
+def _write_overlay(path, transform, regions, footprint, image_size, *, readback_path=None):
+    """The candidate grid, coloured by resolved geometry - but the `supported`
+    (green) cells are drawn from blocks read back out of the exported
+    litematic when one is given, not from the pre-export footprint object.
+    Opening/unknown cells have nothing in the file to read back (opening is
+    omitted by default, unknown always is), so those still come from the
+    in-memory footprint - labelled as such rather than implied to be
+    file-verified too.
+    """
     import cv2
     import numpy as np
 
-    from mc_photogrammetry.reconstruction.footprint import SUPPORTED, GEOMETRY_OPENING, UNKNOWN
+    from mc_photogrammetry.reconstruction.footprint import (
+        SUPPORTED, GEOMETRY_OPENING, UNKNOWN, block_to_cell, cell_to_block)
     from mc_photogrammetry.reconstruction.footprint_adapter import cell_corners_pixels
 
     width, height = image_size
@@ -156,6 +218,19 @@ def _write_overlay(path, transform, regions, footprint, image_size):
         points = np.array([[round(x), round(y)] for x, y in region.polygon], dtype=np.int32)
         cv2.fillPoly(canvas, [points], region_colours.get(region.label, (230, 230, 230)))
 
+    readback_supported: set[tuple[int, int]] = set()
+    if readback_path is not None:
+        from mc_photogrammetry.export.compare import load_litematic
+        snapshot = load_litematic(readback_path)
+        # A single-region litematic always writes Position (0, 0, 0) - see
+        # `_verify_readback`'s docstring - so read-back coordinates are
+        # shifted by the exported volume's own minimum corner.
+        exported_blocks = {cell_to_block(footprint, c.cell) for c in footprint.of(SUPPORTED)}
+        minimum = tuple(min(block[axis] for block in exported_blocks) for axis in range(3))
+        readback_supported = {block_to_cell(footprint, tuple(local[i] + minimum[i] for i in range(3)))
+                              for local, state in snapshot.blocks.items()
+                              if state.name != "minecraft:air"}
+
     verdict_colours = {SUPPORTED: (60, 180, 60), GEOMETRY_OPENING: (60, 60, 220),
                        UNKNOWN: (140, 140, 140)}
     by_cell = {c.cell: c for c in footprint.cells}
@@ -164,11 +239,16 @@ def _write_overlay(path, transform, regions, footprint, image_size):
             cell = (row, column)
             corners = cell_corners_pixels(transform, cell)
             points = np.array([[round(x), round(y)] for x, y in corners], dtype=np.int32)
-            colour = verdict_colours.get(by_cell[cell].geometry, (0, 0, 0))
-            cv2.polylines(canvas, [points], True, colour, 3)
+            geometry = by_cell[cell].geometry
+            colour = verdict_colours.get(geometry, (0, 0, 0))
+            thickness = 4 if cell in readback_supported else 2
+            cv2.polylines(canvas, [points], True, colour, thickness)
             centre = (int(sum(p[0] for p in points) / 4), int(sum(p[1] for p in points) / 4))
-            cv2.putText(canvas, f"{row},{column}", centre, cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                       (0, 0, 0), 1)
+            label = f"{row},{column}" + (" (file)" if cell in readback_supported else "")
+            cv2.putText(canvas, label, centre, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+    if readback_path is not None:
+        cv2.putText(canvas, "thick outline = confirmed by reading the exported litematic back",
+                   (10, height - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
     cv2.imwrite(str(path), canvas)
 
 
