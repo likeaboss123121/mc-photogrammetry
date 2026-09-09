@@ -55,6 +55,14 @@ class PackedRenderBuffers:
     valid_pixels: np.ndarray
     uv: np.ndarray | None = None
 
+    @property
+    def nbytes(self) -> int:
+        """Total unpadded bytes held by this CPU-side buffer snapshot."""
+        arrays = (self.colour, self.depth, self.ownership, self.valid_pixels)
+        if self.uv is not None:
+            arrays += (self.uv,)
+        return sum(int(array.nbytes) for array in arrays)
+
 
 def _readonly(array: np.ndarray) -> np.ndarray:
     array = np.ascontiguousarray(array)
@@ -214,4 +222,3 @@ class WgpuRenderBufferContext:
             valid_pixels=arrays["valid_pixels"].astype(bool),
             uv=arrays.get("uv"),
         )
-

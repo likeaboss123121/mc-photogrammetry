@@ -69,3 +69,9 @@ any GPU rasterisation is enabled.
 
 The current repository suite contains 441 collected tests; the full `.venv`
 run completed successfully after this seam was added.
+
+`BoundedArtifactCache` extends the frame cache contract to arbitrary feature,
+geometry, descriptor, and accepted-buffer artifacts. It accounts for each
+entry's byte size, updates LRU order on access, evicts whole entries when the
+configured budget is exceeded, and rejects values without a measurable size
+unless the caller supplies one. Focused cache and buffer tests pass.

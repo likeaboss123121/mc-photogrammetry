@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mc_photogrammetry.compute import FramePyramidCache, build_frame_pyramid
+from mc_photogrammetry.compute import BoundedArtifactCache, FramePyramidCache, build_frame_pyramid
 
 
 def test_frame_pyramid_is_half_resolution_and_read_only():
@@ -43,3 +43,28 @@ def test_frame_pyramid_cache_updates_lru_order_and_rejects_invalid_limits():
     assert cache.get("a") is not None
     assert cache.get("b") is None
     assert len(cache) == 2
+
+
+def test_bounded_artifact_cache_tracks_numpy_bytes_and_lru_order():
+    cache = BoundedArtifactCache[np.ndarray](max_bytes=20)
+    first = np.zeros(2, dtype=np.float32)
+    second = np.ones(2, dtype=np.float32)
+    third = np.ones(3, dtype=np.float32)
+
+    assert cache.put("first", first)
+    assert cache.put("second", second)
+    assert cache.get("first") is first
+    assert cache.put("third", third)
+    assert cache.get("second") is None
+    assert cache.get("first") is first
+    assert cache.get("third") is third
+    assert cache.bytes_used == 20
+
+
+def test_bounded_artifact_cache_supports_explicit_size_and_rejects_unknown_values():
+    cache = BoundedArtifactCache[str](max_bytes=4)
+    assert cache.put("small", "artifact", size=4)
+    assert cache.get("small") == "artifact"
+    assert cache.put("too-large", "artifact", size=5) is False
+    with pytest.raises(ValueError, match="nbytes"):
+        cache.put("unknown", "artifact")
