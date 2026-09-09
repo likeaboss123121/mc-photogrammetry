@@ -190,6 +190,56 @@ visible change in the summary median/supported counts - consistent with "one
 window clears chance, most still don't" rather than a broad fix. That is
 further reason not to touch `SUPPORT_THRESHOLD` on this evidence alone.
 
+## Second addendum, same day: the broad measurement came back negative
+
+The immediate next step from the first addendum was to measure the
+local-window score distribution against real ground truth across many cells,
+not one hand-picked window. I built that measurement: for every judged cell,
+reconstruct its world location from the real camera pose (read only for this
+check) and ask whether a genuine, camera-reachable reference block face sits
+there, then compare score distributions for truth-positive against
+truth-negative cells.
+
+**Local-window phase agreement: AUC 0.523** (0.5 is no separation) over 55
+truth-positive and 114 truth-negative cells. Mean scores for positive (0.371)
+and negative (0.373) cells are statistically indistinguishable. The one
+promising window from the first addendum was not representative - it was a
+selected example, not a sample, and the broad measurement is exactly the
+correction that guards against that.
+
+I then tried a different cue with the same rigor before giving up on
+appearance entirely: **brightness-consensus** (does a cell's mean brightness
+match the median of its immediate neighbours, on the reasoning that a doorway
+onto a different, differently-lit space should be a local outlier). **AUC
+0.502** - also chance, slightly worse than phase agreement.
+
+**Five image-only per-cell cues have now been measured and refused to
+separate real occupancy from not**: planar region proposal (5-13% of tiles
+decided), period strength (no normal identification at all), global phase
+agreement (chance), local-window phase agreement (chance, AUC 0.523), and
+brightness consensus (chance, AUC 0.502). The last three carry a rigorous,
+ground-truth-based measurement, not just a noise comparison. This is a
+genuine wall, not a tuning problem, and I am done trying ad hoc appearance
+cues on this data without a specific new idea worth naming and testing on its
+own merits.
+
+**One real caveat on how broad "broad" actually was:** of the three Template 2
+views, only 13.24.33 supplied enough judged cells to matter (168 of 169 total)
+- the other two views' floor windows were too small or entirely out of frame
+at this axis/side. 13.24.33 views the floor from an elevated position while
+pitched steeply upward, which may be an unusually oblique case. I have not
+repeated this measurement on a more head-on view or a different fixture, and
+would not generalize "per-cell appearance cues cannot work on Minecraft
+interiors" from one view's worth of real ground truth - only that none of the
+five tried have worked on the evidence gathered so far.
+
+Per-cell occupancy remains unsolved. Rather than continue guessing at
+appearance cues, the next M4 work moves to a different, well-scoped piece
+that does not depend on solving it: joint refinement of a plane's distance
+across the multiple views that share it, building on the registration work
+above. See [M4-registration-2026-09-08.md](M4-registration-2026-09-08.md) for
+that.
+
 ## What I would do next, and what I would not
 
 Written before the addendum above, and superseded by it: I said flatly I would

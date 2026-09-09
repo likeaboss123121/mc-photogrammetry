@@ -183,11 +183,14 @@ Lead review of `e8dcd65` on 2026-09-08 established this state; see
   almost no surface. Phase agreement then judges cells at chance (median 0.357-0.375 against a measured chance
   level of 0.378), including on the view where the distance is right to 0.1% and 168 cells are in frame. Scored
   at every period from block to texel: chance at all of them, so the scale is not the problem and the cue is.
-  Third image-only cue measured at chance *globally* - corrected same day: a local (windowed) phase
-  re-read recovers above-chance signal (0.466 vs a measured chance ceiling of 0.409) that a plane-wide
-  phase structurally cannot, because calibration's own residual error drifts the global prediction out
-  of step over an 18-block-wide patch. Still below SUPPORT_THRESHOLD, not yet validated broadly, not a
-  working per-cell cue yet - see the addendum in the report. Marginal and real, not dead.
+  Five image-only per-cell occupancy cues now measured and refused to separate real occupancy from
+  not: planar region proposal (5-13% of tiles), period strength (no normal at all), global phase
+  (chance), local-window phase (promising in one hand-picked window, but AUC 0.523 - chance - when
+  measured broadly against real ground truth), and brightness-consensus (AUC 0.502, also chance). Full
+  story with both corrections in the report. Per-cell occupancy from single-view appearance is a
+  genuine, well-evidenced wall on the data checked so far, not a tuning problem. Not pursuing more ad
+  hoc appearance cues without a specific new idea. Measurement concentrated on one oblique view
+  (13.24.33), so not fully generalized - see the report's caveat.
 
 ### M5. Materials and partial blocks — Claude; Terra owns renderer/palette support
 
