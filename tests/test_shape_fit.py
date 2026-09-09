@@ -548,3 +548,46 @@ def test_shape_fit_returns_supporting_frames_without_diagnostics():
 
     assert fitted[target] == slab.state
     assert fitted.supporting_frames[target] == ("slab.png",)
+
+
+def test_cube_heavy_schedule_recovers_partial_targets_and_retains_a_cube():
+    """The same bounded schedule covers slabs/carpets without losing cube baselines."""
+    cubes = tuple(
+        _entry(f"stone_variant_{number}", (120 + number % 8,) * 3, ())
+        for number in range(100)
+    )
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = cubes + (slab, carpet)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    colours = face_colours(palette)
+
+    for expected in (slab.state, carpet.state):
+        photo, _owner, _index, _depth = render_volume(
+            {target: expected}, scene, camera, 120, 120, colours,
+            face_shapes(palette), scale=1.0, ambient=True,
+            occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+        )
+        fitted = fit_states(
+            [target], {}, scene, {"bounded.png": camera},
+            {"bounded.png": np.rint(photo).astype(np.uint8)}, palette,
+            scale=1.0, edge_weight=0.0, texture_weight=0.0,
+            max_candidate_renders=3,
+        )
+        assert fitted[target] == expected
+
+    cube = cubes[0].state
+    photo, _owner, _index, _depth = render_volume(
+        {target: cube}, scene, camera, 120, 120, colours,
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+    retained = fit_states(
+        [target], {target: cube}, scene, {"bounded.png": camera},
+        {"bounded.png": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        max_candidate_renders=3,
+    )
+    assert retained[target] == cube

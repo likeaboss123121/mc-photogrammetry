@@ -655,6 +655,8 @@ def fit_states(
                 continue
             representative_scores[key] = total / counted
             representative_states[key] = representative
+        representative_phase_capped = capped
+        representatives_complete = len(representative_scores) == len(shape_keys)
         if capped and not representative_scores:
             break
 
@@ -720,12 +722,12 @@ def fit_states(
             # Texture ranking is computed from rectified faces.  Render only the
             # best material for each geometry in this bounded refinement pass;
             # rendering every material variant is what starved rare shapes.
-            material_candidates = list(materials[key])
-            if texture_cost is not None:
+            material_candidates = [] if representative_phase_capped else list(materials[key])
+            if material_candidates and texture_cost is not None:
                 material_candidates.sort(key=lambda state: (
                     float(texture_cost[positions[state]]), state.name, state.properties,
                 ))
-            else:
+            elif material_candidates:
                 material_candidates = material_candidates[:1]
             for state in material_candidates[:1]:
                 if state == representative:
@@ -796,7 +798,7 @@ def fit_states(
                 selected_plain = plain_scores[joint_state]
                 shape_score = plain_best if shape_from_silhouette else joint_best
                 ranked.append((shape_score, selected_plain, joint_best, joint_state))
-            if capped:
+            if capped and (not representative_phase_capped or not representatives_complete):
                 break
         if ranked:
             # Silhouette answers "which shape", grain answers "which material".
