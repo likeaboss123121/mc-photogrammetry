@@ -1,0 +1,102 @@
+{
+  "frame": "2026-09-02_13.24.33.png",
+  "provenance": "image_drawn",
+  "annotation": {
+    "plane": "left wall - camera pitches steeply upward (39.6 deg) here, so the wall is more foreshortened than in the other two frames; kept for methodological consistency across frames rather than switching to the ceiling",
+    "axis_candidates": [
+      0,
+      2
+    ],
+    "points": [
+      [
+        128.0,
+        448.0
+      ],
+      [
+        640.0,
+        384.0
+      ]
+    ],
+    "points_note": "two motif centres on the left wall, three motifs apart",
+    "blocks_apart": 2.0,
+    "visible_extent_polygon": [
+      [
+        0,
+        166
+      ],
+      [
+        1088,
+        166
+      ],
+      [
+        1088,
+        960
+      ],
+      [
+        0,
+        960
+      ]
+    ],
+    "occlusion_regions_image_px": [
+      {
+        "note": "the table/chandelier structure in the lower-middle of frame",
+        "polygon": [
+          [
+            820,
+            700
+          ],
+          [
+            1500,
+            700
+          ],
+          [
+            1500,
+            1050
+          ],
+          [
+            820,
+            1050
+          ]
+        ]
+      }
+    ]
+  },
+  "axis": 0,
+  "side": 1.0,
+  "distance_blocks": 3.7589724916385476,
+  "constraint_status": "resolved",
+  "bounds": [
+    [
+      12,
+      18
+    ],
+    [
+      23,
+      18
+    ]
+  ],
+  "verdict_totals": {
+    "outside_image": 754,
+    "contradicted": 121,
+    "foreground_occlusion": 23,
+    "supported": 2
+  },
+  "geometry_cell_count": 9,
+  "resolved_geometry": {
+    "12,18": "neutral_solid",
+    "13,18": "inferred_opening",
+    "15,18": "inferred_opening",
+    "16,18": "inferred_opening",
+    "17,18": "inferred_opening",
+    "18,18": "inferred_opening",
+    "20,18": "inferred_opening",
+    "21,18": "inferred_opening",
+    "23,18": "neutral_solid"
+  },
+  "reference_note": "camera pose read here only, to report - not used to build any of the above",
+  "camera_eye_for_scoring_only": [
+    -1001.4,
+    117.42,
+    8019.8
+  ]
+}

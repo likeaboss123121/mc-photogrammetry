@@ -1,0 +1,81 @@
+{
+  "frame": "2026-09-02_13.22.14.png",
+  "provenance": "image_drawn",
+  "annotation": {
+    "plane": "left wall, visible large and close to fronto-parallel in the left-center of frame",
+    "axis_candidates": [
+      0,
+      2
+    ],
+    "points": [
+      [
+        384.0,
+        384.0
+      ],
+      [
+        870.0,
+        397.0
+      ]
+    ],
+    "points_note": "two motif centres on the left wall, three motifs apart (span = two motif-widths)",
+    "blocks_apart": 2.0,
+    "visible_extent_polygon": [
+      [
+        102,
+        51
+      ],
+      [
+        1216,
+        51
+      ],
+      [
+        1216,
+        832
+      ],
+      [
+        102,
+        832
+      ]
+    ],
+    "occlusion_regions_image_px": [
+      {
+        "note": "foreground object, lower-left (a light-grey/white checkered surface partly filling the frame, clearly nearer than the wall/floor)",
+        "polygon": [
+          [
+            0,
+            700
+          ],
+          [
+            800,
+            700
+          ],
+          [
+            780,
+            1369
+          ],
+          [
+            0,
+            1369
+          ]
+        ]
+      }
+    ]
+  },
+  "axis": 2,
+  "side": 1.0,
+  "distance_blocks": 4.785230576479053,
+  "constraint_status": "resolved",
+  "bounds": null,
+  "verdict_totals": {
+    "outside_image": 85,
+    "contradicted": 36
+  },
+  "geometry_cell_count": 0,
+  "resolved_geometry": {},
+  "reference_note": "camera pose read here only, to report - not used to build any of the above",
+  "camera_eye_for_scoring_only": [
+    -1006.1,
+    109.62,
+    8017.8
+  ]
+}
