@@ -197,3 +197,19 @@ def test_compact_template_cameras_see_the_reference_build():
             if point is not None and 0 <= point[0] < 2560 and 0 <= point[1] < 1369
         ]
         assert len(visible) > 100
+
+
+def test_camera_point_to_world_inverts_camera_space_points():
+    """The exact inverse relationship `unproject_pixel` already relies on,
+    factored out and tested on its own so other callers can use it directly."""
+    import numpy as np
+
+    from mc_photogrammetry.reconstruction.camera import (
+        camera_point_to_world, camera_space_points)
+
+    camera = CameraModel(position=(10.0, 5.0, -3.0), yaw_degrees=37.0,
+                         pitch_degrees=-12.0, fov_degrees=90.0, roll_degrees=8.0)
+    world_point = (14.0, 2.0, 9.0)
+    camera_point = camera_space_points([world_point], camera)[0]
+    recovered = camera_point_to_world(camera_point, camera)
+    assert recovered == pytest.approx(world_point, abs=1e-9)

@@ -15,6 +15,9 @@ from mc_photogrammetry.reconstruction.lattice import (
     period_hypotheses,
     plane_basis,
     rectify_plane,
+    rectified_pixel_to_plane_coordinates,
+    plane_coordinates_to_camera_point,
+    camera_point_to_pixel,
 )
 
 
@@ -441,3 +444,53 @@ def test_non_finite_input_is_refused():
     assert not scale_from_known_length((400.0, 400.0), (500.0, 400.0),
                                        float("nan"), 2, axes, 500.0,
                                        (800, 800)).resolved
+
+
+def test_rectified_cell_mapping_inverts_rectify_planes_own_construction():
+    """Round-trip a rectified-patch pixel back to a world-facing pixel through
+    the new mapping functions, checked against `rectify_plane`'s own internal
+    grid and pinhole formulas directly - not against a second copy of them.
+
+    This is the "invertible rectification-to-image/3D mapping" the per-cell
+    evaluation scripts need: given a cell in the rectified patch, where in the
+    original photograph, and where in camera space at the plane's real
+    distance, did that content actually come from.
+    """
+    axes = axis_directions(37.0, -12.0, 5.0)
+    axis, side, distance = 1, -1.0, 6.3
+    extent, samples = 2.0, 512
+    centre = (0.3, -0.1)
+    focal = 500.0
+    principal_point = (960.0, 540.0)
+    normal, first, second = plane_basis(axis, axes)
+
+    grid_u = np.linspace(centre[0] - extent, centre[0] + extent, samples)
+    grid_v = np.linspace(centre[1] - extent, centre[1] + extent, samples)
+
+    rng = np.random.default_rng(3)
+    for _ in range(40):
+        row = int(rng.integers(0, samples))
+        column = int(rng.integers(0, samples))
+        u_true, v_true = grid_u[column], grid_v[row]
+
+        point_unit = side * normal + u_true * first + v_true * second
+        depth = point_unit[2]
+        if depth <= 1e-6:
+            continue
+        px_true = principal_point[0] + point_unit[0] * focal / depth
+        py_true = principal_point[1] - point_unit[1] * focal / depth
+
+        u, v = rectified_pixel_to_plane_coordinates(
+            (column, row), extent=extent, samples=samples, centre=centre)
+        assert u == pytest.approx(u_true)
+        assert v == pytest.approx(v_true)
+
+        camera_point = plane_coordinates_to_camera_point(axis, axes, side, distance, u, v)
+        px, py = camera_point_to_pixel(camera_point, focal, principal_point)
+        assert px == pytest.approx(px_true, abs=1e-6)
+        assert py == pytest.approx(py_true, abs=1e-6)
+
+
+def test_camera_point_to_pixel_refuses_a_point_behind_the_camera():
+    from mc_photogrammetry.reconstruction.lattice import camera_point_to_pixel
+    assert camera_point_to_pixel(np.array([1.0, 0.0, -2.0]), 500.0, (960.0, 540.0)) is None

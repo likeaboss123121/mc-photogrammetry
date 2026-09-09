@@ -1,18 +1,26 @@
 """Deciding which cells of a plane an image actually supports.
 
-The distinction that matters is between a cell the picture contradicts and a
-cell it never saw. Collapsing them is how a doorway gets filled in, so the tests
-below are mostly about keeping the three verdicts apart and about bounds coming
-from support rather than from a rectangle.
+The distinction that matters is between a cell the picture contradicts, a cell
+that simply has too little to go on, and a cell it never saw. Collapsing any
+pair of these is how a doorway gets filled in or a flat wool wall gets read as
+active evidence against itself, so the tests below are mostly about keeping
+the five verdicts apart and about bounds coming from support rather than from
+a rectangle. The five synthetic controls at the end (`test_control_*`) are the
+ones a lead review asked for by name: uniform-wall, opening, foreground-slab,
+invalid-pixel, nonzero-phase - each checked against real ground truth built
+into the synthetic image, not against another run of the code under test.
 """
 import numpy as np
 import pytest
 
 from mc_photogrammetry.reconstruction.supported import (
     CONTRADICTED,
+    FOREGROUND_OCCLUSION,
+    OUTSIDE_IMAGE,
     SUPPORT_THRESHOLD,
     SUPPORTED,
     UNOBSERVED,
+    WEAK_EVIDENCE,
     CellSupport,
     SupportedPlane,
     _edge_profiles,
@@ -159,18 +167,22 @@ def test_fitting_the_phase_does_not_let_noise_clear_the_threshold():
         f"{SUPPORT_THRESHOLD}")
 
 
-def test_a_photographed_blank_wall_is_contradicted_but_an_unseen_one_is_not():
-    """Two ways to get no edges, and only one of them is evidence.
-
-    A region the camera saw and found featureless contradicts a block lattice.
-    A region the camera never saw says nothing at all. Reporting both the same
-    way is what turns a hole in the photograph into a hole in the wall.
+def test_a_photographed_blank_wall_is_weak_evidence_not_an_unseen_one():
+    """Three ways to end up with no seam agreement, and they are not the same
+    claim. A region the camera saw and found featureless (a flat material)
+    carries no evidence either way - `weak_evidence`, corrected from an
+    earlier, wrong version of this test that asserted `contradicted`, which
+    was exactly the bug a lead review caught: a uniform test plane scored
+    every cell as active evidence against itself. A region the camera never
+    saw is a different claim again - `outside_image` - and reporting either
+    one as the other is how a hole in the photograph becomes a hole in the
+    wall, or a flat material becomes a doorway.
     """
     blank = np.zeros((256, 256), np.float32)
     photographed = support_cells(blank, np.ones_like(blank), 32.0, (0.0, 0.0))
-    assert photographed and all(c.verdict == CONTRADICTED for c in photographed)
+    assert photographed and all(c.verdict == WEAK_EVIDENCE for c in photographed)
     unseen = support_cells(blank, np.zeros_like(blank), 32.0, (0.0, 0.0))
-    assert unseen and all(c.verdict == UNOBSERVED for c in unseen)
+    assert unseen and all(c.verdict == OUTSIDE_IMAGE for c in unseen)
 
 
 def test_local_phase_finds_a_lattice_whose_phase_drifts_across_the_patch():
@@ -223,3 +235,89 @@ def test_local_window_of_none_reproduces_the_global_behaviour():
                               local_window_periods=None)
     without_arg = support_cells(patch, coverage, 32.0, (0.0, 0.0))
     assert [c.score for c in with_none] == [c.score for c in without_arg]
+
+
+def _bands(size, period):
+    """Alternating bright/dark square bands: dense edge energy everywhere, not
+    just at thin grid lines - so a cell inside a coarse or fine occluder region
+    has real content to test, not a lucky blank interior."""
+    idx = np.arange(size)
+    row_band = (idx // int(period)) % 2
+    col_band = (idx // int(period)) % 2
+    return np.logical_xor(row_band[:, None], col_band[None, :]).astype(np.float32)
+
+
+def test_control_uniform_wall_is_weak_evidence_not_contradicted():
+    """A flat wool or concrete face - a real, common Minecraft material, not a
+    hypothetical - carries no seam evidence either way and must not read as
+    active evidence against itself."""
+    patch = np.full((256, 256), 128.0, dtype=np.float32)
+    found = support_cells(patch, np.ones_like(patch), 32.0, (0.0, 0.0))
+    assert found
+    assert all(c.verdict == WEAK_EVIDENCE for c in found)
+
+
+def test_control_opening_onto_a_farther_surface_is_contradicted():
+    """A farther surface, seen past an opening, reads *finer* once rectified
+    as if it were at the nearer plane's distance - and should read
+    `contradicted`, not `foreground_occlusion`."""
+    period = 32.0
+    size = 900
+    patch = _gridded(size, period)
+    region, off = 500, (900 - 500) // 2
+    patch[off:off + region, off:off + region] = _bands(region, period / 3.0)
+    found = support_cells(patch, np.ones_like(patch), period, (0.0, 0.0),
+                          local_window_periods=1.5)
+    by_cell = {c.cell: c.verdict for c in found}
+    lo = int((off + 100) // period)
+    hi = int((off + region - 100) // period)
+    interior = [by_cell.get((r, c)) for r in range(lo, hi) for c in range(lo, hi)]
+    assert interior and all(v == CONTRADICTED for v in interior)
+
+
+def test_control_foreground_slab_is_occlusion_not_contradiction():
+    """A nearer surface reads *coarser* once rectified as if it were at the
+    farther plane's distance. Some interior cells legitimately read as
+    `weak_evidence` (a large uniform band's own interior has little local
+    detail at the cell's own scale) or coincidentally `supported` (an
+    unrelated period can align with the predicted seams by chance) - the
+    property this control actually checks is that wherever the cell *does*
+    read as a disagreement, it reads as the right kind of disagreement.
+    """
+    period = 32.0
+    size = 900
+    patch = _gridded(size, period)
+    region, off = 500, (900 - 500) // 2
+    patch[off:off + region, off:off + region] = _bands(region, period * 2.2)
+    found = support_cells(patch, np.ones_like(patch), period, (0.0, 0.0),
+                          local_window_periods=1.5)
+    by_cell = {c.cell: c.verdict for c in found}
+    lo = int((off + 100) // period)
+    hi = int((off + region - 100) // period)
+    interior = [by_cell.get((r, c)) for r in range(lo, hi) for c in range(lo, hi)]
+    occlusion = sum(1 for v in interior if v == FOREGROUND_OCCLUSION)
+    contradicted = sum(1 for v in interior if v == CONTRADICTED)
+    assert occlusion > 0, "the control should find at least some occlusion"
+    assert occlusion >= 4 * max(contradicted, 1), (
+        f"disagreeing cells should read mostly as occlusion, not contradiction: "
+        f"{occlusion} occlusion vs {contradicted} contradicted")
+
+
+def test_control_invalid_pixels_are_outside_image():
+    patch = _gridded(256, 32.0)
+    coverage = np.ones_like(patch)
+    coverage[:64, :] = 0.0
+    found = support_cells(patch, coverage, 32.0, (0.0, 0.0))
+    top = [c for c in found if c.cell[0] < 2]
+    assert top and all(c.verdict == OUTSIDE_IMAGE for c in top)
+
+
+def test_control_nonzero_phase_lattice_is_still_supported():
+    """A real lattice offset from the phase the caller happens to pass in must
+    still be recognised - local windowing re-reads the true phase per cell
+    rather than trusting a caller's possibly-wrong global guess."""
+    patch = _gridded(512, 32.0, phase=11.0)
+    found = support_cells(patch, np.ones_like(patch), 32.0, (0.0, 0.0),
+                          local_window_periods=1.5)
+    supported = sum(1 for c in found if c.verdict == SUPPORTED)
+    assert supported > len(found) * 0.7

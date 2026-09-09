@@ -400,6 +400,69 @@ def rectify_plane(
                      borderMode=cv2.BORDER_CONSTANT, borderValue=0)
 
 
+def rectified_pixel_to_plane_coordinates(
+    pixel: tuple[float, float],
+    *,
+    extent: float,
+    samples: int,
+    centre: tuple[float, float] = (0.0, 0.0),
+) -> tuple[float, float]:
+    """Invert the ``linspace`` in `rectify_plane`: an output pixel back to (u, v).
+
+    `rectify_plane` builds its sampling grid as
+    ``linspace(centre - extent, centre + extent, samples)`` along each axis, so
+    a pixel at index *i* sits at ``centre - extent + i * (2*extent)/(samples-1)``.
+    This is that map run backwards - the one piece every caller that wants to
+    know *where in the world* a scored cell actually is needs, and had been
+    reimplemented ad hoc (with the coarser ``2*extent/samples`` approximation)
+    in an evaluation script rather than built once and tested here.
+    """
+    column, row = pixel
+    step = (2.0 * extent) / max(samples - 1, 1)
+    u = centre[0] - extent + column * step
+    v = centre[1] - extent + row * step
+    return (u, v)
+
+
+def plane_coordinates_to_camera_point(
+    axis: int,
+    axis_matrix: np.ndarray,
+    side: float,
+    distance: float,
+    u: float,
+    v: float,
+) -> np.ndarray:
+    """A rectified plane's (u, v) coordinate, at a real distance, in camera space.
+
+    The forward half of what `rectify_plane` computes per output pixel -
+    ``side*normal + u*first + v*second`` - scaled from the unit-distance plane
+    `rectify_plane` works on out to the plane's real distance. Camera space,
+    not world space: turning this into a world point still needs the camera's
+    own rotation and eye position, which this module does not have access to.
+    """
+    normal, first, second = plane_basis(axis, axis_matrix)
+    unit_point = side * normal + u * first + v * second
+    return distance * unit_point
+
+
+def camera_point_to_pixel(
+    point: np.ndarray,
+    focal: float,
+    principal_point: tuple[float, float],
+) -> tuple[float, float] | None:
+    """The forward pinhole projection `rectify_plane` uses, for one bare point.
+
+    Returns `None` for a point behind the camera (non-positive depth), the same
+    case `rectify_plane` marks invalid.
+    """
+    depth = float(point[2])
+    if depth <= 1e-6:
+        return None
+    centre_x, centre_y = principal_point
+    return (centre_x + point[0] * focal / depth,
+            centre_y - point[1] * focal / depth)
+
+
 def _profile(patch: np.ndarray, along: int,
              weights: np.ndarray | None = None) -> np.ndarray:
     """Collapse a rectified patch to a 1-D signal across one in-plane axis.

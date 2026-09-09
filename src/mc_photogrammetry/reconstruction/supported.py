@@ -13,12 +13,29 @@ cell looking through a doorway at something farther away shows edges too, but at
 the wrong spacing and the wrong offset, because that surface is at a different
 depth and its seams project differently.
 
-Three outcomes, kept distinct, because collapsing them is how holes get filled:
+Five outcomes, kept distinct, because collapsing any pair of them is how holes
+get filled or real evidence gets thrown away:
 
 * **supported** - the image shows the plane's own lattice at this cell.
-* **contradicted** - the image shows something, and it does not agree.
-* **unobserved** - the cell falls outside the frame, or too little of it was
-  seen to judge. Not evidence of absence.
+* **contradicted** - the image shows real structure here, at odds with the
+  plane: most often a farther surface seen past an opening, whose own texture
+  reads finer than the plane's blocks once rectified as if it were at the
+  plane's distance.
+* **weak_evidence** - the cell has too little edge energy, of any kind, to
+  judge either way. A cell this reports is not "not a block" - a plain wool or
+  concrete face is genuinely flat and would score exactly the same. Collapsing
+  this into `contradicted` was a real bug: a uniform 64x64 test plane with
+  *no* seam evidence anywhere scored every one of its 16 cells contradicted,
+  which is not what "the image shows something that disagrees" is supposed to
+  mean.
+* **foreground_occlusion** - the cell shows real structure whose own scale
+  reads coarser than the plane's blocks once rectified at the plane's
+  distance, which is what a nearer object looks like under a rectification
+  that assumes it is farther away than it is.
+* **outside_image** - the cell falls outside the source photograph. Not
+  evidence of absence, and not the same claim as `weak_evidence`: one is a
+  hole in the picture, the other is a hole in the picture's information about
+  a location it did capture.
 
 Bounds come from the supported cells, never from a reference extent. A local
 coordinate frame is enough for one plane in one view; relating two views needs
@@ -32,7 +49,13 @@ import numpy as np
 
 SUPPORTED = "supported"
 CONTRADICTED = "contradicted"
-UNOBSERVED = "unobserved"
+WEAK_EVIDENCE = "weak_evidence"
+FOREGROUND_OCCLUSION = "foreground_occlusion"
+OUTSIDE_IMAGE = "outside_image"
+UNOBSERVED = OUTSIDE_IMAGE
+"""Old name, kept as an alias: every caller written against it still reads
+cells this module now calls `outside_image` (a plain coverage judgement, not a
+merger of `outside_image` and `weak_evidence` - those stay genuinely distinct)."""
 
 MINIMUM_COVERAGE = 0.6
 """Fraction of a cell that must fall inside the frame before it is judged."""
@@ -56,6 +79,46 @@ pure noise was classified as a supported wall.
 A patch genuinely on its own lattice puts nearly all its edge energy on the
 predicted lines and scores close to 1. 0.55 sits between the two and well clear
 of chance.
+"""
+
+WEAK_EVIDENCE_RATIO = 0.15
+"""A cell's own edge energy density, as a share of the patch's typical density,
+below which there is too little signal to judge the cell at all.
+
+The reference is the *median* per-pixel edge-energy density over every cell
+with enough coverage to judge, computed once per plane - not a fixed absolute
+brightness-gradient value, because screenshots vary too much in contrast and
+JPEG-like artefacting for an absolute number to mean the same thing twice.
+0.15 was chosen so a genuinely flat block face (wool, concrete, quartz - real,
+common Minecraft materials) reads as weak rather than contradicted, while
+still leaving room for the faint, real edges a photographed face legitimately
+carries under compression.
+"""
+
+WEAK_EVIDENCE_FLOOR = 1e-6
+"""An absolute edge-energy-density floor, for when the *whole* plane is flat.
+
+`WEAK_EVIDENCE_RATIO` compares a cell against the plane's own median density,
+which is meaningless when every cell is uniform and that median is itself
+zero - a plane entirely covered in one flat material, which is a real case
+(a wool or concrete wall), not a degenerate one. This floor catches it: a
+cell below it is weak regardless of what the rest of the plane looks like.
+"""
+
+FOREGROUND_PERIOD_RATIO = 1.6
+"""A cell's own dominant local period, as a multiple of the plane's predicted
+block period, above which the cell reads as a nearer surface rather than a
+farther one.
+
+A rectification assumes every point sits at the plane's distance. A surface
+that is actually *nearer* subtends a larger angle per real-world unit than
+that assumption, so its own texture appears magnified - coarser, with a larger
+period - once rectified. A surface that is actually *farther*, seen past an
+opening, subtends a smaller angle and appears demagnified - finer, with a
+smaller period. The ratio is symmetric around 1.0 in log-space by construction
+(`1 / FOREGROUND_PERIOD_RATIO` is the matching farther-surface threshold), and
+1.6 was chosen to sit clear of the noise in period estimation from a single
+cell's own limited pixel count, which is small.
 """
 
 
@@ -162,6 +225,34 @@ def _phase_agreement(profile: np.ndarray, offsets: np.ndarray, period: float,
     return float(profile[near].sum() / total)
 
 
+def _dominant_period(profile: np.ndarray, low: float, high: float) -> float | None:
+    """The strongest autocorrelation lag of a 1-D edge profile within a range.
+
+    Used only once a cell has real edge energy that does not match the plane's
+    own predicted seams, to ask what scale that energy *is* at - not to predict
+    seam positions, so no phase is involved. `None` means no clear peak: the
+    energy present does not read as periodic at any scale in range, which is
+    itself useful (it rules out a confident foreground/farther-surface call and
+    leaves the cell `contradicted` by default rather than guessing which).
+    """
+    centred = profile - profile.mean()
+    if not np.any(centred):
+        return None
+    full = np.correlate(centred, centred, mode="full")
+    auto = full[full.size // 2:]
+    denom = auto[0]
+    if denom <= 1e-9:
+        return None
+    auto = auto / denom
+    lo, hi = max(1, int(low)), min(auto.size - 1, int(high))
+    if hi <= lo:
+        return None
+    peak = lo + int(np.argmax(auto[lo:hi]))
+    if auto[peak] <= 0.1:
+        return None
+    return float(peak)
+
+
 def support_cells(
     patch: np.ndarray,
     coverage: np.ndarray,
@@ -197,6 +288,16 @@ def support_cells(
     itself: fitting a cell's phase from only its own pixels agrees with anything,
     which is the invention this module exists to prevent. Passing `None` keeps the
     original single global phase, which the tests still exercise directly.
+
+    A cell that scores below ``threshold`` is not automatically `contradicted`.
+    Three things can produce a low score, and they mean different things: too
+    little edge energy anywhere to judge (`weak_evidence`), real energy at a
+    scale that reads farther than the plane (`contradicted` - an opening), and
+    real energy at a scale that reads nearer than the plane
+    (`foreground_occlusion`). Collapsing these was a real bug: a uniform,
+    textureless plane - a plain wool or concrete wall, not a hypothetical -
+    scored every cell `contradicted` before this distinction existed, which
+    reports a flat material as active evidence against itself.
     """
     if period_pixels < 2.0:
         return []
@@ -208,6 +309,26 @@ def support_cells(
 
     cells_down = int(rows // period_pixels)
     cells_across = int(columns // period_pixels)
+
+    # The reference for "how much edge energy is typical here" - computed once,
+    # from every cell with enough coverage to judge, so a cell is compared
+    # against this plane's own contrast rather than an absolute number that
+    # means something different on every screenshot.
+    densities = []
+    for row in range(cells_down):
+        for column in range(cells_across):
+            v0, v1 = int(row * period_pixels), int((row + 1) * period_pixels)
+            u0, u1 = int(column * period_pixels), int((column + 1) * period_pixels)
+            if v1 <= v0 + 2 or u1 <= u0 + 2:
+                continue
+            if coverage[v0:v1, u0:u1].mean() < minimum_coverage:
+                continue
+            area = (v1 - v0) * (u1 - u0)
+            energy = (across[v0:v1, u0:min(u1, across.shape[1])].sum()
+                      + down[v0:min(v1, down.shape[0]), u0:u1].sum())
+            densities.append(energy / max(area, 1))
+    reference_density = float(np.median(densities)) if densities else 0.0
+
     for row in range(cells_down):
         for column in range(cells_across):
             v0, v1 = int(row * period_pixels), int((row + 1) * period_pixels)
@@ -216,13 +337,23 @@ def support_cells(
                 continue
             seen = float(coverage[v0:v1, u0:u1].mean())
             if seen < minimum_coverage:
-                found.append(CellSupport((row, column), UNOBSERVED, 0.0, seen))
+                found.append(CellSupport((row, column), OUTSIDE_IMAGE, 0.0, seen))
                 continue
 
             horizontal = across[v0:v1, u0:min(u1, across.shape[1])].mean(axis=0)
             vertical = down[v0:min(v1, down.shape[0]), u0:u1].mean(axis=1)
             if horizontal.size < 3 or vertical.size < 3:
-                found.append(CellSupport((row, column), UNOBSERVED, 0.0, seen))
+                found.append(CellSupport((row, column), OUTSIDE_IMAGE, 0.0, seen))
+                continue
+
+            area = (v1 - v0) * (u1 - u0)
+            energy = (across[v0:v1, u0:min(u1, across.shape[1])].sum()
+                      + down[v0:min(v1, down.shape[0]), u0:u1].sum())
+            density = energy / max(area, 1)
+            if (density < WEAK_EVIDENCE_FLOOR
+                    or (reference_density > 0.0
+                        and density < WEAK_EVIDENCE_RATIO * reference_density)):
+                found.append(CellSupport((row, column), WEAK_EVIDENCE, 0.0, seen))
                 continue
 
             phase = phase_pixels
@@ -243,7 +374,35 @@ def support_cells(
                                  period_pixels, phase[0], tolerance)
                 + _phase_agreement(vertical, np.arange(v0, v0 + vertical.size),
                                    period_pixels, phase[1], tolerance))
-            verdict = SUPPORTED if score >= threshold else CONTRADICTED
+
+            if score >= threshold:
+                found.append(CellSupport((row, column), SUPPORTED, score, seen))
+                continue
+
+            # Real energy, wrong seams: ask what scale it actually is, not
+            # whether it matches the prediction, to tell an opening (farther,
+            # finer once rectified at this distance) from an occluder (nearer,
+            # coarser). A cell's own profile is only `period_pixels` samples
+            # long, which cannot represent a lag anywhere near
+            # FOREGROUND_PERIOD_RATIO times that - autocorrelation has nothing
+            # to find a coarser period *in*. So this reads from a window wide
+            # enough to contain one, centred on the cell, independent of
+            # whether local phase windowing is on.
+            occlusion_margin = int(period_pixels * FOREGROUND_PERIOD_RATIO * 1.5)
+            ou0, ou1 = max(0, u0 - occlusion_margin), min(across.shape[1], u1 + occlusion_margin)
+            ov0, ov1 = max(0, v0 - occlusion_margin), min(down.shape[0], v1 + occlusion_margin)
+            wide_h = across[v0:v1, ou0:ou1].mean(axis=0)
+            wide_v = down[ov0:ov1, u0:u1].mean(axis=1)
+            local_low, local_high = period_pixels * 0.15, period_pixels * 3.0
+            local_h = _dominant_period(wide_h, local_low, local_high)
+            local_v = _dominant_period(wide_v, local_low, local_high)
+            candidates = [p for p in (local_h, local_v) if p is not None]
+            verdict = CONTRADICTED
+            if candidates:
+                local_period = float(np.mean(candidates))
+                ratio = local_period / period_pixels
+                if ratio >= FOREGROUND_PERIOD_RATIO:
+                    verdict = FOREGROUND_OCCLUSION
             found.append(CellSupport((row, column), verdict, score, seen))
     return found
 
@@ -297,20 +456,30 @@ def plane_from_evidence(
 
     found, samples, span = measure_plane(image, axis, axis_matrix, focal,
                                          mask=mask, extent=span, side=side)
-    if found is None:
-        return None
-    ranked = period_hypotheses(found, extent=span, samples=samples)
     assisted = distance is not None
-    if distance is None:
-        best = ranked.best
-        if best is None:
+    if found is None:
+        # Automatic mode has nothing to read a distance from at all if the
+        # lattice period was never found - genuinely unresolvable. Assisted
+        # mode already has its distance from the caller; period detection
+        # failing (a low-texture surface, a bad sampling round) should not
+        # throw away evidence the caller already supplied. `samples`/`span`
+        # are still the sampling this round used, even without a found period,
+        # so rectification below proceeds at that resolution rather than none.
+        if not assisted:
             return None
-        distance = best.plane_distance
-        note = (f"distance {distance:.3f} read from the lattice period as "
-                f"'{best.interpretation}'; the alternative reading is retained "
-                f"and differs by a factor of sixteen")
-    else:
         note = f"distance {distance:.3f} supplied by a stated length"
+    else:
+        ranked = period_hypotheses(found, extent=span, samples=samples)
+        if distance is None:
+            best = ranked.best
+            if best is None:
+                return None
+            distance = best.plane_distance
+            note = (f"distance {distance:.3f} read from the lattice period as "
+                    f"'{best.interpretation}'; the alternative reading is retained "
+                    f"and differs by a factor of sixteen")
+        else:
+            note = f"distance {distance:.3f} supplied by a stated length"
 
     patch = rectify_plane(image, axis, axis_matrix, focal, extent=span,
                           samples=samples, centre=centre, side=side,
@@ -367,7 +536,10 @@ def plane_from_evidence(
     # cell's test anchored to nearby evidence instead of a plane-wide average.
     cells = support_cells(patch, coverage, block_pixels, phase,
                           local_window_periods=local_window_periods)
+    period_note = (f"lattice period {found.period_pixels:.2f}px" if found is not None
+                   else "no lattice period detected; distance came from the "
+                        "caller, not from measurement")
     return SupportedPlane(axis=axis, distance=float(distance), side=float(side),
                           phase=phase, cells=tuple(cells), assisted=assisted,
                           notes=(note, f"block period {block_pixels:.2f}px, "
-                                       f"lattice period {found.period_pixels:.2f}px"))
+                                       f"{period_note}"))

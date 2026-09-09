@@ -295,4 +295,19 @@ def unproject_pixel(
     calibration = intrinsics_for(camera, width, height)
     view = np.asarray(((pixel_x - calibration.principal_point_pixels[0]) * depth / calibration.focal_length_pixels[0],
                        -(pixel_y - calibration.principal_point_pixels[1]) * depth / calibration.focal_length_pixels[1], depth))
-    return tuple(camera_rotation_matrix(camera).T @ view + camera_eye(camera))
+    return tuple(camera_point_to_world(view, camera))
+
+
+def camera_point_to_world(point, camera: CameraModel) -> np.ndarray:
+    """A camera-space point (as `camera_space_points` would produce it) to world space.
+
+    The inverse of `camera_space_points` for a single point: that function maps
+    a world point to ``R @ (world - eye)``, so this applies ``R^T`` (rotation is
+    orthogonal, so transpose is inverse) and adds the eye back. Verified by
+    round-tripping a real point through both directions to float precision - see
+    `test_camera.py`. Factored out of `unproject_pixel` so other callers that
+    already have a camera-space point (rather than a pixel and a depth, e.g. a
+    point built from `lattice.plane_coordinates_to_camera_point`) do not need to
+    re-derive or copy this.
+    """
+    return camera_rotation_matrix(camera).T @ np.asarray(point, dtype=float) + camera_eye(camera)
