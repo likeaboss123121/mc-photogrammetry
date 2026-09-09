@@ -1,0 +1,54 @@
+{
+  "fixture": "templates 2",
+  "generated": "2026-09-08T20:28:21-0500",
+  "axis": 1,
+  "side": -1.0,
+  "anchor": "2026-09-02_13.22.14.png",
+  "links": [
+    {
+      "view_a": "2026-09-02_13.22.14.png",
+      "view_b": "2026-09-02_13.24.24.png"
+    },
+    {
+      "view_a": "2026-09-02_13.24.24.png",
+      "view_b": "2026-09-02_13.24.33.png"
+    },
+    {
+      "view_a": "2026-09-02_13.22.14.png",
+      "view_b": "2026-09-02_13.24.33.png"
+    }
+  ],
+  "redundant_links": [
+    {
+      "view_a": "2026-09-02_13.24.24.png",
+      "view_b": "2026-09-02_13.24.33.png"
+    }
+  ],
+  "note": "links are a stated assertion that two views see the same plane, not something this script infers from appearance; a wrong assertion between two single-observation views cannot be caught by this module, see registration.py",
+  "rows": [
+    {
+      "view": "2026-09-02_13.22.14.png",
+      "distance_to_plane": 1.6261535569101613,
+      "solved_position": 0.0,
+      "reference_eye_coordinate": 109.62,
+      "reference_offset_from_anchor": 0.0,
+      "registration_error_blocks": 0.0
+    },
+    {
+      "view": "2026-09-02_13.24.24.png",
+      "distance_to_plane": 1.6253170498268157,
+      "solved_position": -0.0008365070833455945,
+      "reference_eye_coordinate": 109.62,
+      "reference_offset_from_anchor": 0.0,
+      "registration_error_blocks": -0.0008365070833455945
+    },
+    {
+      "view": "2026-09-02_13.24.33.png",
+      "distance_to_plane": 9.425869575825775,
+      "solved_position": 7.799716018915614,
+      "reference_eye_coordinate": 117.42,
+      "reference_offset_from_anchor": 7.799999999999997,
+      "registration_error_blocks": -0.0002839810843831003
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "fixture": "templates 2",
+  "generated": "2026-09-08T20:32:39-0500",
+  "axis": 2,
+  "side": 1.0,
+  "anchor": "2026-09-02_13.22.14.png",
+  "quadrants": {
+    "2026-09-02_13.22.14.png": -1,
+    "2026-09-02_13.24.24.png": -2,
+    "2026-09-02_13.24.33.png": 0
+  },
+  "quadrants_simulated": true,
+  "links": [
+    {
+      "view_a": "2026-09-02_13.22.14.png",
+      "view_b": "2026-09-02_13.24.33.png"
+    }
+  ],
+  "redundant_links": [],
+  "note": "links are a stated assertion that two views see the same plane, not something this script infers from appearance; a wrong assertion between two single-observation views cannot be caught by this module, see registration.py",
+  "rows": [
+    {
+      "view": "2026-09-02_13.22.14.png",
+      "distance_to_plane": 12.198305147274883,
+      "solved_position": 0.0,
+      "reference_eye_coordinate": 8017.8,
+      "reference_offset_from_anchor": 0.0,
+      "registration_error_blocks": 0.0
+    },
+    {
+      "view": "2026-09-02_13.24.33.png",
+      "distance_to_plane": 10.20189882299236,
+      "solved_position": 1.996406324282523,
+      "reference_eye_coordinate": 8019.8,
+      "reference_offset_from_anchor": 2.0,
+      "registration_error_blocks": -0.0035936757174770406
+    }
+  ]
+}

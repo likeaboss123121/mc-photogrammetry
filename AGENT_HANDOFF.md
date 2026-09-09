@@ -161,6 +161,12 @@ Lead review of `e8dcd65` on 2026-09-08 established this state; see
 - Represent each plane by axis, integer position, supported cell footprint, observations, and uncertainty.
   Footprints support holes and disconnected patches; rectangular extent is not proof of occupancy.
 - Jointly fit translations, lattice phase, plane positions/extents using seams, reprojection, and occlusion edges.
+  Translation from shared-plane links: ✔️ built and measured 2026-09-08,
+  [report](docs/reports/M4-registration-2026-09-08.md). All three Template 2 cameras recovered on all
+  three axes (one axis per view left honestly unlinked, not guessed) to within 0.004 blocks of the
+  manifest, from stated lengths, stated shared-plane identity across views, and stated yaw quadrants -
+  none of them read from appearance. A wrong shared-plane link cannot be caught by this mechanism alone
+  (proven, not just observed - see the report); lattice-phase and occlusion-edge fitting remain unbuilt.
 - Construct cells from supported surfaces. Derive export bounds from reconstruction, never reference bounds.
 - Alternate continuous camera refinement and discrete plane/lattice proposals; evaluate coarse hypotheses,
   then refine promising ones at higher resolution. Retaining the current scene is always a candidate.
