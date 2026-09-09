@@ -591,3 +591,26 @@ def test_cube_heavy_schedule_recovers_partial_targets_and_retains_a_cube():
         max_candidate_renders=3,
     )
     assert retained[target] == cube
+
+
+def test_material_selection_is_palette_order_independent_with_rendered_evidence():
+    """A refined material must beat the representative regardless of palette order."""
+    aaa = _entry("aaa_slab", (80, 80, 80), SLAB, (("type", "bottom"),))
+    bbb = _entry("bbb_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+
+    for palette in ((aaa, bbb), (bbb, aaa), (aaa, bbb, aaa)):
+        photo, _owner, _index, _depth = render_volume(
+            {target: bbb.state}, scene, camera, 120, 120, face_colours(palette),
+            face_shapes(palette), scale=1.0, ambient=True,
+            occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+        )
+        fitted = fit_states(
+            [target], {}, scene, {"material.png": camera},
+            {"material.png": np.rint(photo).astype(np.uint8)}, palette,
+            scale=1.0, edge_weight=0.0, texture_weight=0.0,
+            max_candidate_renders=8,
+        )
+        assert fitted[target] == bbb.state

@@ -71,6 +71,8 @@ RENDER_SCALE = 0.5
 """Fraction of source resolution the fit renders at."""
 
 DEFAULT_MAX_CANDIDATE_RENDERS = 256
+MAX_MATERIAL_REFINEMENTS_PER_SHAPE = 4
+"""Maximum material renders after one representative geometry render."""
 """Conservative default work budget for renderer-backed partial fitting."""
 
 EDGE_WEIGHT = 0.25
@@ -241,6 +243,25 @@ def _score_image(
                 _gradient(rendered)[safe_gradient] - photo_edges[safe_gradient]
             )
     return float(difference[valid].mean())
+
+
+def _material_rgb_prior(
+    state: BlockState,
+    colours: Mapping[object, Mapping[str, np.ndarray]],
+    photos: Mapping[str, np.ndarray],
+    views: Sequence[tuple[str, CameraModel, np.ndarray]],
+) -> float:
+    """Cheap deterministic material ordering when texture scoring is disabled."""
+    table = colours.get(state.name)
+    if not table:
+        return float("inf")
+    expected = np.mean(np.asarray(tuple(table.values()), dtype=np.float32), axis=0)
+    distances = []
+    for frame_id, _camera, usable in views:
+        pixels = photos[frame_id][usable]
+        if pixels.size:
+            distances.append(float(np.linalg.norm(pixels.mean(axis=0) - expected)))
+    return float(np.mean(distances)) if distances else float("inf")
 
 
 def _window(scene, camera, coordinate, shape, scale):
@@ -701,9 +722,6 @@ def fit_states(
                 if total_weight > 0.0:
                     texture_cost = pooled / total_weight
 
-            plain_best, plain_state = None, None
-            joint_best, joint_state = None, None
-            plain_scores: dict[BlockState, float] = {}
             representative = representative_states[key]
             representative_score = representative_scores[key]
             representative_joint = representative_score
@@ -711,13 +729,9 @@ def fit_states(
                 position = positions.get(representative)
                 if position is not None:
                     representative_joint += texture_weight * float(texture_cost[position])
-            ranked.append((
-                representative_score, representative_score, representative_joint,
-                representative,
-            ))
-            plain_scores[representative] = representative_score
-            plain_best, plain_state = representative_score, representative
-            joint_best, joint_state = representative_joint, representative
+            material_results: list[tuple[BlockState, float, float]] = [
+                (representative, representative_score, representative_joint)
+            ]
 
             # Texture ranking is computed from rectified faces.  Render only the
             # best material for each geometry in this bounded refinement pass;
@@ -728,8 +742,12 @@ def fit_states(
                     float(texture_cost[positions[state]]), state.name, state.properties,
                 ))
             elif material_candidates:
-                material_candidates = material_candidates[:1]
-            for state in material_candidates[:1]:
+                material_candidates.sort(key=lambda state: (
+                    _material_rgb_prior(state, colours, photos, views),
+                    state.name,
+                    state.properties,
+                ))
+            for state in material_candidates[:MAX_MATERIAL_REFINEMENTS_PER_SHAPE]:
                 if state == representative:
                     continue
                 if (
@@ -782,22 +800,22 @@ def fit_states(
                 if not counted:
                     continue
                 plain = total / counted
-                plain_scores[state] = plain
                 score = plain
                 if texture_cost is not None:
                     position = positions.get(state)
                     if position is not None:
                         score += texture_weight * float(texture_cost[position])
-                if plain_best is None or plain < plain_best:
-                    plain_best, plain_state = plain, state
-                if joint_best is None or score < joint_best:
-                    joint_best, joint_state = score, state
-            if joint_state is not None:
-                # The selected material must itself pass the rendered evidence
-                # test; do not authorize it with another material's plain score.
-                selected_plain = plain_scores[joint_state]
-                shape_score = plain_best if shape_from_silhouette else joint_best
-                ranked.append((shape_score, selected_plain, joint_best, joint_state))
+                material_results.append((state, plain, score))
+            # Choose one material per geometry using that material's own rendered
+            # score. The representative is a geometry probe, never a tie-breaker
+            # that can override a refined material on insertion order.
+            material_order = 2 if texture_cost is not None else 1
+            selected_state, selected_plain, selected_joint = min(
+                material_results, key=lambda entry: entry[material_order]
+            )
+            ranked.append((
+                representative_score, selected_plain, selected_joint, selected_state,
+            ))
             if capped and (not representative_phase_capped or not representatives_complete):
                 break
         if ranked:
