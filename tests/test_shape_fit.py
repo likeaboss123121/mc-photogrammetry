@@ -281,3 +281,69 @@ def test_shape_fit_excludes_a_cell_occluded_by_the_scene():
     )
 
     assert fitted == {}
+
+
+def test_an_empty_proposal_stays_empty_when_the_background_already_matches():
+    palette, camera, floor = _fit_scene()
+    scene = _scene()
+    target = (2, 1, 3)
+    colours = face_colours(palette)
+    photo, _owner, _index, _depth = render_volume(
+        floor, scene, camera, 120, 120, colours, face_shapes(palette),
+        scale=1.0, ambient=True, occluding_slots=face_occluding_slots(palette),
+        model_faces=face_model_faces(palette),
+    )
+
+    fitted = fit_states(
+        [target], floor, scene, {"floor.png": camera},
+        {"floor.png": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert target not in fitted
+
+
+def test_an_empty_proposal_can_recover_a_real_slab():
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = (carpet, slab)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    colours = face_colours(palette)
+    photo, _owner, _index, _depth = render_volume(
+        {target: slab.state}, scene, camera, 120, 120, colours,
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+
+    fitted = fit_states(
+        [target], {}, scene, {"slab.png": camera},
+        {"slab.png": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert fitted[target] == slab.state
+
+
+def test_a_correct_cube_is_retained_over_partial_alternatives():
+    stone = _entry("stone", (120, 120, 120), ())
+    slab = _entry("quartz_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    palette = (slab, stone)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.5, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    colours = face_colours(palette)
+    photo, _owner, _index, _depth = render_volume(
+        {target: stone.state}, scene, camera, 120, 120, colours,
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+
+    fitted = fit_states(
+        [target], {target: stone.state}, scene, {"stone.png": camera},
+        {"stone.png": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert fitted[target] == stone.state

@@ -98,6 +98,7 @@ DERIVED = ("north", "south", "east", "west", "up", "in_wall", "open")
 """Properties Minecraft computes from neighbours rather than the builder choosing."""
 
 _OFF = ("false", "none")
+FULL_CUBE = (((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)),)
 
 
 def is_canonical(state: BlockState) -> bool:
@@ -110,7 +111,12 @@ def is_canonical(state: BlockState) -> bool:
     return properties.get("waterlogged", "false") == "false"
 
 
-def candidate_states(palette: Sequence, families: Sequence[str] = PARTIAL_FAMILIES):
+def candidate_states(
+    palette: Sequence,
+    families: Sequence[str] = PARTIAL_FAMILIES,
+    *,
+    include_full_cubes: bool = False,
+):
     """Canonical partial states, grouped by geometry.
 
     Returns ``(shapes, materials)``: the distinct shapes to try, and for each the
@@ -119,13 +125,14 @@ def candidate_states(palette: Sequence, families: Sequence[str] = PARTIAL_FAMILI
     shapes: dict[tuple, tuple] = {}
     materials: dict[tuple, list[BlockState]] = defaultdict(list)
     for item in palette:
-        if getattr(item, "full_cube", True):
+        full_cube = bool(getattr(item, "full_cube", True))
+        if full_cube and not include_full_cubes:
             continue
-        if not any(key in item.state.name for key in families):
+        if not full_cube and not any(key in item.state.name for key in families):
             continue
         if not is_canonical(item.state):
             continue
-        boxes = tuple(getattr(item, "shape_boxes", ()) or ())
+        boxes = tuple(getattr(item, "shape_boxes", ()) or (FULL_CUBE if full_cube else ()))
         if not boxes:
             continue
         key = tuple(
@@ -283,7 +290,9 @@ def fit_states(
     """
     import cv2
 
-    shapes, materials = candidate_states(palette, families)
+    shapes, materials = candidate_states(
+        palette, families, include_full_cubes=True
+    )
     if not shapes:
         return {}
     colours, block_shapes, model_faces = face_colours(palette), face_shapes(palette), face_model_faces(palette)
@@ -326,7 +335,22 @@ def fit_states(
         gains[frame_id] = gain
 
     chosen: dict[BlockCoordinate, BlockState] = {}
+    working_blocks = dict(blocks)
     for coordinate in cells:
+        current_state = working_blocks.get(coordinate)
+        context_blocks = {
+            cell: state for cell, state in working_blocks.items() if cell != coordinate
+        }
+        context_backgrounds: dict[str, np.ndarray] = {}
+        for frame_id, camera in cameras.items():
+            if frame_id not in backgrounds:
+                continue
+            height, width = frames[frame_id].shape[:2]
+            context_backgrounds[frame_id], _owner, _index, _depth = render_volume(
+                context_blocks, scene, camera, width, height, colours, block_shapes,
+                scale, ambient=True, occluding_slots=occluding_slots,
+                model_faces=model_faces,
+            )
         # Render this cell as a full cube once to determine the scoring region.
         # It is deliberately independent of every hypothesis. Pixels where the
         # cube is hidden by the surrounding scene cannot be evidence for any
@@ -343,7 +367,7 @@ def fit_states(
                 continue
             height, width = frames[frame_id].shape[:2]
             probe_render, probe_index = render_result(
-                {**background_blocks, coordinate: probe}, scene, camera, width, height,
+                {**context_blocks, coordinate: probe}, scene, camera, width, height,
                 colours, block_shapes, scale, ambient=True,
                 occluding_slots=occluding_slots, model_faces=model_faces,
             )
@@ -355,7 +379,46 @@ def fit_states(
 
         # Per shape: the silhouette's own verdict, and the material the grain
         # picks within it. Which of the two settles the shape is a flag.
-        ranked: list[tuple[float, float, BlockState]] = []
+        # Air is the unchanged background for an empty proposal. Existing
+        # blocks get their own baseline below; either way, a proposal must beat
+        # what is already there before it can alter the scene.
+        air_score = 0.0
+        for frame_id, _camera, usable in views:
+            difference = np.linalg.norm(
+                context_backgrounds[frame_id] - photos[frame_id], axis=2
+            )
+            if edge_weight > 0.0:
+                difference = difference + edge_weight * np.abs(
+                    _gradient(context_backgrounds[frame_id]) - edges[frame_id]
+                )
+            air_score += float(difference[usable].mean())
+        air_score /= len(views)
+        baseline_score = air_score
+        if current_state is not None:
+            current_scores = []
+            current_blocks = {**context_blocks, coordinate: current_state}
+            for frame_id, camera, usable in views:
+                height, width = frames[frame_id].shape[:2]
+                rendered, _face_index = render_result(
+                    current_blocks, scene, camera, width, height, colours,
+                    block_shapes, scale, ambient=True,
+                    occluding_slots=occluding_slots, model_faces=model_faces,
+                )
+                painted = rendered.colour * gains[frame_id]
+                difference = np.linalg.norm(painted - photos[frame_id], axis=2)
+                if edge_weight > 0.0:
+                    difference = difference + edge_weight * np.abs(
+                        _gradient(painted) - edges[frame_id]
+                    )
+                current_scores.append(float(difference[usable].mean()))
+            if current_scores:
+                baseline_score = float(np.mean(current_scores))
+
+        ranked: list[tuple[float, float, BlockState | None]] = [
+            (air_score, air_score, None)
+        ]
+        if current_state is not None:
+            ranked.append((baseline_score, baseline_score, current_state))
         for key, boxes in shapes.items():
             # The grain the candidate's own faces would show, gathered once per
             # shape and scored for every material that shares it.
@@ -381,7 +444,7 @@ def fit_states(
                 if not table:
                     continue
                 total, counted = 0.0, 0
-                candidate_blocks = {**background_blocks, coordinate: state}
+                candidate_blocks = {**context_blocks, coordinate: state}
                 for frame_id, camera, usable in views:
                     height, width = frames[frame_id].shape[:2]
                     rendered, _face_index = render_result(
@@ -413,5 +476,20 @@ def fit_states(
             # Silhouette answers "which shape", grain answers "which material".
             # Letting the grain vote on the shape as well cost 2.9pp of family.
             order = 0 if shape_from_silhouette else 1
-            chosen[coordinate] = min(ranked, key=lambda entry: entry[order])[2]
+            best = min(ranked, key=lambda entry: entry[order])
+            plain_score, _joint_score, best_state = best
+            # Keep air and the current state on ties or when a candidate does
+            # not improve the rendered evidence. Returning only accepted edits
+            # lets the caller preserve empty cells and existing geometry.
+            if best_state is not None and best_state == current_state:
+                # Report the retained state for callers that use this function
+                # as a per-cell decision, while leaving the volume unchanged.
+                chosen[coordinate] = current_state
+                working_blocks[coordinate] = current_state
+            elif (
+                best_state is not None
+                and plain_score + 1e-6 < baseline_score
+            ):
+                chosen[coordinate] = best_state
+                working_blocks[coordinate] = best_state
     return chosen
