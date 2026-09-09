@@ -47,3 +47,22 @@ half-resolution levels and an LRU bounded by total bytes, with conservative
 validation for invalid limits and oversized entries. This gives future GPU
 uploads a reusable, memory-bounded source without loading every full-resolution
 frame into an accelerator at once.
+
+## Renderer buffer parity seam
+
+`compute.render_buffers` now defines the wire contract for the existing
+`RenderResult` without changing the renderer. Colour, depth, and optional UV are
+contiguous `float32`; ownership is checked and packed as `int32`; validity is
+packed as `uint8` and derives from ownership when the source omits it. Shapes are
+bounded to one `(height, width)` output and GPU allocations are padded to four
+bytes, including the validity mask. `WgpuRenderBufferContext` reuses allocations
+for a stable shape and provides a staging-buffer readback for independent parity
+checks; the default application path is still CPU.
+
+The isolated GPU probe (`scripts/probe_wgpu_render_buffers.py`) completed on the
+selected AMD Radeon RX 9070 XT D3D12 adapter using a 37x29 result with UV and
+explicit validity. It reported 0 maximum absolute error for colour, depth, and
+UV, exact ownership and validity equality, `0.032116 s` upload, and `0.050615 s`
+readback. These timings cover a small transfer smoke test rather than a renderer
+performance claim. Sonnet can integrate this seam at the renderer boundary before
+any GPU rasterisation is enabled.
