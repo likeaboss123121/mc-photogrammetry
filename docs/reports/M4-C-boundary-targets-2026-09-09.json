@@ -1,0 +1,39 @@
+{
+  "note": "One correctly labelled visible-plane target per T2 frame, hand-drawn by looking directly at each screenshot (not zoomable, so corners are estimates, not pixel-exact - the same limitation noted in M4-partB-image-adapter-2026-09-09.md's real pilot). These masks are evaluation controls only: nothing in boundary_candidates.py or scripts/boundary_pilot.py reads this file before proposing candidates. Frozen with a content hash before scoring; scripts/boundary_pilot.py refuses to run if this file changes afterward.",
+  "targets": [
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall (diamond-pattern panelling), a clean sub-region clear of the roof gap at top-right and the foreground table wedge at bottom-left - not the wall's full visible extent, chosen to be unambiguous rather than maximal.",
+      "visible_extent_polygon": [[832, 13], [1152, 13], [1152, 730], [832, 730]],
+      "foreground_occlusion_polygons": [
+        [[0, 1369], [0, 614], [832, 781], [512, 1369]]
+      ],
+      "opening_polygons": [
+        [[1190, 0], [1651, 0], [1651, 256], [1190, 77]]
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall panelling looking down the room's length, a clean region clear of the roof skylight opening and the large foreground dining table.",
+      "visible_extent_polygon": [[38, 13], [832, 13], [832, 666], [38, 666]],
+      "foreground_occlusion_polygons": [
+        [[0, 1369], [0, 768], [2560, 768], [2560, 1369]]
+      ],
+      "opening_polygons": [
+        [[1024, 141], [1344, 141], [1344, 371], [1024, 371]]
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall panelling from a steep downward-pitched view, a clean region above where the central furniture and the player's hand begin. No roof opening is visible from this angle.",
+      "visible_extent_polygon": [[26, 13], [960, 13], [960, 614], [26, 614]],
+      "foreground_occlusion_polygons": [
+        [[896, 704], [1856, 704], [1856, 1369], [896, 1369]]
+      ],
+      "opening_polygons": []
+    }
+  ]
+}
