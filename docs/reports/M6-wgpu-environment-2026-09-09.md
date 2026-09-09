@@ -41,3 +41,9 @@ context now keeps the native device and pipeline: the latest two-call probe
 measured `1.048 s` for context creation, `0.092 s` for the first dispatch, and
 `0.00061 s` for the second dispatch. These are smoke-test timings, not a production performance
 claim; image rendering and texture batches still use the CPU path.
+
+The M6 cache groundwork also adds `FramePyramid`/`FramePyramidCache`: immutable
+half-resolution levels and an LRU bounded by total bytes, with conservative
+validation for invalid limits and oversized entries. This gives future GPU
+uploads a reusable, memory-bounded source without loading every full-resolution
+frame into an accelerator at once.
