@@ -70,6 +70,9 @@ from mc_photogrammetry.reconstruction.scene import SceneTransform
 RENDER_SCALE = 0.5
 """Fraction of source resolution the fit renders at."""
 
+DEFAULT_MAX_CANDIDATE_RENDERS = 256
+"""Conservative default work budget for renderer-backed partial fitting."""
+
 EDGE_WEIGHT = 0.25
 """Weight on gradient agreement beside colour. 0.6 measured worse than 0.25."""
 
@@ -397,7 +400,7 @@ def fit_states(
     families: Sequence[str] = PARTIAL_FAMILIES,
     usable_masks: Mapping[str, np.ndarray] | None = None,
     diagnostics: MutableMapping[str, object] | None = None,
-    max_candidate_renders: int | None = None,
+    max_candidate_renders: int | None = DEFAULT_MAX_CANDIDATE_RENDERS,
 ) -> dict[BlockCoordinate, BlockState | None]:
     """Best partial state for each cell, judged against the photographs.
 
@@ -411,9 +414,11 @@ def fit_states(
 
     started = time.perf_counter()
     render_counts = {
+        "background_renders": 0,
         "context_renders": 0,
         "probe_renders": 0,
         "ownership_renders": 0,
+        "current_renders": 0,
         "candidate_renders": 0,
     }
     capped = False
@@ -457,6 +462,7 @@ def fit_states(
                                            height, colours, block_shapes, scale,
                                            ambient=True, occluding_slots=occluding_slots,
                                            model_faces=model_faces)
+        count("background_renders")
         source_mask, usable_mask = _frame_masks(
             frame_id, image.shape[:2], canvas.shape[:2], usable_masks,
         )
@@ -561,6 +567,7 @@ def fit_states(
                     block_shapes, scale, ambient=True,
                     occluding_slots=occluding_slots, model_faces=model_faces,
                 )
+                count("current_renders")
                 painted = rendered.colour * gains[frame_id]
                 score = _score_image(
                     painted, photos[frame_id], usable, edge_weight, edges[frame_id],
@@ -623,7 +630,15 @@ def fit_states(
                     continue
                 total, counted = 0.0, 0
                 candidate_blocks = {**context_blocks, coordinate: state}
+                complete = True
                 for frame_id, camera, usable in views:
+                    if (
+                        max_candidate_renders is not None
+                        and render_counts["candidate_renders"] >= max_candidate_renders
+                    ):
+                        capped = True
+                        complete = False
+                        break
                     height, width = frames[frame_id].shape[:2]
                     rendered, _face_index = render_result(
                         candidate_blocks, scene, camera, width, height, colours, block_shapes, scale,
@@ -637,6 +652,10 @@ def fit_states(
                     if score is not None:
                         total += score
                         counted += 1
+                # A hypothesis scored on only a prefix of the views is not a
+                # candidate: selective-view acceptance can manufacture a win.
+                if not complete or counted != len(views):
+                    continue
                 if not counted:
                     continue
                 plain = total / counted
@@ -695,6 +714,7 @@ def fit_states(
         })
         diagnostics["shape_fit_candidate_render_cap"] = max_candidate_renders
         diagnostics["shape_fit_candidate_render_cap_reached"] = capped
+        diagnostics["shape_fit_render_work"] = sum(render_counts.values())
         diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
         diagnostics["shape_fit_supporting_frames"] = {
             str(coordinate): frames

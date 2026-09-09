@@ -127,6 +127,8 @@ chroma-spread gate is independent of candidate labels. Under identical current
 geometry it restores Template 6 from 0 to 613 exact states while leaving the
 fullbright Template 2 run unchanged (655 exact states).
 """
+DEFAULT_PARTIAL_FIT_MAX_RENDERS = 256
+"""Finite default candidate-render budget for developer partial fitting."""
 DIM_SPREAD_THRESHOLD = 1.9
 """Brightness spread above which a scene is treated as lit rather than fullbright."""
 LIGHT_CAST = (1.234, 1.002, 0.763)
@@ -493,7 +495,7 @@ def reconstruct_scene_surfaces(
     extra_proposals: set[BlockCoordinate] | None = None,
     fit_partial_shapes: bool = FIT_PARTIAL_SHAPES,
     shape_palette: tuple[PaletteColor, ...] | None = None,
-    partial_fit_max_renders: int | None = None,
+    partial_fit_max_renders: int | None = DEFAULT_PARTIAL_FIT_MAX_RENDERS,
     proposal_limit: int = PROPOSAL_LIMIT,
     dim_spread_threshold: float = DIM_SPREAD_THRESHOLD,
     light_cast: tuple[float, float, float] = LIGHT_CAST,

@@ -464,3 +464,35 @@ def test_shape_fit_reports_render_work_and_honours_a_candidate_cap():
     assert diagnostics["shape_fit_candidate_renders"] == 1
     assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
     assert diagnostics["shape_fit_seconds"] >= 0.0
+
+
+def test_candidate_render_cap_is_global_and_rejects_partial_multiview_hypotheses():
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = (carpet, slab)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    cameras = {
+        name: CameraModel((0.5, 0.25, -3.0), 0.0, 0.0,
+                          fov_degrees=90.0, eye_height=0.0)
+        for name in ("a.png", "b.png", "c.png")
+    }
+    colours = face_colours(palette)
+    rendered, _owner, _index, _depth = render_volume(
+        {target: slab.state}, scene, cameras["a.png"], 120, 120, colours,
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+    frames = {name: np.rint(rendered).astype(np.uint8) for name in cameras}
+    diagnostics = {}
+
+    fitted = fit_states(
+        [target], {}, scene, cameras, frames, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        diagnostics=diagnostics, max_candidate_renders=1,
+    )
+
+    assert diagnostics["shape_fit_candidate_renders"] == 1
+    assert diagnostics["shape_fit_candidate_renders"] <= 1
+    assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
+    assert target not in fitted

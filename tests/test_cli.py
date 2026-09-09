@@ -65,6 +65,15 @@ def test_visible_multiview_exposes_partial_render_work_cap():
     assert args.partial_fit_max_renders == 17
 
 
+def test_visible_multiview_has_a_finite_partial_render_budget_by_default():
+    from mc_photogrammetry.cli import build_parser
+    from mc_photogrammetry.reconstruction.raycast import DEFAULT_PARTIAL_FIT_MAX_RENDERS
+
+    args = build_parser().parse_args(["reconstruct-visible-multiview", "images"])
+
+    assert args.partial_fit_max_renders == DEFAULT_PARTIAL_FIT_MAX_RENDERS
+
+
 def test_calibrated_multiview_defaults_to_normal_mode_without_sidecars():
     from mc_photogrammetry.cli import build_parser
 

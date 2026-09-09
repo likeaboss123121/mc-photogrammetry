@@ -21,6 +21,7 @@ from mc_photogrammetry.reconstruction.sfm import SfmSettings, reconstruct_from_c
 from mc_photogrammetry.reconstruction.multiview import reconstruct_visible_surfaces
 from mc_photogrammetry.reconstruction.raycast import (
     ADJACENCY_STRENGTH,
+    DEFAULT_PARTIAL_FIT_MAX_RENDERS,
     reconstruct_scene_surfaces,
 )
 from mc_photogrammetry.reconstruction.camera import load_camera_manifest
@@ -113,7 +114,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     surfaces.add_argument(
         "--partial-fit-max-renders", type=int,
-        help="optional work cap for partial-shape candidate renders (developer validation)",
+        default=DEFAULT_PARTIAL_FIT_MAX_RENDERS,
+        help=("work cap for partial-shape candidate renders "
+              f"(default: {DEFAULT_PARTIAL_FIT_MAX_RENDERS})"),
     )
     surfaces.add_argument("--minecraft-jar", type=Path, help="local Minecraft client JAR for texture palette")
 
