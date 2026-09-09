@@ -31,4 +31,4 @@ The four additions were `(2,1,1) slime_block`, `(4,1,14) slime_block`, `(5,1,14)
 
 The stage therefore produced bounded, non-destructive changes on this frozen run, but it did not recover a correct partial-family state. This is evidence for the implementation and budget accounting only; it is not a quality promotion.
 
-The machine-readable details, proposal coordinates, diagnostics, and exact settings are in [M5-t2-matched-diagnostic.json](M5-t2-matched-diagnostic.json). The exported before/after fixtures are `M5-t2-before.litematic` and `M5-t2-after.litematic` in this report directory.
+The machine-readable details, proposal coordinates, diagnostics, and exact settings are in [M5-t2-matched-diagnostic.json](M5-t2-matched-diagnostic.json). The exported before/after litematics were generated locally as `M5-t2-before.litematic` and `M5-t2-after.litematic`; they remain ignored binary diagnostic artifacts.
