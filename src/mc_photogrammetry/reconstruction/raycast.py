@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from threading import Event
 
 import numpy as np
@@ -538,6 +538,7 @@ def reconstruct_scene_surfaces(
     progress_callback: Callable[[int, int], None] | None = None,
     cancel_event: Event | None = None,
     diagnostics: dict[str, object] | None = None,
+    usable_masks: Mapping[str, np.ndarray] | None = None,
 ) -> BlockVolume:
     """Recover visible scene-grid blocks by calibrated projection and z-buffering."""
     if sample_radius < 0:
@@ -1237,7 +1238,10 @@ def reconstruct_scene_surfaces(
         fitting = shape_palette if shape_palette is not None else palette
         wanted = residual_proposals(
             settled, scene, cameras, frames, fitting, limit=proposal_limit)
-        fitted = fit_states(list(wanted), settled, scene, cameras, frames, fitting)
+        fitted = fit_states(
+            list(wanted), settled, scene, cameras, frames, fitting,
+            usable_masks=usable_masks,
+        )
         for coordinate, state in fitted.items():
             volume.set(coordinate, BlockObservation(
                 state=state, confidence=0.0, frame_ids=sorted(frames)))

@@ -205,6 +205,21 @@ def test_a_face_too_small_to_read_offers_no_grain():
     assert MINIMUM_FACE_AREA > 0
 
 
+def test_face_texture_sampling_rejects_an_excluded_usable_region():
+    from mc_photogrammetry.reconstruction.shape_fit import _face_patches
+
+    scene = _scene()
+    camera = CameraModel((2.5, 3.5, -4.0), yaw_degrees=0.0,
+                         pitch_degrees=35.0, fov_degrees=90.0)
+    image = np.full((120, 120, 3), 160, dtype=np.uint8)
+    excluded = np.zeros((120, 120), dtype=bool)
+
+    assert _face_patches(
+        scene, camera, (2, 1, 3), CARPET, image, 1.0,
+        usable_mask=excluded,
+    ) == []
+
+
 def test_the_shape_does_not_change_with_the_texture_weight():
     """Silhouette decides the shape; grain only decides the material.
 

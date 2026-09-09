@@ -231,7 +231,11 @@ def _slot_masks(scene, camera, coordinate, boxes, occupied, scale, shape):
     return stamped, shading, covered.astype(bool)
 
 
-def _face_patches(scene, camera, coordinate, boxes, image, scale):
+def _face_patches(
+    scene, camera, coordinate, boxes, image, scale,
+    *, usable_mask: np.ndarray | None = None,
+    owner_masks: Mapping[str, np.ndarray] | None = None,
+):
     """Rectify the photograph through each of a candidate's own face quads.
 
     The shape decides the quad, so the patch this returns is what the camera would
@@ -239,7 +243,9 @@ def _face_patches(scene, camera, coordinate, boxes, image, scale):
     classifier is built for, and it carries the grain that separates birch from
     oak where an average colour cannot.
     """
-    from mc_photogrammetry.reconstruction.face_sampling import quad_area, rectify_face
+    from mc_photogrammetry.reconstruction.face_sampling import (
+        quad_area, rectify_face_valid,
+    )
 
     height, width = image.shape[:2]
     eye = np.asarray(camera.position, float) + np.asarray([0.0, camera.eye_height, 0.0])
@@ -256,17 +262,54 @@ def _face_patches(scene, camera, coordinate, boxes, image, scale):
             if any(point is None for point in points):
                 continue
             quad = np.asarray([[p[0], p[1]] for p in points], np.float32)
-            if (quad[:, 0].min() < 1 or quad[:, 0].max() >= width - 1
-                    or quad[:, 1].min() < 1 or quad[:, 1].max() >= height - 1):
-                continue
             area = quad_area(quad)
             if area < MINIMUM_FACE_AREA:
                 continue
-            patch = rectify_face(image, quad)
-            if patch is None:
+            valid = np.ones((height, width), dtype=bool)
+            if usable_mask is not None:
+                if usable_mask.shape != (height, width):
+                    raise ValueError("usable_mask must match the image dimensions")
+                valid &= usable_mask
+            if owner_masks is not None:
+                owner = owner_masks.get(slot)
+                if owner is not None:
+                    if owner.shape != (height, width):
+                        raise ValueError("owner mask must match the image dimensions")
+                    valid &= owner
+            rectified = rectify_face_valid(image, quad, valid)
+            if rectified is None:
                 continue
-            found.append((slot, patch, float(np.sqrt(area))))
+            patch, valid_patch, coverage = rectified
+            if int(valid_patch.sum()) < MINIMUM_PIXELS:
+                continue
+            found.append((slot, patch, float(np.sqrt(area)), valid_patch, coverage))
     return found
+
+
+def _face_ownership(
+    scene, camera, coordinate, state, context_blocks, colours, block_shapes,
+    occluding_slots, model_faces, image_shape, scale,
+) -> dict[str, np.ndarray]:
+    """Upscale exact renderer ownership masks for one candidate's visible faces."""
+    import cv2
+
+    height, width = image_shape
+    rendered, face_index = render_result(
+        {**context_blocks, coordinate: state}, scene, camera, width, height,
+        colours, block_shapes, scale, ambient=True,
+        occluding_slots=occluding_slots, model_faces=model_faces,
+    )
+    masks: dict[str, np.ndarray] = {}
+    for identifier, (cell, slot) in enumerate(face_index):
+        if cell != coordinate:
+            continue
+        owned = rendered.ownership == identifier
+        if owned.shape != (height, width):
+            owned = cv2.resize(
+                owned.astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST
+            ).astype(bool)
+        masks[slot] = masks.get(slot, np.zeros((height, width), dtype=bool)) | owned
+    return masks
 
 
 def fit_states(
@@ -282,6 +325,7 @@ def fit_states(
     texture_weight: float = TEXTURE_WEIGHT,
     shape_from_silhouette: bool = True,
     families: Sequence[str] = PARTIAL_FAMILIES,
+    usable_masks: Mapping[str, np.ndarray] | None = None,
 ) -> dict[BlockCoordinate, BlockState]:
     """Best partial state for each cell, judged against the photographs.
 
@@ -426,12 +470,32 @@ def fit_states(
             if index is not None:
                 total_weight = 0.0
                 pooled = np.zeros(index.count, dtype=np.float64)
+                representative = materials[key][0]
                 for frame_id, camera, _usable in views:
-                    for slot, patch, weight in _face_patches(
-                            scene, camera, coordinate, boxes, frames[frame_id], scale):
+                    owner_masks = _face_ownership(
+                        scene, camera, coordinate, representative, context_blocks,
+                        colours, block_shapes, occluding_slots, model_faces,
+                        frames[frame_id].shape[:2], scale,
+                    )
+                    if usable_masks is not None:
+                        mask = usable_masks.get(frame_id)
+                    else:
+                        from mc_photogrammetry.vision.gui_mask import create_gui_mask
+
+                        mask = ~create_gui_mask(
+                            frames[frame_id].shape[0], frames[frame_id].shape[1]
+                        )
+                    for slot, patch, weight, _valid, coverage in _face_patches(
+                            scene, camera, coordinate, boxes, frames[frame_id], scale,
+                            usable_mask=mask, owner_masks=owner_masks):
+                        pixels = patch.reshape(-1, 3)
+                        weights = coverage.reshape(-1)
+                        if float(weights.sum()) <= 1e-6:
+                            continue
+                        mean = np.average(pixels, axis=0, weights=weights)
                         costs, _best = index.costs(
-                            patch.reshape(-1, 3).mean(axis=0), (), slot,
-                            pattern=_normalised_pattern(patch), texture_weight=1.0)
+                            mean, (), slot,
+                            pattern=_normalised_pattern(patch, coverage), texture_weight=1.0)
                         if costs.size:
                             pooled += weight * costs
                             total_weight += weight

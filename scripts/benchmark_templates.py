@@ -131,6 +131,7 @@ def run(
         frames, cameras, scene, palette=palette, appearance_calibrations=calibrations,
         adjacency_strength=adjacency_strength, bounded_adjacency=bounded_adjacency, diagnostics=diagnostics,
         correct_light_cast=correct_light_cast,
+        usable_masks=usable_masks,
     )
     reconstruction_seconds = time.perf_counter() - reconstruction_started
     export_started = time.perf_counter()
