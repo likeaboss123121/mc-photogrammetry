@@ -137,4 +137,5 @@ def test_palette_for_states_keeps_exact_partial_renderer_metadata(tmp_path):
     assert slab.shape_boxes
     assert slab.model_faces
     assert slab.covered_slots
+    assert provider.palette_for_states(requested, include_partial=False) == ()
     assert provider.palette_for_states((BlockState("minecraft:missing"),)) == ()

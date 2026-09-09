@@ -111,7 +111,9 @@ def run(
         # old path rebuilt two-field PaletteColor values keyed by name, which
         # discarded partial shape boxes, face polygons, and alpha masks and also
         # collapsed distinct state properties under one block name.
-        palette = provider.palette_for_states(tuple(reference_snapshot.palette))
+        palette = provider.palette_for_states(
+            tuple(reference_snapshot.palette), include_partial=False
+        )
         palette_source = "reference"
         texture_colors = {
             item.state: tuple(item.rgb)

@@ -290,7 +290,7 @@ class VanillaJarTextureProvider:
         return tuple(_palette_color(sample) for sample in self.samples)
 
     def palette_for_states(
-        self, states: Iterable[BlockState]
+        self, states: Iterable[BlockState], *, include_partial: bool = True
     ) -> tuple[PaletteColor, ...]:
         """Return model-aware entries for the requested exact block states.
 
@@ -298,7 +298,9 @@ class VanillaJarTextureProvider:
         that look alike. That is useful for an unconstrained classifier, but it
         is wrong when a reference or an accepted edit names a rare state: the
         renderer needs that state's baked faces, shape boxes, and alpha masks.
-        Keep the requested states distinct and preserve their full geometry.
+        Keep the requested states distinct and preserve their full geometry. Set
+        ``include_partial=False`` when the result is the first-pass material
+        vocabulary; partial models should then enter only a shape-gated pass.
         """
         requested = tuple(states)
         if not requested:
@@ -310,7 +312,7 @@ class VanillaJarTextureProvider:
         selected: list[PaletteColor] = []
         for state in requested:
             sample = exact.get(state) or by_name.get(state.name)
-            if sample is not None:
+            if sample is not None and (include_partial or sample.full_cube):
                 # A cache can predate newly materialised default properties. If
                 # only the block name matches, retain the requested state key so
                 # reference calibration and renderer lookups still line up.
