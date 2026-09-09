@@ -27,8 +27,9 @@ exports serialisable adapter metadata, stable device selection, optional import
 behaviour, and native device creation. `LocalComputeProvider` now discovers these
 wgpu devices before its DirectML/CPU fallback.
 
-The repository regression suite remains green after this groundwork: **428 tests
-passed in 174.56 seconds**. The provider-specific tests also pass in the regular
+The repository regression suite was green after the provider groundwork with
+**428 tests passed in 174.56 seconds**. After the scoring-context refactor it
+remains green at **431 tests passed in 142.40 seconds**. The provider-specific tests also pass in the regular
 Python 3.10 environment where wgpu is absent, preserving the optional-dependency
 CPU path.
 
