@@ -590,6 +590,7 @@ def measure_plane(
     rounds: int = 3,
     target_period: float = TARGET_PERIOD,
     oversample: float = OVERSAMPLE,
+    side: float = 1.0,
 ) -> tuple["PeriodEstimate | None", int, float]:
     """Measure a plane's lattice, adjusting the sampling to what it turns out to be.
 
@@ -610,8 +611,14 @@ def measure_plane(
     a window that misses it measures nothing. The returned ``extent`` is then the
     region's own half-span, so pass it, not the argument, to
     `period_hypotheses`.
+
+    Without a mask, ``side`` says which of the two planes perpendicular to the
+    axis is meant - the floor under the camera or the ceiling over it. They are
+    different surfaces and measuring one while claiming the other is how a wall's
+    period ends up attached to a ceiling's distance. A mask answers this by
+    itself, so the argument is ignored when one is given.
     """
-    centre, side = (0.0, 0.0), 1.0
+    centre = (0.0, 0.0)
     if mask is not None:
         window = plane_window(mask, axis, axis_matrix, focal)
         if window is None:

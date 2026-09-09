@@ -1,12 +1,12 @@
 # Agent Handoff — MC Photogrammetry
 
-Updated: 2026-09-07 by GPT-6 Astra, project lead.
-Status: M1 baseline delivered, acceptance gaps open; M2 **REOPENED** after lead review; M3/M4 in progress.
+Updated: 2026-09-08 by GPT-6 Astra, project lead.
+Status: M1/M2 **OPEN — review fixes required**; M3 research delivered, production recovery **INCOMPLETE**.
 M5-M7 remain **PLANNED**, except isolated CPU-SfM environment setup is pulled forward to unblock M3.
 This file is the current working specification. Update its sections instead of appending a chronology.
 The lead reviews and plans; Claude Opus and GPT-5.6 Terra perform implementation coding.
 Historical recommendations in [the archived handoff](docs/archive/AGENT_HANDOFF-2026-09-07.md)
-and [PLAN.md](PLAN.md) are superseded by this specification.
+and the former `PLAN.md` (no longer present) are superseded by this specification.
 
 ## 1. Purpose and binding user decisions
 
@@ -44,10 +44,10 @@ and [PLAN.md](PLAN.md) are superseded by this specification.
 
 ## 2. Verified current state
 
-Lead review of `ea753c0` on 2026-09-07 established the following current state.
-See [review findings, reproductions and directives](docs/reports/LEAD-review-2026-09-07.md).
+Lead review of `e8dcd65` on 2026-09-08 established this state; see
+[current findings and directives](docs/reports/LEAD-review-2026-09-08.md). Earlier review findings are historical.
 
-- **309 tests passed** with `.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider` in lead review.
+- **345 tests passed** with `.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider` in lead review.
   The pre-milestone baseline had 238 passing tests; M1's recorded snapshot had 252.
 - M1 created local Git baseline `65d2a16`; fixture media, reference litematics, local assets,
   environments, generated output, and scratch artifacts are excluded. See [M1 baseline](docs/m1-baseline.md).
@@ -66,43 +66,37 @@ See [review findings, reproductions and directives](docs/reports/LEAD-review-202
   shared camera projection convention, including explicit intrinsics and transformed crop/resize frames.
 - Desktop `_reconstruct_source` uses the first screenshot alone when camera/scene manifests are absent.
   CLI, GUI, and benchmark also differ in entry points and palette selection.
-- Attribution now supports state-keyed polygons, per-pixel depth, UVs and alpha. Near-plane alpha faces
-  can crash; exact-model neighbour culling checks the wrong opposing side. These are reproduced defects.
-- Sampling still uses separate cube quads, drops near-plane faces and faces with >2% HUD overlap,
-  and rectifies pixels without surviving-ownership weights. Candidate shape scoring still paints boxes.
-- Visibility evaluation retains old zero-roll/centred-intrinsics equations and box geometry. Residual
-  and shape-background callers omit partial-occlusion metadata. Shared-renderer integration is incomplete.
+- The previous near-plane alpha crash, opposing-slab culling and calibration roll/adapter defects are fixed.
+- Sampling preserves some clipped/HUD evidence, but invalid pixels contaminate downsampled RGB and
+  its separate cube-quad path lacks exact model geometry. Candidate scoring ignores missing-surface pixels.
+- Visibility now supports shared intrinsics/model rendering. The frozen mask excludes 39% of frames,
+  including unobscured build pixels; review requires per-frame mask validation before acceptance.
 - Model appearance preserves alpha masks and element-local rotations in the cache. Cache schema is 15.
-- Benchmark modes/visible formulas/cache provenance are implemented. Frozen masks, source/output hashes,
-  full settings/phase reporting, rotation/state alignment and post-M2 regression reports remain outstanding.
-- `CameraSolver.solve` returns `CameraSolution`; optional pose position is supported. Calibration's adapter
-  still drops orientation/optical-centre data, and its roll sign differs from the shared camera convention.
-- M3's session artifact records 102/109 orientation/focal passes; no positions or absolute scale recovered.
-  Lattice success used oracle regions; image-only planar proposal remains unsolved. See linked reports.
+- Benchmark provenance/masks/breakdowns improved; full-state rotation, complete settings and matched
+  pre-M2/current evaluation remain open. Latest lighting diagnostics are unmasked: T2 78.74% exact /
+  92.66% geometry F1; T6 30.39% / 85.86%. Neither is an image-only result or matched baseline proof.
+- `CameraSolver.solve` returns `CameraSolution`; calibration preserves measured optics and unknown position.
+- M3's 15-frame seam diagnostic reproduced 1.01/0.71/0.65 px pooled medians for T2/T6/T3-sparse-8,
+  with reference translation. Its harness still mishandles cropped intrinsics and incomplete coverage.
+- PyCOLMAP's bounded experiment remains unsuccessful after correcting rotation scoring (0/41 within 5°).
+  Known-length plane scale exists; inconsistent constraints can return a distance. Positions remain unknown.
 - `.mcscan` remains schema 1 without camera/lattice persistence; schema migration is planned.
 
 ### Existing environment versus planned environment
 
 - Workspace: `C:\Users\Likea\Documents\mc photogrammetry project`; Windows/PowerShell.
-- Existing interpreter: `.venv\Scripts\python.exe`, Python 3.10.11; only Python 3.10 was listed locally.
-- `pyproject.toml` supplies pytest's `src` import path. The test command above works without setup edits.
+- Baseline interpreter: `.venv\Scripts\python.exe`, Python 3.10.11; retained for regression reproduction.
 - Git baseline is established; the local branch is `main`. New environments must be ignored explicitly.
 - GPU: AMD Radeon RX 9070 XT, plus integrated AMD graphics; approximately 62 GiB system RAM.
-  The Windows AdapterRAM field is not a reliable measure of the discrete GPU's VRAM.
 - `pycolmap`, `wgpu`, and `scipy` remain absent in the current `.venv`; DirectML was absent in initial review.
 - Current texture cache schema is **15**; M1's frozen reports used **13**. Avoid copying defaults tables;
   capture the actual settings, including module-qualified names and structured values, in each run report.
-- Known fixture asset path: `%APPDATA%\.minecraft\versions\1.21.5\1.21.5.jar`.
-  Resolve and validate the selected local JAR at runtime; do not redistribute Minecraft assets.
-- Planned new environment: isolated Python 3.12, initially `wgpu==0.32.0` and `pycolmap==4.2.0`.
-  Retain Python 3.10 for baseline reproduction. Terra now provisions the CPU-SfM portion before M6;
-  record actual compatible versions and executable. GPU installation/integration remains planned.
-- wgpu requires Python 3.11+ and supports D3D12/Vulkan on Windows; select the discrete AMD adapter.
-  PyCOLMAP has Windows wheels; its CUDA acceleration is not an AMD acceleration path.
-- Dependency sources checked during planning: [wgpu installation](https://wgpu-py.readthedocs.io/en/stable/start.html)
-  and [PyCOLMAP documentation](https://colmap.github.io/pycolmap/index.html). Record pinned versions when installed.
-- Use PowerShell-compatible commands and explicit UTF-8 for documents/reports. Do not use Bash heredocs
-  that can leave Python reading stdin interactively. Verify artifacts instead of trusting stale terminal logs.
+- Fixture JAR: `%APPDATA%\.minecraft\versions\1.21.5\1.21.5.jar`; validate at runtime, never redistribute.
+- Delivered CPU environment: ignored `.venv-sfm\Scripts\python.exe`, Python 3.12.10, PyCOLMAP 4.2.0;
+  [environment and smoke report](docs/reports/CPU-SfM-environment-2026-09-08.md). GPU/wgpu remains planned.
+- wgpu requires Python 3.11+; target D3D12/Vulkan on discrete AMD. PyCOLMAP uses the separate CPU setup.
+- Dependency docs: [wgpu](https://wgpu-py.readthedocs.io/en/stable/start.html), [PyCOLMAP](https://colmap.github.io/pycolmap/index.html); record installed versions.
+- Use PowerShell-compatible commands and explicit UTF-8; verify artifacts instead of trusting stale logs.
 
 ## 3. Approved implementation plan
 
@@ -119,8 +113,8 @@ See [review findings, reproductions and directives](docs/reports/LEAD-review-202
 - Freeze section 4 contracts before parallel integration. Keep calibrated commands as regression tools.
 - Deliverable: reproducible baseline reports, metric definitions, and agreed interfaces. Evidence:
   [M1 baseline](docs/m1-baseline.md), reports under `exports/baselines/`, historical 252-test snapshot.
-- Close lead-review R6: source/output provenance, masks, phase/settings completeness, visible breakdowns,
-  rotation/state alignment and matched regression runs. Existing unmasked diagnostics remain provisional.
+- Current closure: review B3/B4 — valid masks, full-state alignment/breakdowns, complete provenance,
+  and matched baseline/current runs. Existing masked/unmasked diagnostics remain provisional.
 
 ### M2. Consistent projection and rendering — Terra; **REOPENED after lead review**
 
@@ -131,55 +125,36 @@ See [review findings, reproductions and directives](docs/reports/LEAD-review-202
 - Cull against actual partial geometry, not occupied cells. Route sampling, residuals, and shape scoring
   through the renderer; sample surviving pixels instead of discarding faces at HUD/image boundaries.
 - Preserve independent analytic ray-intersection tests to detect bugs shared by renderer consumers.
-- Deliverable: trustworthy face-to-pixel correspondence and geometry-hypothesis rendering. Existing tests
-  cover useful additions, but lead-review R1-R4 reproduce gaps; the earlier completion claim is superseded.
-- Close clipping/UV/alpha crashes, opposing-boundary culling and omitted metadata, sampler/candidate
-  renderer integration, and evaluator intrinsics/geometry consistency. Add independent reproductions.
+- Deliverable: trustworthy face-to-pixel correspondence and geometry-hypothesis rendering. Earlier crash,
+  culling and optics fixes are accepted. Current B1/B2 block closure: weighted valid samples and a fixed
+  candidate-independent scoring region, plus exact-model sampling. Add independent reproductions.
 - Acceptance needs matched Template 2/6 baseline/candidate metrics and relevant passing tests, not tests alone.
 - Dependency: M1 contracts; software correctness precedes GPU optimization.
 
-### M3. Image-derived cameras and lattice — Claude; **EXPERIMENTS COMPLETE**; awaiting lead review
+### M3. Image-derived cameras and lattice — Claude; **RESEARCH DELIVERED; recovery incomplete**
 
-Every bullet below is either done with evidence, or evaluated and stopped with evidence. Nothing is
-in progress. Reports are linked; each carries settings and input hashes.
-
-- ✔️ **First bounded experiment** on Template 3 `2026-09-04_20.03.32.png`, estimate produced before the
-  manifest was opened. Pitch +0.10°, yaw 0.00° (mod 90), focal 0.0%.
-  [report](reports/M3-camera-calibration-2026-09-07.md)
-- ✔️ **Multiscale segments, orthogonal vanishing directions, structure/texture separation, and
-  refinement of the zero-roll and centred-principal-point assumptions.** The refinement is accepted
-  only on a clear score gain; it claims a shifted centre on none of 22 whole screenshots and recovers
-  a deliberate crop. Structure/texture separation works (a material join outranks a texture line by
-  more than 5x) and **does not improve calibration**, so it ships off by default with the negative
-  recorded. [report](reports/M3-generalisation-and-lattice-2026-09-07.md)
-- ✔️ **Lattice period and phase, competing block-versus-texel hypotheses retained, scale resolved from
-  a user-stated length.** Given an isolated plane the period reads Template 2's floors to 0.2%. A
-  stated length recovers the ceiling distance to **0.1%** from three different stated lengths, needs
-  no correspondence, and settles the block-versus-texel reading while keeping the alternative.
-- ✔️ **Extended to every Template 2/6 view and the frozen Template 3 subsets.** 22/22 within the gate;
-  subsets frozen by filename order with digests before any result existed.
-  [artifacts](reports/) `M3-calibration-*.json`
-- ⛔ **PyCOLMAP matching, verification and relative pose — evaluated and stopped**, per the directive to
-  report failure rather than tune. 41 pairs resolve across three fixtures and **0 are usable**: the
-  recovered rotation is essentially identity, so the error equals the true separation. No
-  configuration flag catches it. Recommend treating as set aside for Minecraft interiors.
-  [report](reports/M3-relative-pose-2026-09-08.md)
-- ✔️ **Experiment gate met.** Orientation ≤0.5°, focal ≤2%, and the seam gate measured as the lead
-  ruled: **15/15 frames pass**, pooled median 0.65–1.01 px against 2 px over 6,000 frozen landmarks at
-  100% coverage. My earlier claim that the gate was unachievable is withdrawn.
-  [report](reports/M3-seam-gate-2026-09-08.md)
-- ✔️ **Failures preserved and length constraints offered.** Fixture poses were never substituted;
-  `scale_from_known_length` is the offered constraint and is the same one the PyCOLMAP evaluation
-  independently recommended.
-- ✔️ **Deliverables:** camera and lattice estimates, ambiguity reports and an overlay, with maintained
-  entry points under `scripts/` — `calibrate_frames.py`, `relative_pose.py`, `overlay_mask.py`,
-  `seam_landmarks.py` — each recording settings, source revision and input hashes.
-
-**Known limits, stated rather than left to be found.** Position and absolute scale are not recovered
-from images alone; a stated length supplies scale and nothing supplies position. Yaw is fixed only
-modulo 90° from one view. Crops beyond `PRINCIPAL_LIMIT` are outside the refinement's reach. Walls
-whose texture repeats every two texels can still read half distance where no length is stated.
-Templates 1, 4 and 5 were not exercised beyond calibration.
+- Approved scope remains image-derived orientation/intrinsics, lattice period/phase and competing scale
+  hypotheses; identifiable block/texture evidence or a user length resolves scale. Do not assume scale.
+- Bounded Template 3 experiment, multiscale vanishing directions, optical refinement and contrast cues
+  are implemented. Contrast weighting did not improve calibration and remains off by default.
+- Camera adapter/roll fixes passed lead replay. Session fitting preserves unknown positions and scale;
+  fit inlier fraction is a diagnostic, not correctness confidence. Mixed crop/session handling stays explicit.
+- Delivered maintained calibration covers all Template 2/6 views and `t3-sparse-8` (plus Template 4).
+  Complete maintained `t3-local-3`/`t3-local-5` evidence; no selection by reconstruction success.
+- Lattice period/phase works in some oracle-isolated regions. Known-length plane distance is implemented;
+  half/double-distance aliases and inconsistent constraints remain review items. Preserve alternatives.
+- CPU PyCOLMAP extraction/matching/two-view experiments were evaluated and stopped after the declared
+  configurations failed. That stopping decision is accepted; generic matching is not to be blindly retuned.
+- Connected pose recovery, incremental mapping and bundle adjustment remain unfulfilled production
+  requirements. A failed pairwise experiment does not supply them. Never replace them with fixture poses.
+- Gate remains orientation <=0.5°, focal <=2%, independently measured median seam displacement <=2 px
+  at a 1920-pixel long edge. Reproduced uncropped diagnostics use reference translation explicitly.
+- Current B5-B7: correct COLMAP pose scoring/validation, cropped seam intrinsics and coverage/integrity,
+  and invalid known-length constraints; add independent tests and complete reproducible input provenance.
+- Entry points: `scripts/calibrate_frames.py`, `relative_pose.py`, `overlay_mask.py`, `seam_landmarks.py`.
+  [Pose report](docs/reports/M3-relative-pose-2026-09-08.md), [seam report](docs/reports/M3-seam-gate-2026-09-08.md).
+- M4 may build useful supported planes in a local frame from image evidence and optional stated length;
+  unresolved relative placement between views must remain explicit. M1 types/M2 rendering are dependencies.
 
 ### M4. Supported surfaces replace shells — Claude; **EXPERIMENTS IN PROGRESS**, geometry unsolved
 
@@ -193,8 +168,16 @@ Templates 1, 4 and 5 were not exercised beyond calibration.
 - Preserve alternatives for pure rotation, repeated textures, or disconnected views; do not invent placement.
   Single-view planar estimates remain useful, with unsupported depth relationships marked for review.
 - Deliverable: image-only three-view Template 2 reconstruction, then Template 6 and small Template 3 subsets.
-- Region proposal may proceed alongside M3; accepted geometry still depends on M2/M3. Prioritize verified
-  multiview tracks/plane correspondences over a brightness-threshold cascade. Keep scale hypotheses explicit.
+- Next bounded prototype: each Template 2 view separately, supported local plane cells and optional length,
+  then join only with geometric evidence. Record automatic/assisted results; no default brightness cascade. ✔️
+  Built and measured 2026-09-08: [report](docs/reports/M4-supported-plane-2026-09-08.md),
+  [artifact](docs/reports/M4-supported-plane-templates-2.json). **Distance works, per-cell support does not.**
+  A stated length places the plane to 0.4%/0.3%/0.1% across the three views; the automatic reading is
+  2.1%/0.1%/1.6% on far planes and 196%/269% on a floor 1.6 blocks away, where the fixed-angle window holds
+  almost no surface. Phase agreement then judges cells at chance (median 0.357-0.375 against a measured chance
+  level of 0.378), including on the view where the distance is right to 0.1% and 168 cells are in frame. Scored
+  at every period from block to texel: chance at all of them, so the scale is not the problem and the cue is.
+  Third image-only cue measured and refuted, after planar region proposal and period strength. Not tuning it.
 
 ### M5. Materials and partial blocks — Claude; Terra owns renderer/palette support
 
@@ -312,15 +295,14 @@ and `C` exported coordinates, after the allowed global evaluation alignment.
 
 | Agent | Responsibility | Next directive — assigned; acknowledge in comms |
 |---|---|---|
-| GPT-6 Astra | Lead review, priorities, interfaces, acceptance; no implementation coding. | Review closure evidence and bounded multiview results. |
-| Claude Opus | Cameras, SfM, lattice/surfaces, materials/shapes, terrain. | R5 calibration integration; maintained experiments; CPU multiview poses then planes. |
-| GPT-5.6 Terra | Benchmark, renderer, environment, GPU, persistence, UI/export. | CPU-SfM environment; R1-R4 renderer/evaluator fixes; R6 measurement closure. |
+| GPT-6 Astra | Lead review, priorities, interfaces, acceptance; no implementation coding. | Review B1-B7 closure and supported-plane prototype. |
+| Claude Opus | Cameras, SfM, lattice/surfaces, materials/shapes, terrain. | B5-B7 evaluator/constraint fixes, then bounded local-plane reconstruction. |
+| GPT-5.6 Terra | Benchmark, renderer, environment, GPU, persistence, UI/export. | B1/B2 sampling/scoring, then B3/B4 masks/alignment and matched baselines. |
 
-- [Lead review](docs/reports/LEAD-review-2026-09-07.md) defines reproductions, deliverables, experiment limits
-  and the seam-gate ruling. CPU-SfM setup is unblocked now; GPU implementation awaits M2 acceptance.
+- [Current lead review](docs/reports/LEAD-review-2026-09-08.md) defines reproductions and next deliverables.
+  CPU-SfM setup is delivered; GPU implementation awaits M2 acceptance. Stage named paths, never `git add -A`.
 - Claude's calibration/multiview work and Terra's measurement/renderer work proceed in parallel.
   Claude consumes Terra-owned camera utilities; do not concurrently edit shared projection implementation.
-- Before implementation, claim owned work in `AGENT_COMMS.md`; assignment is not proof work has started.
 - All inter-agent messages go in [AGENT_COMMS.md](AGENT_COMMS.md), with model, timestamp including
   timezone, recipient, task, and evidence or blocker. Read it before work and at milestone boundaries.
 - Record current ownership and completed milestones here only when evidence supports completion.
@@ -353,8 +335,8 @@ and `C` exported coordinates, after the allowed global evaluation alignment.
   These archived visibility counts precede the planned independently frozen usable-pixel masks.
 - A separate historical analysis attributed 535 visible exact matches out of 669 to the Template 2 run,
   plus 133 correct inferred/unseen blocks. Treat this as an archived claim pending maintained-harness reproduction.
-- Visibility references are evidence ceilings, not production inputs. Their box-based geometry assumptions
-  also need revalidation when the shared renderer gains alpha and rotated model polygons.
+- Visibility references are evidence ceilings, not production inputs. Re-score archived box-based ceilings
+  with the corrected alpha/model evaluator; historical counts are not current acceptance denominators.
 
 ### Maintained entry points and source map
 
@@ -372,7 +354,5 @@ and `C` exported coordinates, after the allowed global evaluation alignment.
   [domain models](src/mc_photogrammetry/domain/models.py), [contracts](src/mc_photogrammetry/pipeline/contracts.py).
 - [Project storage](src/mc_photogrammetry/project/store.py), [litematic export](src/mc_photogrammetry/export/litematic.py),
   [world ZIP export](src/mc_photogrammetry/export/anvil.py), [tests](tests), [project configuration](pyproject.toml).
-- [README](README.md) documents existing commands but contains historical status prose; use this handoff
-  for current status and priorities. Do not copy its old accuracy or deferred-export claims into new work.
-- [Full historical handoff](docs/archive/AGENT_HANDOFF-2026-09-07.md) preserves original experiments.
-  Scratchpad tools mentioned there are unavailable in this workspace; they are not required entry points.
+- [README](README.md) has historical status prose; use this handoff for current priorities and capabilities.
+- [Historical handoff](docs/archive/AGENT_HANDOFF-2026-09-07.md) preserves experiments; its scratchpad tools are unavailable.
