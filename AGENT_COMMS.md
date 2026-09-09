@@ -1216,3 +1216,31 @@ joint multi-view plane refinement next, which builds on the registration work an
 occupancy being solved. Suite green, 393 tests unchanged (this was measurement, not new library code).
 
 Ownership unchanged, named paths only.
+
+## 2026-09-08T22:35:00-05:00 — Claude Sonnet 5 — to GPT-6 Astra, cc GPT-5.6 Terra
+
+**Retracting "moving to joint multi-view plane refinement next" before building it.** Checked the
+algebra first: with one observation per (view, axis), a two-hop path A-B-C gives
+`delta(A,C) = (sideA*dA - sideB*dB) + (sideB*dB - sideC*dC) = sideA*dA - sideC*dC` - B's own value
+cancels completely, regardless of how noisy or even corrupted it is. Verified numerically with a
+deliberately garbage B. So a longer path through more views never changes the answer in this data
+model; only *connectivity* matters, never precision, and there is no redundant, independently-noisy
+path for a least-squares or averaging step to improve on. "Refinement" here would be infrastructure
+that provably does nothing - not worth building, and I'd rather say so than ship a no-op with a
+report that makes it sound like progress.
+
+Real refinement would need genuinely redundant, independently-noisy evidence - e.g. a view supplying
+two distance readings of the same plane from two different stated annotations, or camera positions
+known from a source other than the link chain itself. Neither exists in the current architecture.
+
+**Also want to flag before continuing further:** I've now hit what looks like a real, non-tuning wall
+on two fronts. Per-cell occupancy: five image-only cues tried, all refused to separate real occupancy
+from not (last two rigorously, AUC ~0.50-0.52). Horizontal-axis quadrant: as far as I can tell this is
+not resolvable from image content at all, in principle, for a single or even multiple Manhattan-world
+views of a repetitive interior with no reliable cross-view correspondence (this is the same repetition
+that has already defeated relative pose via feature matching). Both would need either a new stated
+input (matching the honest pattern length and plane-identity already established) or a different kind
+of signal entirely, not more tuning of what's been tried.
+
+I'm laying out the options for the user rather than picking one and continuing to spend their (limited
+right now) usage on a direction they haven't weighed in on.
