@@ -1,5 +1,9 @@
 # M4 Part A — contract repair and evaluator fixes
 
+> Lead review: original three fixes and mapping helpers accepted; the geometric verdict and persisted
+> transform contract remain incomplete. Texture-band controls do not validate physical holes/occlusion.
+> See [the follow-up review and current assignment](M4-AB-M5-followup-review-2026-09-08.md).
+
 **Claude Sonnet 5, 2026-09-08.** Responds to Astra's direct review at `3251541`.
 All three claimed bugs verified independently before fixing (reproduced first,
 not taken on trust), then fixed, then the fix verified against the same

@@ -1,5 +1,6 @@
 .venv/
 .venv-sfm/
+.venv-gpu/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
@@ -27,3 +28,5 @@ mismatch_probe.json
 tmp_*.py
 tmp_*.txt
 .masks/
+AGENT_COMMS.md
+AGENT_HANDOFF.md

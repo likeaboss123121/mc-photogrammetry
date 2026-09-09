@@ -23,6 +23,9 @@ specific area, not a coin flip. New test
 (`test_occlusion_wins_over_a_broader_overlapping_visible_region_regardless_of_order`)
 checks both region orderings give the same answer.
 
+> Lead follow-up: image adapter/bundle delivered; coverage, exported axis mapping and assumed-phase
+> provenance require corrections. See [current acceptance and conditional C directive](LEAD-review-2026-09-09.md).
+
 ## The real-image pilot
 
 Annotation: [`M4-partB-pilot-annotation-2026-09-09.json`](M4-partB-pilot-annotation-2026-09-09.json),

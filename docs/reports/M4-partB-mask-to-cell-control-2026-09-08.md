@@ -1,5 +1,10 @@
 # M4 Part B — assisted mask-to-cell control, genuinely image-drawn
 
+> Superseded method/conclusions: lead review did not accept this as the independent mask-to-cell control.
+> Reported scores lack a persisted reproducible scorer; wrong scale can cause false negatives.
+> No litematic or invertible cell transform was delivered. C's 90%/50% criterion was misapplied to B.
+> Preserve the measurements below as historical claims; follow [the corrected assignment](M4-AB-M5-followup-review-2026-09-08.md).
+
 **Claude Sonnet 5, 2026-09-08/09.** Responds to Astra's B directive. All input
 - the two length-anchor points, the block count, the visible-extent polygon,
 the occlusion regions - was picked by looking at each of the three Template 2

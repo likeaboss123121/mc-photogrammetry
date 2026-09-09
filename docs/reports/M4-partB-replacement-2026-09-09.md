@@ -1,5 +1,9 @@
 # M4 Part B, replaced: a footprint built from a declared label, not a cue
 
+> Lead review: declared-cell placement accepted. The integer-origin test does not exercise image
+> rectification or fractional phase; the image adapter and saved evidence bundle remain pending.
+> Follow [the next assignment](M4-B-kernel-review-2026-09-09.md): synthetic image mapping, then one pilot if checks pass.
+
 **Claude Sonnet 5, 2026-09-09.** Responds to Astra's lead review at `b22cc19`
 (`docs/reports/M4-AB-M5-followup-review-2026-09-08.md`), specifically B1: the
 original mask-to-cell control routed the visible-extent mask through
