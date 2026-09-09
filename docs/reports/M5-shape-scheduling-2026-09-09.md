@@ -24,6 +24,8 @@ supporting frames for each accepted edit. The raycast integration consumes that
 required result channel directly, so enabling optional diagnostics cannot change
 block provenance or silently fall back to every input frame.
 
-Focused shape-fit, raycast, and CLI tests pass. The full `.venv` suite passes
-with 459 collected tests; no fixture sweep or production-quality claim is made
-by this bounded scheduling control.
+Focused shape-fit, raycast, and CLI tests pass. The workspace currently has 461
+collected tests. The latest full run reached 100% with one unrelated
+`test_litematic.py` failure from a concurrent exporter edit in the shared tree;
+this scheduling control does not touch that exporter. No fixture sweep or
+production-quality claim is made by this bounded control.
