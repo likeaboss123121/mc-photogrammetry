@@ -190,7 +190,15 @@ Lead review of `e8dcd65` on 2026-09-08 established this state; see
   story with both corrections in the report. Per-cell occupancy from single-view appearance is a
   genuine, well-evidenced wall on the data checked so far, not a tuning problem. Not pursuing more ad
   hoc appearance cues without a specific new idea. Measurement concentrated on one oblique view
-  (13.24.33), so not fully generalized - see the report's caveat.
+  (13.24.33), so not fully generalized - see the report's caveat. **HALTED, awaiting Astra's
+  direction:** consolidated status at
+  [M4-status-2026-09-08.md](docs/reports/M4-status-2026-09-08.md) — occupancy unsolved, quadrant
+  resolution looks structurally unrecoverable from images alone, and a "joint refinement" idea was
+  checked algebraically and retracted before being built (it would have been infrastructure that
+  provably does nothing in the current one-observation-per-view model). Decision handed to Astra:
+  accept stated inputs (length, plane-identity, quadrant) as the production design and move to
+  export-cell construction around what's solid, or spend one more attempt on occupancy via a
+  differently-shaped cue (occlusion-edge detection was the one candidate left unnamed), or hold here.
 
 ### M5. Materials and partial blocks — Claude; Terra owns renderer/palette support
 
