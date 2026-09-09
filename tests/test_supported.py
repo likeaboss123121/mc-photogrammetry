@@ -171,3 +171,55 @@ def test_a_photographed_blank_wall_is_contradicted_but_an_unseen_one_is_not():
     assert photographed and all(c.verdict == CONTRADICTED for c in photographed)
     unseen = support_cells(blank, np.zeros_like(blank), 32.0, (0.0, 0.0))
     assert unseen and all(c.verdict == UNOBSERVED for c in unseen)
+
+
+def test_local_phase_finds_a_lattice_whose_phase_drifts_across_the_patch():
+    """A single global phase cannot fit a plane whose predicted seams have
+    drifted out of step with the real ones by the far edge - which is exactly
+    what calibration's own small residual error does over a wide patch. Local
+    windowing must still find each region's cells supported.
+    """
+    size = 512
+    period = 32.0
+    field = np.zeros((size, size), np.float32)
+    # The real lattice drifts half a period across the patch width - like a
+    # small, compounding calibration error would.
+    for row in range(size):
+        drift = (row / size) * (period / 2.0)
+        lines = np.arange(drift, size, period)
+        for line in lines:
+            index = int(round(line)) % size
+            field[row, index] = 1.0
+    coverage = np.ones_like(field)
+
+    # A single phase fit at the top of the patch cannot also fit the bottom.
+    global_found = support_cells(field, coverage, period, (0.0, 0.0))
+    global_supported = sum(1 for c in global_found if c.verdict == SUPPORTED)
+
+    local_found = support_cells(field, coverage, period, (0.0, 0.0),
+                                local_window_periods=1.5)
+    local_supported = sum(1 for c in local_found if c.verdict == SUPPORTED)
+    assert local_supported > global_supported * 1.5
+
+
+def test_local_window_does_not_raise_noise_above_the_threshold():
+    """The chance level under local fitting must stay measured, not assumed:
+    an unbiased phase estimator should not let a smaller sample invent
+    agreement, unlike a max-over-offsets search would.
+    """
+    rng = np.random.default_rng(11)
+    patch = rng.normal(0.0, 1.0, (512, 512)).astype(np.float32)
+    found = support_cells(patch, np.ones_like(patch), 32.0, (0.0, 0.0),
+                          local_window_periods=1.5)
+    scores = np.array([c.score for c in found])
+    assert scores.max() < SUPPORT_THRESHOLD, (
+        f"noise reached {scores.max():.3f} under local windowing")
+
+
+def test_local_window_of_none_reproduces_the_global_behaviour():
+    patch = _gridded(256, 32.0)
+    coverage = np.ones_like(patch)
+    with_none = support_cells(patch, coverage, 32.0, (0.0, 0.0),
+                              local_window_periods=None)
+    without_arg = support_cells(patch, coverage, 32.0, (0.0, 0.0))
+    assert [c.score for c in with_none] == [c.score for c in without_arg]

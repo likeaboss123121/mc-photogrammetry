@@ -171,6 +171,7 @@ def support_cells(
     minimum_coverage: float = MINIMUM_COVERAGE,
     tolerance: float = PHASE_TOLERANCE,
     threshold: float = SUPPORT_THRESHOLD,
+    local_window_periods: float | None = None,
 ) -> list[CellSupport]:
     """Judge every lattice cell of a rectified plane against its predicted seams.
 
@@ -178,12 +179,32 @@ def support_cells(
     cell that simply fell outside the picture is reported unobserved rather than
     contradicted. The distinction matters: one is a hole in the wall and the
     other is a hole in the photograph.
+
+    ``phase_pixels`` is a single, plane-wide phase by default. That assumes the
+    predicted seams stay in step with the real ones everywhere on the plane, which
+    measured false on a real screenshot: autocorrelation at the block period was
+    0.015 (noise) over an 18-block-wide patch and 0.12-0.29 (real signal) inside
+    2.5-block windows of the same patch. A plane's calibration is accurate enough
+    locally that its own small residual error still compounds linearly with
+    distance from wherever the phase was anchored, and over a wide-enough patch
+    that drift exceeds the tolerance band and desyncs the global prediction from
+    the real lattice - the true grid is there, the *global* prediction of where it
+    sits is not.
+
+    ``local_window_periods`` re-reads the phase for each cell from a window this
+    many periods wider than the cell on every side, rather than trusting the one
+    passed in for the whole plane. The window has to stay wider than the cell
+    itself: fitting a cell's phase from only its own pixels agrees with anything,
+    which is the invention this module exists to prevent. Passing `None` keeps the
+    original single global phase, which the tests still exercise directly.
     """
     if period_pixels < 2.0:
         return []
     across, down = _edge_profiles(patch)
     rows, columns = patch.shape[:2]
     found: list[CellSupport] = []
+    margin = (int(local_window_periods * period_pixels)
+              if local_window_periods else 0)
 
     cells_down = int(rows // period_pixels)
     cells_across = int(columns // period_pixels)
@@ -204,11 +225,24 @@ def support_cells(
                 found.append(CellSupport((row, column), UNOBSERVED, 0.0, seen))
                 continue
 
+            phase = phase_pixels
+            if local_window_periods:
+                wu0, wu1 = max(0, u0 - margin), min(across.shape[1], u1 + margin)
+                wv0, wv1 = max(0, v0 - margin), min(down.shape[0], v1 + margin)
+                window_h = across[v0:v1, wu0:wu1].mean(axis=0)
+                window_v = down[wv0:wv1, u0:u1].mean(axis=1)
+                phase = (phase_at_period(window_h, np.arange(wu0, wu0 + window_h.size),
+                                         period_pixels)
+                         if window_h.size >= 3 else phase_pixels[0],
+                         phase_at_period(window_v, np.arange(wv0, wv0 + window_v.size),
+                                         period_pixels)
+                         if window_v.size >= 3 else phase_pixels[1])
+
             score = 0.5 * (
                 _phase_agreement(horizontal, np.arange(u0, u0 + horizontal.size),
-                                 period_pixels, phase_pixels[0], tolerance)
+                                 period_pixels, phase[0], tolerance)
                 + _phase_agreement(vertical, np.arange(v0, v0 + vertical.size),
-                                   period_pixels, phase_pixels[1], tolerance))
+                                   period_pixels, phase[1], tolerance))
             verdict = SUPPORTED if score >= threshold else CONTRADICTED
             found.append(CellSupport((row, column), verdict, score, seen))
     return found
@@ -226,6 +260,7 @@ def plane_from_evidence(
     extent: float = 1.0,
     principal_point: tuple[float, float] | None = None,
     side: float = 1.0,
+    local_window_periods: float | None = 1.5,
 ) -> SupportedPlane | None:
     """Measure a plane and judge its cells, optionally with a stated distance.
 
@@ -240,6 +275,12 @@ def plane_from_evidence(
     framing decision and not a measurement, so when the two paths are compared
     they must be given the same one; a mask, where there is one, settles it
     instead.
+
+    ``local_window_periods`` reads each cell's phase from its own neighbourhood
+    rather than one phase for the whole plane; see `support_cells`. 1.5 default
+    matches the window size (~2.5 blocks) that showed real block-period
+    autocorrelation (0.12-0.29) where the plane-wide phase was at chance (0.015)
+    on real data. Pass `None` for the old plane-wide behaviour.
     """
     from mc_photogrammetry.reconstruction.lattice import (
         measure_plane,
@@ -308,14 +349,24 @@ def plane_from_evidence(
     # The measured lattice's phase belongs to the measured period, which is
     # usually the texel period and a different modulus entirely. Reading it at
     # the block period instead is the difference between testing the grid that is
-    # there and testing one sixteenth of it.
+    # there and testing one sixteenth of it. This global reading is still used as
+    # the fallback phase for cells whose local window (below) has too little
+    # data of its own.
     across, down = _edge_profiles(patch)
     phase = (phase_at_period(across.mean(axis=0),
                              np.arange(across.shape[1]), block_pixels),
              phase_at_period(down.mean(axis=1),
                              np.arange(down.shape[0]), block_pixels))
 
-    cells = support_cells(patch, coverage, block_pixels, phase)
+    # A single global phase assumes the predicted seams stay in step with the
+    # real ones across the whole plane. Measured false: on an 18-block-wide real
+    # patch, block-period autocorrelation was 0.015 (noise) globally and
+    # 0.12-0.29 (real signal) inside 2.5-block windows of the same patch, because
+    # calibration's own small residual error compounds linearly with distance
+    # from wherever the phase was anchored. Reading the phase locally keeps each
+    # cell's test anchored to nearby evidence instead of a plane-wide average.
+    cells = support_cells(patch, coverage, block_pixels, phase,
+                          local_window_periods=local_window_periods)
     return SupportedPlane(axis=axis, distance=float(distance), side=float(side),
                           phase=phase, cells=tuple(cells), assisted=assisted,
                           notes=(note, f"block period {block_pixels:.2f}px, "

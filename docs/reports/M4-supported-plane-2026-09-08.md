@@ -142,18 +142,74 @@ turns "the cue does not work" into "the cue works a little", so they are recorde
 - **No frame was cropped or dropped.** `automatic +Y` on 13.24.33 measured no
   plane at all and is reported as such.
 
+## Addendum, same day: the "refuted" conclusion above was too strong
+
+While building cross-view registration (see
+[M4-registration-2026-09-08.md](M4-registration-2026-09-08.md)) I looked directly
+at a rectified patch and found the measurement window spans roughly 18 blocks -
+the whole extent the plane's distance made available, not a region sized to the
+calibration's own precision. Autocorrelation of the edge profile at the block
+period was 0.015 (indistinguishable from noise) over that full width, but
+0.12-0.29 (real signal) inside 2.5-block windows of the *same patch*. A single
+global phase assumes the predicted seams stay in step with the real ones
+everywhere; they do not, because calibration's own small residual error
+compounds linearly with distance from wherever the phase was anchored, and over
+an 18-block patch that drift exceeds the tolerance band.
+
+`support_cells` now accepts `local_window_periods`, reading each cell's phase
+from a window a few periods wider than the cell itself rather than one phase for
+the whole plane (`plane_from_evidence` uses it by default, at 1.5). Chance was
+re-measured for this scheme rather than assumed - an unbiased circular-mean
+estimator does not inflate chance the way a max-over-offsets search would, and
+that held: 0.365-0.369 mean, ≤0.41 at p99, across window sizes 1.0-4.0 periods,
+matching the earlier global-phase chance level closely.
+
+**On real data, in the best-supported local window found, the nominal-period
+score (0.466) clears the empirical chance ceiling (max 0.409 over 6,144 noise
+samples) - the earlier "the cue does not work" was based on the global test
+alone, and does not hold as stated.** It remains below `SUPPORT_THRESHOLD`
+(0.55), which was calibrated against the global-phase chance distribution and
+has not been re-validated as the right cut for this tighter, local-window
+distribution. Widening the tolerance does not help: `_phase_agreement`'s chance
+level tracks almost exactly `2 * tolerance` for random data (0.18→0.367,
+0.25→0.507, 0.35→0.705), so a wider band inflates chance and signal together and
+buys nothing. I have not re-run the full Template 2 harness's precision/recall
+with a threshold recalibrated to the local scheme, and I am not lowering
+`SUPPORT_THRESHOLD` on the strength of one hand-picked window - that would be
+fitting the threshold to a single data point.
+
+So the corrected state is: **weak but genuine above-chance local signal exists,
+and does not yet clear the bar for calling a cell supported.** Not dead, not
+working. The honest next steps, not yet done: measure the local-window score
+distribution across many cells and views (not one chosen window), and decide a
+threshold from that distribution rather than from this one example.
+
+Re-running the same three-view harness with local windowing now the default
+(`docs/reports/M4-supported-plane-templates-2-local.json`) does not show a
+visible change in the summary median/supported counts - consistent with "one
+window clears chance, most still don't" rather than a broad fix. That is
+further reason not to touch `SUPPORT_THRESHOLD` on this evidence alone.
+
 ## What I would do next, and what I would not
 
-I would **not** tune this cue. Three measurements at chance across six decades of
-scale is not a threshold problem.
+Written before the addendum above, and superseded by it: I said flatly I would
+not tune the cue. Local windowing is not tuning a threshold - it fixes a real
+defect in the test (a global phase that cannot fit a plane wider than
+calibration stays accurate over), and it recovered above-chance signal a
+threshold change alone could not have. That correction stands; what follows is
+the honest state after it.
 
-The distance result is worth keeping: a stated length places a plane to 0.4% from
-one image, and that is a solid foundation. What is missing is a cue that says
-*which cells of that plane are there*. Edge phase is not it. The next candidate
-worth measuring is appearance: a cell on the plane renders as a block face under
-known face shading at a known angle, and a cell looking past it does not. That is
-a photometric test rather than a geometric one, and it uses the palette and the
-vanilla shading table the project already has.
+The distance result is worth keeping regardless: a stated length places a plane
+to 0.4% from one image. Per-cell occupancy is now in a real middle state -
+weak, genuine, above-chance signal, not yet strong enough to call a cell
+supported - rather than the dead end this report first concluded. The
+immediate next step is measuring the local-window score distribution broadly
+(many cells, all three views) before touching `SUPPORT_THRESHOLD` again, since
+one hand-picked window is not a distribution.
 
-I will not start that without direction, since it is a new cue and not the
-bounded prototype that was scoped.
+If broad measurement confirms the signal stays this marginal, the next
+candidate is appearance rather than geometry: a cell on the plane renders as a
+block face under known face shading at a known angle, and a cell looking past
+it does not, using the palette and vanilla shading table the project already
+has. That is a new cue and not the bounded prototype that was scoped, so I have
+not started it.

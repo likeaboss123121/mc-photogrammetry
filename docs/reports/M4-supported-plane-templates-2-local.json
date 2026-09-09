@@ -1,0 +1,355 @@
+{
+  "fixture": "templates 2",
+  "generated": "2026-09-08T20:43:28-0500",
+  "axis": 1,
+  "axis_name": "Y",
+  "yaw_quadrant": 0,
+  "settings": {
+    "minimum_coverage": 0.6,
+    "phase_tolerance": 0.18,
+    "support_threshold": 0.55
+  },
+  "annotations_simulated": true,
+  "calibration_artifact": {
+    "path": "docs\\reports\\M3-calibration-templates-2.json",
+    "sha256": "435c19bba85c7f88cf886fae35c781cb1bf8470522673c610eb6c52fe7f32ba2"
+  },
+  "note": "each frame is treated independently in its own local cell frame; no relative placement between views is claimed, since a single view recovers no position",
+  "results": [
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "path": "automatic +Y",
+      "axis": 1,
+      "side": 1.0,
+      "distance_blocks": 8.559237499098957,
+      "phase_pixels": [
+        47.833043567900006,
+        146.1950219518865
+      ],
+      "cells_judged": 289,
+      "supported": 0,
+      "contradicted": 47,
+      "unobserved": 242,
+      "bounds": null,
+      "holes_inside_extent": 0,
+      "notes": [
+        "distance 8.559 read from the lattice period as 'one texel per period'; the alternative reading is retained and differs by a factor of sixteen",
+        "block period 159.83px, lattice period 9.99px"
+      ],
+      "score_quantiles": {
+        "min": 0.26069479115990923,
+        "p50": 0.3597962798347436,
+        "p90": 0.397458768467109,
+        "max": 0.4288761609609846,
+        "chance_level": 0.378
+      },
+      "reference_distance_blocks": 8.379999999999995,
+      "distance_relative_error": 0.02138872304283555,
+      "reference_cells_on_plane": 87,
+      "count_recall": 0.0,
+      "count_precision": 0.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    },
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "path": "automatic -Y",
+      "axis": 1,
+      "side": -1.0,
+      "distance_blocks": 4.796151793182876,
+      "phase_pixels": [
+        62.128071402299675,
+        52.6279222745302
+      ],
+      "cells_judged": 81,
+      "supported": 0,
+      "contradicted": 6,
+      "unobserved": 75,
+      "bounds": null,
+      "holes_inside_extent": 0,
+      "notes": [
+        "distance 4.796 read from the lattice period as 'one texel per period'; the alternative reading is retained and differs by a factor of sixteen",
+        "block period 199.85px, lattice period 12.49px"
+      ],
+      "score_quantiles": {
+        "min": 0.2943379997414808,
+        "p50": 0.354425467532739,
+        "p90": 0.42549321930781275,
+        "max": 0.4633724241746512,
+        "chance_level": 0.378
+      },
+      "reference_distance_blocks": 1.6200000000000045,
+      "distance_relative_error": 1.960587526656088,
+      "reference_cells_on_plane": 73,
+      "count_recall": 0.0,
+      "count_precision": 0.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    },
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "path": "assisted",
+      "axis": 1,
+      "side": -1.0,
+      "distance_blocks": 1.6261535569101613,
+      "phase_pixels": [
+        152.39582800090227,
+        59.93840047279766
+      ],
+      "cells_judged": 9,
+      "supported": 0,
+      "contradicted": 1,
+      "unobserved": 8,
+      "bounds": null,
+      "holes_inside_extent": 0,
+      "notes": [
+        "distance 1.626 supplied by a stated length",
+        "block period 589.43px, lattice period 12.49px"
+      ],
+      "score_quantiles": {
+        "min": 0.3625620805861419,
+        "p50": 0.3625620805861419,
+        "p90": 0.3625620805861419,
+        "max": 0.3625620805861419,
+        "chance_level": 0.378
+      },
+      "annotation": {
+        "points": [
+          [
+            2317.7152120732735,
+            1199.74387889417
+          ],
+          [
+            1346.1161758393096,
+            902.6284721105924
+          ]
+        ],
+        "blocks": 4.0,
+        "provenance": "simulated: reference corners projected through the manifest pose, standing in for a user's two clicks",
+        "pixel_separation": 1016.0129192874165,
+        "surface_world_coordinate": 108.0,
+        "side": -1.0
+      },
+      "constraint_status": "resolved",
+      "reference_distance_blocks": 1.6200000000000045,
+      "distance_relative_error": 0.003798491919849824,
+      "reference_cells_on_plane": 165,
+      "count_recall": 0.0,
+      "count_precision": 0.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "path": "automatic +Y",
+      "axis": 1,
+      "side": 1.0,
+      "distance_blocks": 8.374401751750165,
+      "phase_pixels": [
+        149.62705587761587,
+        73.05047919099476
+      ],
+      "cells_judged": 256,
+      "supported": 0,
+      "contradicted": 59,
+      "unobserved": 197,
+      "bounds": null,
+      "holes_inside_extent": 0,
+      "notes": [
+        "distance 8.374 read from the lattice period as 'one texel per period'; the alternative reading is retained and differs by a factor of sixteen",
+        "block period 160.73px, lattice period 10.05px"
+      ],
+      "score_quantiles": {
+        "min": 0.2527121052765801,
+        "p50": 0.3627554072420626,
+        "p90": 0.39142574746183595,
+        "max": 0.4059874299244428,
+        "chance_level": 0.378
+      },
+      "reference_distance_blocks": 8.379999999999995,
+      "distance_relative_error": 0.00066804871716354,
+      "reference_cells_on_plane": 108,
+      "count_recall": 0.0,
+      "count_precision": 0.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "path": "automatic -Y",
+      "axis": 1,
+      "side": -1.0,
+      "distance_blocks": 5.9800239827380555,
+      "phase_pixels": [
+        73.93525744439617,
+        117.34171231035029
+      ],
+      "cells_judged": 121,
+      "supported": 0,
+      "contradicted": 0,
+      "unobserved": 121,
+      "bounds": null,
+      "holes_inside_extent": 0,
+      "notes": [
+        "distance 5.980 read from the lattice period as 'one texel per period'; the alternative reading is retained and differs by a factor of sixteen",
+        "block period 160.28px, lattice period 10.02px"
+      ],
+      "reference_distance_blocks": 1.6200000000000045,
+      "distance_relative_error": 2.6913728288506413,
+      "reference_cells_on_plane": 63,
+      "count_recall": 0.0,
+      "count_precision": 0.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "path": "assisted",
+      "axis": 1,
+      "side": -1.0,
+      "distance_blocks": 1.6253170498268157,
+      "phase_pixels": [
+        71.81555394830394,
+        92.22028234968516
+      ],
+      "cells_judged": 9,
+      "supported": 0,
+      "contradicted": 0,
+      "unobserved": 9,
+      "bounds": null,
+      "holes_inside_extent": 0,
+      "notes": [
+        "distance 1.625 supplied by a stated length",
+        "block period 589.73px, lattice period 10.02px"
+      ],
+      "annotation": {
+        "points": [
+          [
+            122.12165491076735,
+            1305.1037553004514
+          ],
+          [
+            1337.7500787116735,
+            1107.4547714419464
+          ]
+        ],
+        "blocks": 4.0,
+        "provenance": "simulated: reference corners projected through the manifest pose, standing in for a user's two clicks",
+        "pixel_separation": 1231.591484857286,
+        "surface_world_coordinate": 108.0,
+        "side": -1.0
+      },
+      "constraint_status": "resolved",
+      "reference_distance_blocks": 1.6200000000000045,
+      "distance_relative_error": 0.0032821295227229152,
+      "reference_cells_on_plane": 123,
+      "count_recall": 0.0,
+      "count_precision": 0.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "path": "automatic +Y",
+      "plane": null
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "path": "automatic -Y",
+      "axis": 1,
+      "side": -1.0,
+      "distance_blocks": 9.572484075614131,
+      "phase_pixels": [
+        51.66062722778215,
+        140.04019472809995
+      ],
+      "cells_judged": 361,
+      "supported": 2,
+      "contradicted": 190,
+      "unobserved": 169,
+      "bounds": [
+        [
+          9,
+          0
+        ],
+        [
+          14,
+          18
+        ]
+      ],
+      "holes_inside_extent": 107,
+      "notes": [
+        "distance 9.572 read from the lattice period as 'one texel per period'; the alternative reading is retained and differs by a factor of sixteen",
+        "block period 164.64px, lattice period 10.29px"
+      ],
+      "score_quantiles": {
+        "min": 0.1992903886015483,
+        "p50": 0.37586024337010804,
+        "p90": 0.48151370384685527,
+        "max": 0.5817343147819327,
+        "chance_level": 0.378
+      },
+      "reference_distance_blocks": 9.420000000000002,
+      "distance_relative_error": 0.01618726917347446,
+      "reference_cells_on_plane": 112,
+      "count_recall": 0.017857142857142856,
+      "count_precision": 1.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "path": "assisted",
+      "axis": 1,
+      "side": -1.0,
+      "distance_blocks": 9.425869575825775,
+      "phase_pixels": [
+        40.88848828911903,
+        95.58927128874646
+      ],
+      "cells_judged": 324,
+      "supported": 1,
+      "contradicted": 167,
+      "unobserved": 156,
+      "bounds": [
+        [
+          9,
+          0
+        ],
+        [
+          9,
+          0
+        ]
+      ],
+      "holes_inside_extent": 0,
+      "notes": [
+        "distance 9.426 supplied by a stated length",
+        "block period 167.20px, lattice period 10.29px"
+      ],
+      "score_quantiles": {
+        "min": 0.22090158070352908,
+        "p50": 0.36917852323787814,
+        "p90": 0.4436647565693356,
+        "max": 0.5761009342000742,
+        "chance_level": 0.378
+      },
+      "annotation": {
+        "points": [
+          [
+            1291.7419385358016,
+            1300.5943335214956
+          ],
+          [
+            1256.7466577950615,
+            951.0548069786697
+          ]
+        ],
+        "blocks": 4.0,
+        "provenance": "simulated: reference corners projected through the manifest pose, standing in for a user's two clicks",
+        "pixel_separation": 351.2869913473969,
+        "surface_world_coordinate": 108.0,
+        "side": -1.0
+      },
+      "constraint_status": "resolved",
+      "reference_distance_blocks": 9.420000000000002,
+      "distance_relative_error": 0.0006230972214196825,
+      "reference_cells_on_plane": 112,
+      "count_recall": 0.008928571428571428,
+      "count_precision": 1.0,
+      "scoring_note": "counts only: a local frame without position cannot be put into world coordinates, so per-cell correspondence is not claimed and these are not per-cell precision and recall"
+    }
+  ]
+}
