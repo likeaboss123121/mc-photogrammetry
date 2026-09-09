@@ -115,6 +115,8 @@ class WgpuScoringContext:
 
         native = self._native
         started = perf_counter()
+        if candidates.shape[0] == 0:
+            return ScoreBatch(np.empty(0, dtype=np.float32), self.device, perf_counter() - started)
         usage = wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_DST
         candidate_buffer = _buffer_data(native, candidates, usage)
         observed_buffer = _buffer_data(native, observed, usage)
@@ -141,7 +143,8 @@ class WgpuScoringContext:
         compute_pass = encoder.begin_compute_pass()
         compute_pass.set_pipeline(self._pipeline)
         compute_pass.set_bind_group(0, bind_group)
-        compute_pass.dispatch_workgroups(max(1, candidates.shape[0]))
+        workgroups = (candidates.shape[0] + 63) // 64
+        compute_pass.dispatch_workgroups(workgroups)
         compute_pass.end()
         encoder.copy_buffer_to_buffer(output_buffer, 0, staging, 0, output_size)
         native.queue.submit([encoder.finish()])

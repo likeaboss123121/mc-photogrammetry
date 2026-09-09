@@ -27,6 +27,19 @@ def test_frame_pyramid_cache_evicts_oldest_by_bytes():
     assert cache.bytes_used == second.nbytes
 
 
+def test_frame_pyramid_cache_oversized_replacement_clears_accounting():
+    small = build_frame_pyramid(np.zeros((2, 2), dtype=np.uint8), max_levels=1)
+    large = build_frame_pyramid(np.zeros((4, 4), dtype=np.uint8), max_levels=1)
+    cache = FramePyramidCache(max_bytes=small.nbytes * 2)
+
+    assert cache.put("same", small)
+    assert cache.put("same", large) is False
+    assert cache.get("same") is None
+    assert cache.bytes_used == 0
+    assert cache.put("replacement", small)
+    assert cache.bytes_used == small.nbytes
+
+
 def test_frame_pyramid_cache_updates_lru_order_and_rejects_invalid_limits():
     with pytest.raises(ValueError):
         FramePyramidCache(max_bytes=0)
@@ -68,3 +81,24 @@ def test_bounded_artifact_cache_supports_explicit_size_and_rejects_unknown_value
     assert cache.put("too-large", "artifact", size=5) is False
     with pytest.raises(ValueError, match="nbytes"):
         cache.put("unknown", "artifact")
+
+
+def test_bounded_artifact_cache_oversized_replacement_clears_accounting():
+    cache = BoundedArtifactCache[str](max_bytes=8)
+
+    assert cache.put("same", "old", size=4)
+    assert cache.put("same", "too-large", size=10) is False
+    assert cache.get("same") is None
+    assert cache.bytes_used == 0
+    assert cache.put("replacement", "fits", size=8)
+    assert cache.bytes_used == 8
+
+
+def test_frame_pyramid_owns_source_storage_before_marking_levels_read_only():
+    image = np.arange(16, dtype=np.uint8).reshape(4, 4)
+    alias = image.view()
+    pyramid = build_frame_pyramid(image, max_levels=1)
+
+    assert image.flags.writeable
+    alias[0, 0] = 99
+    assert pyramid.levels[0][0, 0] == 0

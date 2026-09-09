@@ -49,6 +49,22 @@ def test_pack_render_result_keeps_uv_and_explicit_validity():
     np.testing.assert_array_equal(roundtrip.valid_pixels, result.valid_pixels)
 
 
+def test_pack_render_result_owns_copies_and_does_not_change_source_flags():
+    colour = np.zeros((2, 2, 3), dtype=np.float32)
+    colour_alias = colour.view()
+    result = RenderResult(
+        colour=colour,
+        depth=np.ones((2, 2), dtype=np.float32),
+        ownership=np.zeros((2, 2), dtype=np.int32),
+    )
+
+    packed = pack_render_result(result)
+
+    assert colour.flags.writeable
+    colour_alias[0, 0, 0] = 99.0
+    assert packed.colour[0, 0, 0] == 0.0
+
+
 @pytest.mark.parametrize(
     "field, value, message",
     [

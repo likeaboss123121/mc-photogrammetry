@@ -65,7 +65,11 @@ class PackedRenderBuffers:
 
 
 def _readonly(array: np.ndarray) -> np.ndarray:
-    array = np.ascontiguousarray(array)
+    # Always own a fresh contiguous copy.  ``ascontiguousarray`` and
+    # ``astype(copy=False)`` may otherwise return a caller-owned array whose
+    # writability flag would be mutated here and whose aliases could mutate the
+    # supposedly immutable packed snapshot.
+    array = np.array(array, copy=True, order="C")
     array.setflags(write=False)
     return array
 

@@ -1,5 +1,8 @@
 # M6 wgpu environment groundwork
 
+> Lead review reproduced GPU smoke parity, but cache replacement accounting and immutable-buffer
+> ownership remain open. The bundle is not fully accepted; see [C1/C2 and current scope](LEAD-review-2026-09-09.md).
+
 GPT-5.6 Luna, 2026-09-09.
 
 An isolated `.venv-gpu` was created with Python 3.12 and `wgpu==0.32.0`.
@@ -67,7 +70,7 @@ readback. These timings cover a small transfer smoke test rather than a renderer
 performance claim. Sonnet can integrate this seam at the renderer boundary before
 any GPU rasterisation is enabled.
 
-The current repository suite contains 441 collected tests; the full `.venv`
+The current repository suite contains 452 collected tests; the full `.venv`
 run completed successfully after this seam was added.
 
 `BoundedArtifactCache` extends the frame cache contract to arbitrary feature,
@@ -75,6 +78,17 @@ geometry, descriptor, and accepted-buffer artifacts. It accounts for each
 entry's byte size, updates LRU order on access, evicts whole entries when the
 configured budget is exceeded, and rejects values without a measurable size
 unless the caller supplies one. Focused cache and buffer tests pass.
+
+## Astra C1/C2 corrections
+
+Oversized replacement now removes the prior entry's byte count in both LRU
+caches, so a rejected replacement cannot leave ghost bytes that evict a later
+entry. Frame pyramids and packed renderer buffers now own fresh contiguous copies
+before marking them read-only; source arrays remain writable and pre-existing
+aliases cannot mutate cached snapshots. The wgpu scoring dispatch now uses the
+ceiling of candidate count divided by the 64-thread workgroup size and returns a
+valid empty result without creating zero-sized GPU buffers. The correction tests
+cover all three cases; the final full suite is 452 passing tests.
 
 ## Closure boundary for review
 

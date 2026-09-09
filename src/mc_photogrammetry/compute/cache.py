@@ -41,15 +41,19 @@ def build_frame_pyramid(
         raise ValueError("max_levels must be positive")
     if minimum_size < 1:
         raise ValueError("minimum_size must be positive")
-    current = np.ascontiguousarray(image)
+    # Own the caller's source before marking the pyramid read-only.  A view
+    # created before this function must not be able to mutate cached levels.
+    current = np.array(image, copy=True, order="C")
     levels = [current]
     for _ in range(max_levels - 1):
         if min(current.shape[:2]) <= minimum_size:
             break
         height = max(1, current.shape[0] // 2)
         width = max(1, current.shape[1] // 2)
-        current = np.ascontiguousarray(
-            cv2.resize(current, (width, height), interpolation=cv2.INTER_AREA)
+        current = np.array(
+            cv2.resize(current, (width, height), interpolation=cv2.INTER_AREA),
+            copy=True,
+            order="C",
         )
         levels.append(current)
     for level in levels:
@@ -80,7 +84,9 @@ class FramePyramidCache:
     def put(self, frame_id: str, pyramid: FramePyramid) -> bool:
         """Insert a pyramid, evicting oldest entries; return whether it was kept."""
         if pyramid.nbytes > self.max_bytes:
-            self._items.pop(frame_id, None)
+            old = self._items.pop(frame_id, None)
+            if old is not None:
+                self._bytes -= old.nbytes
             return False
         old = self._items.pop(frame_id, None)
         if old is not None:
@@ -141,7 +147,9 @@ class BoundedArtifactCache(Generic[T]):
         """Insert an artifact, evicting oldest entries; return whether retained."""
         item_size = self._size(value, size)
         if item_size > self.max_bytes:
-            self._items.pop(key, None)
+            old = self._items.pop(key, None)
+            if old is not None:
+                self._bytes -= old[1]
             return False
         old = self._items.pop(key, None)
         if old is not None:

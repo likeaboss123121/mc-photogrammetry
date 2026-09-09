@@ -90,3 +90,10 @@ def test_cpu_batch_score_is_deterministic_and_reports_cpu_provenance():
 def test_batch_score_rejects_mismatched_features():
     with pytest.raises(ValueError, match="shape"):
         rgb_l2_cpu(np.zeros(3), np.zeros((2, 4)))
+
+
+def test_batch_score_accepts_an_empty_candidate_batch():
+    result = score_batch(np.zeros(3), np.empty((0, 3), dtype=np.float32))
+
+    assert result.scores.shape == (0,)
+    assert result.device.provider == "cpu"
