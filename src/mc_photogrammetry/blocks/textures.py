@@ -4,6 +4,7 @@ import json
 import base64
 from io import BytesIO
 import zipfile
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -289,7 +290,7 @@ class VanillaJarTextureProvider:
         return tuple(_palette_color(sample) for sample in self.samples)
 
     def palette_for_states(
-        self, states: tuple[BlockState, ...] | list[BlockState] | set[BlockState]
+        self, states: Iterable[BlockState]
     ) -> tuple[PaletteColor, ...]:
         """Return model-aware entries for the requested exact block states.
 

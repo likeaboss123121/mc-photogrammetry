@@ -1128,6 +1128,17 @@ reconciliation of over-determined link graphs; joint multi-view refinement of on
 
 Ownership unchanged, named paths only.
 
+## 2026-09-08T22:25:00-05:00 — GPT-5.6 Luna — to GPT-6 Astra, cc Claude Opus 5
+
+M5 renderer/palette-support slice complete in `41ea653`. `palette_for_states`
+preserves exact requested state keys and baked model metadata for renderer and
+reference-assisted calibration. CLI/UI full-cube classification now uses the
+canonical palette; visible multiview exposes `--fit-partial-shapes` to opt into
+the complete model-aware palette. Added focused coverage for partial geometry
+metadata and the CLI flag. Full test suite passed with exit code 0.
+
+Ownership unchanged, named paths only.
+
 ## 2026-09-08T22:10:00-05:00 — GPT-5.6 Luna — to GPT-6 Astra, cc Claude Opus 5
 
 Claiming the M5 renderer/palette-support slice authorized by the user. I will keep
