@@ -255,13 +255,45 @@ def _material_rgb_prior(
     table = colours.get(state.name)
     if not table:
         return float("inf")
-    expected = np.mean(np.asarray(tuple(table.values()), dtype=np.float32), axis=0)
+    # The representative probe is intentionally cheap and does not render each
+    # material.  Compare against the renderer's ordinary face shade and the
+    # bright, occupied part of the silhouette; using the whole cell would let
+    # uncovered background pixels make a dark material look correct by default.
+    expected = np.mean(np.asarray(tuple(table.values()), dtype=np.float32), axis=0) * 0.8
     distances = []
     for frame_id, _camera, usable in views:
         pixels = photos[frame_id][usable]
         if pixels.size:
-            distances.append(float(np.linalg.norm(pixels.mean(axis=0) - expected)))
+            observed = np.quantile(pixels.astype(np.float32), 0.75, axis=0)
+            distances.append(float(np.linalg.norm(observed - expected)))
     return float(np.mean(distances)) if distances else float("inf")
+
+
+def _representative_material(
+    states: Sequence[BlockState],
+    colours: Mapping[object, Mapping[str, np.ndarray]],
+    photos: Mapping[str, np.ndarray],
+    views: Sequence[tuple[str, CameraModel, np.ndarray]],
+) -> BlockState:
+    """Pick the material used by the bounded representative probe.
+
+    The representative is rendered before material refinement so a large
+    palette cannot spend the cap on variants of one geometry. It therefore
+    cannot be selected by input order: when usable pixels and colour metadata
+    exist, use the deterministic RGB prior; otherwise use a stable
+    state-name/property fallback. Later rendered refinement remains the
+    acceptance authority.
+    """
+    def key(state: BlockState) -> tuple[float, int, str, tuple[tuple[str, str], ...]]:
+        prior = _material_rgb_prior(state, colours, photos, views)
+        return (
+            prior if np.isfinite(prior) else 0.0,
+            0 if np.isfinite(prior) else 1,
+            state.name,
+            state.properties,
+        )
+
+    return min(states, key=key)
 
 
 def _window(scene, camera, coordinate, shape, scale):
@@ -464,6 +496,7 @@ def fit_states(
     }
     capped = False
     considered_shapes: list[str] = []
+    representative_fallbacks: list[str] = []
     material_refinements: list[str] = []
     unresolved_budget_exits: list[dict[str, object]] = []
 
@@ -636,7 +669,11 @@ def fit_states(
         representative_scores: dict[tuple, float] = {}
         representative_states: dict[tuple, BlockState] = {}
         for key in shape_keys:
-            representative = materials[key][0]
+            representative = _representative_material(
+                materials[key], colours, photos, views,
+            )
+            if not np.isfinite(_material_rgb_prior(representative, colours, photos, views)):
+                representative_fallbacks.append(representative.name)
             considered_shapes.append(representative.name)
             total, counted = 0.0, 0
             candidate_blocks = {**context_blocks, coordinate: representative}
@@ -696,7 +733,7 @@ def fit_states(
             if index is not None:
                 total_weight = 0.0
                 pooled = np.zeros(index.count, dtype=np.float64)
-                representative = materials[key][0]
+                representative = representative_states[key]
                 for frame_id, camera, _usable in views:
                     owner_masks = _face_ownership(
                         scene, camera, coordinate, representative, context_blocks,
@@ -858,6 +895,7 @@ def fit_states(
         diagnostics["shape_fit_render_work"] = sum(render_counts.values())
         diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
         diagnostics["shape_fit_considered_shapes"] = list(considered_shapes)
+        diagnostics["shape_fit_representative_fallbacks"] = list(representative_fallbacks)
         diagnostics["shape_fit_material_refinements"] = list(material_refinements)
         diagnostics["shape_fit_unresolved_budget_exits"] = list(unresolved_budget_exits)
         diagnostics["shape_fit_supporting_frames"] = {
