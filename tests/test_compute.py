@@ -1,6 +1,14 @@
 from types import SimpleNamespace
 
-from mc_photogrammetry.compute import LocalComputeProvider, WgpuComputeProvider
+import numpy as np
+import pytest
+
+from mc_photogrammetry.compute import (
+    LocalComputeProvider,
+    WgpuComputeProvider,
+    rgb_l2_cpu,
+    score_batch,
+)
 from mc_photogrammetry.pipeline import ComputeDevice
 
 
@@ -65,3 +73,20 @@ def test_local_provider_prefers_the_discrete_d3d12_wgpu_path(monkeypatch):
     )
 
     assert LocalComputeProvider().select().provider == "wgpu:d3d12"
+
+
+def test_cpu_batch_score_is_deterministic_and_reports_cpu_provenance():
+    observed = np.asarray([0, 10, 20, 30], dtype=np.float32)
+    candidates = np.asarray([[0, 10, 20, 30], [4, 14, 24, 34]], dtype=np.float32)
+
+    result = score_batch(observed, candidates)
+
+    np.testing.assert_allclose(result.scores, [0.0, 4.0])
+    np.testing.assert_allclose(result.scores, rgb_l2_cpu(observed, candidates))
+    assert result.device.provider == "cpu"
+    assert result.elapsed_seconds >= 0.0
+
+
+def test_batch_score_rejects_mismatched_features():
+    with pytest.raises(ValueError, match="shape"):
+        rgb_l2_cpu(np.zeros(3), np.zeros((2, 4)))

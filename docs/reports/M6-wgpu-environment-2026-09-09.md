@@ -19,8 +19,8 @@ vendor id:    4098 (AMD)
 ```
 
 The probe successfully created a native `GPUDevice` from the selected adapter.
-No render or scoring kernel is enabled yet. CPU rendering remains the correctness
-path until an independently compared GPU implementation exists.
+No production render or scoring pipeline uses it yet. CPU rendering remains the
+correctness path until an independently compared GPU implementation exists.
 
 The provider seam is in `src/mc_photogrammetry/compute/wgpu_provider.py` and
 exports serialisable adapter metadata, stable device selection, optional import
@@ -31,3 +31,10 @@ The repository regression suite remains green after this groundwork: **428 tests
 passed in 174.56 seconds**. The provider-specific tests also pass in the regular
 Python 3.10 environment where wgpu is absent, preserving the optional-dependency
 CPU path.
+
+The first batched-scoring parity probe (`scripts/probe_wgpu_scoring.py`) ran on
+the selected RX 9070 XT D3D12 device. Three fixed candidate vectors matched the
+CPU reference to a maximum absolute error of `1.91e-6` (GPU dispatch elapsed
+`0.174 s` in the latest run, including setup and readback). This is a correctness seam and a
+device smoke test, not a production performance claim; image rendering and
+texture batches still use the CPU path.
