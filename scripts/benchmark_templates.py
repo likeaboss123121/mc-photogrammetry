@@ -31,7 +31,7 @@ from mc_photogrammetry.input.image import load_image
 from mc_photogrammetry.input.media import discover_media
 from mc_photogrammetry.reconstruction import raycast
 from mc_photogrammetry.reconstruction.camera import load_camera_manifest
-from mc_photogrammetry.reconstruction.facade import DEFAULT_PALETTE, PaletteColor
+from mc_photogrammetry.reconstruction.facade import DEFAULT_PALETTE
 from mc_photogrammetry.reconstruction.raycast import reconstruct_scene_surfaces
 from mc_photogrammetry.reconstruction.scene import load_scene_transform
 from mc_photogrammetry.reconstruction.texture_calibration import calibrate_appearance
@@ -90,7 +90,6 @@ def run(
     palette_source = "default"
     texture_source = None
     provider: VanillaJarTextureProvider | None = None
-    available: dict[str, object] = {}
     palette_started = time.perf_counter()
     if jar is not None:
         provider = VanillaJarTextureProvider()
@@ -98,7 +97,6 @@ def run(
             palette = provider.canonical_palette()
             palette_source = "jar"
             texture_source = provider.source
-            available = {sample.state.name: sample for sample in provider.samples}
     if not allow_default_palette and palette_source == "default":
         raise SystemExit(f"Palette resolved to DEFAULT_PALETTE for {template_dir}; pass --allow-default-palette to continue.")
     palette_seconds = time.perf_counter() - palette_started
@@ -107,14 +105,17 @@ def run(
     reference_snapshot = load_litematic(reference)
     calibrations = None
     if mode == "reference-assisted":
-        palette = tuple(
-            PaletteColor(available[state.name].state, available[state.name].rgb)
-            for state in reference_snapshot.palette if state.name in available
-        )
+        if provider is None:
+            raise SystemExit("reference-assisted mode needs a loaded Minecraft jar palette.")
+        # Keep the exact reference states and all baked renderer metadata. The
+        # old path rebuilt two-field PaletteColor values keyed by name, which
+        # discarded partial shape boxes, face polygons, and alpha masks and also
+        # collapsed distinct state properties under one block name.
+        palette = provider.palette_for_states(tuple(reference_snapshot.palette))
         palette_source = "reference"
         texture_colors = {
-            state: tuple(available[state.name].rgb)
-            for state in reference_snapshot.palette if state.name in available
+            item.state: tuple(item.rgb)
+            for item in palette
         }
         calibrations = {
             name: calibrate_appearance(frames[name], reference_snapshot, cameras[name], scene, texture_colors)

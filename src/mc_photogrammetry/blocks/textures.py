@@ -288,6 +288,34 @@ class VanillaJarTextureProvider:
     def palette(self) -> tuple[PaletteColor, ...]:
         return tuple(_palette_color(sample) for sample in self.samples)
 
+    def palette_for_states(
+        self, states: tuple[BlockState, ...] | list[BlockState] | set[BlockState]
+    ) -> tuple[PaletteColor, ...]:
+        """Return model-aware entries for the requested exact block states.
+
+        The canonical and complete palettes intentionally de-duplicate entries
+        that look alike. That is useful for an unconstrained classifier, but it
+        is wrong when a reference or an accepted edit names a rare state: the
+        renderer needs that state's baked faces, shape boxes, and alpha masks.
+        Keep the requested states distinct and preserve their full geometry.
+        """
+        requested = tuple(states)
+        if not requested:
+            return ()
+        exact = {sample.state: sample for sample in self.samples}
+        by_name: dict[str, TextureSample] = {}
+        for sample in self.samples:
+            by_name.setdefault(sample.state.name, sample)
+        selected: list[PaletteColor] = []
+        for state in requested:
+            sample = exact.get(state) or by_name.get(state.name)
+            if sample is not None:
+                # A cache can predate newly materialised default properties. If
+                # only the block name matches, retain the requested state key so
+                # reference calibration and renderer lookups still line up.
+                selected.append(_palette_color(sample, state=state))
+        return tuple(selected)
+
     def canonical_palette(self, *, tolerance: int = COLOUR_RESOLUTION) -> tuple[PaletteColor, ...]:
         """Full-cube states, one per distinct world-oriented appearance.
 
@@ -496,9 +524,9 @@ def _shape_key(sample: TextureSample) -> tuple:
     )
 
 
-def _palette_color(sample: TextureSample) -> PaletteColor:
+def _palette_color(sample: TextureSample, *, state: BlockState | None = None) -> PaletteColor:
     return PaletteColor(
-        sample.state,
+        sample.state if state is None else state,
         sample.rgb,
         sample.face_rgbs,
         sample.family,

@@ -44,7 +44,10 @@ def _reconstruct_source(
                 progress.put(("Loading Minecraft textures", 10))
                 provider = VanillaJarTextureProvider()
                 if provider.load_jar(jar):
-                    palette = provider.palette()
+                    # Keep the main classifier on canonical full-cube
+                    # appearances. Partial models are renderer candidates only
+                    # when an explicit shape-fitting stage requests them.
+                    palette = provider.canonical_palette()
                 else:
                     progress.put(("Warning: default palette fallback; local Minecraft jar textures unavailable", 15))
                 break

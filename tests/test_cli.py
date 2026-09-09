@@ -40,3 +40,13 @@ def test_the_reconstruction_command_defaults_to_the_measured_adjacency():
         "--cameras", "c.json", "--scene", "s.json",
     ])
     assert args.adjacency_strength == ADJACENCY_STRENGTH
+
+
+def test_visible_multiview_exposes_opt_in_partial_shape_fitting():
+    from mc_photogrammetry.cli import build_parser
+
+    args = build_parser().parse_args([
+        "reconstruct-visible-multiview", "images",
+        "--cameras", "c.json", "--scene", "s.json", "--fit-partial-shapes",
+    ])
+    assert args.fit_partial_shapes is True

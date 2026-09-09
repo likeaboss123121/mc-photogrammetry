@@ -4,6 +4,7 @@ import zipfile
 from PIL import Image
 
 from mc_photogrammetry.blocks.textures import CACHE_SCHEMA_VERSION, VanillaJarTextureProvider
+from mc_photogrammetry.domain.models import BlockState
 
 FACE_SLOTS = ("down", "up", "north", "south", "west", "east")
 
@@ -121,3 +122,19 @@ def test_partial_states_stay_out_of_the_full_cube_palette(tmp_path):
     assert "minecraft:slab_block" not in names
     assert "minecraft:carpet_block" not in names
     assert "minecraft:stair_block" not in names
+
+
+def test_palette_for_states_keeps_exact_partial_renderer_metadata(tmp_path):
+    provider, _jar_path = _provider(tmp_path)
+    requested = (BlockState("minecraft:slab_block"),)
+
+    selected = provider.palette_for_states(requested)
+
+    assert len(selected) == 1
+    slab = selected[0]
+    assert slab.state == requested[0]
+    assert slab.full_cube is False
+    assert slab.shape_boxes
+    assert slab.model_faces
+    assert slab.covered_slots
+    assert provider.palette_for_states((BlockState("minecraft:missing"),)) == ()

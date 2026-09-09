@@ -95,6 +95,10 @@ def build_parser() -> argparse.ArgumentParser:
     surfaces.add_argument("--adjacency-strength", type=float,
                           default=ADJACENCY_STRENGTH)
     surfaces.add_argument("--adjacency-min-neighbors", type=int, default=3)
+    surfaces.add_argument(
+        "--fit-partial-shapes", action="store_true",
+        help="opt in to renderer-backed fitting of slabs, stairs, carpets and other partial models",
+    )
     surfaces.add_argument("--minecraft-jar", type=Path, help="local Minecraft client JAR for texture palette")
 
     compare = commands.add_parser("compare", help="compare a candidate to a reference litematic")
@@ -238,7 +242,7 @@ def main() -> int:
             provider = VanillaJarTextureProvider()
             count = provider.load_jar(args.minecraft_jar)
             if count:
-                palette = provider.palette()
+                palette = provider.canonical_palette()
             else:
                 print("Warning: local Minecraft jar palette is unavailable; falling back to the default palette.")
             print(f"Loaded {count} local vanilla texture samples")
@@ -319,11 +323,17 @@ def main() -> int:
         frames = {Path(frame.source_path).name: load_image(frame.source_path) for frame in image_frames}
         scene = load_scene_transform(args.scene)
         palette = DEFAULT_PALETTE
+        shape_palette = None
         if args.minecraft_jar:
             provider = VanillaJarTextureProvider()
             count = provider.load_jar(args.minecraft_jar)
             if count:
-                palette = provider.palette()
+                # Classify ordinary surfaces against full-cube appearances.
+                # Partial models enter only through the explicit renderer-backed
+                # fitting pass, where projected geometry supplies occupancy evidence.
+                palette = provider.canonical_palette()
+                if args.fit_partial_shapes:
+                    shape_palette = provider.complete_palette()
             else:
                 print("Warning: local Minecraft jar palette is unavailable; falling back to the default palette.")
             print(f"Loaded {count} local vanilla texture samples")
@@ -339,6 +349,8 @@ def main() -> int:
             surface_only=not args.include_enclosed,
             adjacency_strength=args.adjacency_strength,
             adjacency_min_neighbors=args.adjacency_min_neighbors,
+            fit_partial_shapes=args.fit_partial_shapes,
+            shape_palette=shape_palette,
         )
         if not volume.blocks:
             raise SystemExit("No visible surface blocks landed inside the calibrated scene.")
