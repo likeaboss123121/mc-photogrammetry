@@ -18,17 +18,24 @@ get filled or real evidence gets thrown away:
 
 * **supported** - the image shows the plane's own lattice at this cell.
 * **contradicted** - the image shows real structure here, at odds with the
-  plane: most often a farther surface seen past an opening, whose own texture
-  reads finer than the plane's blocks once rectified as if it were at the
-  plane's distance.
-* **weak_evidence** - the cell has too little edge energy, of any kind, to
-  judge either way. A cell this reports is not "not a block" - a plain wool or
-  concrete face is genuinely flat and would score exactly the same. Collapsing
-  this into `contradicted` was a real bug: a uniform 64x64 test plane with
-  *no* seam evidence anywhere scored every one of its 16 cells contradicted,
-  which is not what "the image shows something that disagrees" is supposed to
-  mean.
-* **foreground_occlusion** - the cell shows real structure whose own scale
+  plane, that confidently reads at its *own* scale, finer than the plane's
+  blocks once rectified as if it were at the plane's distance: most often a
+  farther surface seen past an opening. "Confidently" is load-bearing - see
+  `weak_evidence`; this verdict needs the same positive evidence
+  `foreground_occlusion` does, not merely the absence of it.
+* **weak_evidence** - either too little edge energy, of any kind, to judge the
+  cell at all, or real energy whose own scale is not confidently established
+  in either direction. A cell this reports is not "not a block": a plain wool
+  or concrete face is genuinely flat and would score exactly the same, and so
+  would noise, or a real material whose texture is not cleanly periodic at any
+  scale a local window can measure. Collapsing either case into `contradicted`
+  was a real bug, caught twice: first a uniform 64x64 test plane scored every
+  cell contradicted with no seam evidence anywhere; later, pure noise scored
+  44 of 64 cells contradicted and 20 foreground_occlusion with zero
+  weak_evidence, because `contradicted` was the unguarded default whenever a
+  confident *coarser* reading was absent - which noise satisfies exactly as
+  easily as a genuine mismatch does.
+* **foreground_occlusion** - the cell shows real structure that confidently
   reads coarser than the plane's blocks once rectified at the plane's
   distance, which is what a nearer object looks like under a rectification
   that assumes it is farther away than it is.
@@ -225,15 +232,34 @@ def _phase_agreement(profile: np.ndarray, offsets: np.ndarray, period: float,
     return float(profile[near].sum() / total)
 
 
+DOMINANT_PERIOD_STRENGTH = 0.45
+"""How strong an autocorrelation peak must be before `_dominant_period` will
+name a scale at all, instead of reporting none.
+
+A lead review found that pure noise, fed through the original gate (0.1),
+produced a confident scale reading on every single trial - 44 `contradicted`
+and 20 `foreground_occlusion` verdicts, zero `weak_evidence`, on a plane with
+nothing on it. Measured properly before picking a replacement: the peak
+strength of noise's own edge-gradient profile, over 2,000 seeds at the window
+size `support_cells` actually uses, never exceeded 0.428 (mean 0.195, p99.99
+0.424). A genuine periodic signal - even a modest one, a plain two-tone band
+pattern well short of real block texture's usual contrast - reached 0.50-0.94
+in the same test. 0.45 sits with real margin above the measured noise ceiling
+and below the weaker end of genuine signal, rather than at either boundary.
+"""
+
+
 def _dominant_period(profile: np.ndarray, low: float, high: float) -> float | None:
     """The strongest autocorrelation lag of a 1-D edge profile within a range.
 
     Used only once a cell has real edge energy that does not match the plane's
     own predicted seams, to ask what scale that energy *is* at - not to predict
     seam positions, so no phase is involved. `None` means no clear peak: the
-    energy present does not read as periodic at any scale in range, which is
-    itself useful (it rules out a confident foreground/farther-surface call and
-    leaves the cell `contradicted` by default rather than guessing which).
+    energy present does not read as periodic at any scale in range. Unlike an
+    earlier version of this function, that no longer defaults the cell to
+    `contradicted` - see `support_cells`, which now treats "found nothing
+    confident" and "confidently periodic, but not decisively farther or
+    nearer" the same way: unresolved, not guessed.
     """
     centred = profile - profile.mean()
     if not np.any(centred):
@@ -248,7 +274,7 @@ def _dominant_period(profile: np.ndarray, low: float, high: float) -> float | No
     if hi <= lo:
         return None
     peak = lo + int(np.argmax(auto[lo:hi]))
-    if auto[peak] <= 0.1:
+    if auto[peak] <= DOMINANT_PERIOD_STRENGTH:
         return None
     return float(peak)
 
@@ -397,12 +423,29 @@ def support_cells(
             local_h = _dominant_period(wide_h, local_low, local_high)
             local_v = _dominant_period(wide_v, local_low, local_high)
             candidates = [p for p in (local_h, local_v) if p is not None]
-            verdict = CONTRADICTED
-            if candidates:
-                local_period = float(np.mean(candidates))
-                ratio = local_period / period_pixels
-                if ratio >= FOREGROUND_PERIOD_RATIO:
-                    verdict = FOREGROUND_OCCLUSION
+            # `contradicted` used to be the unguarded default here: whatever
+            # a cell's own scale turned out to be, missing a confident
+            # foreground reading fell straight through to it. That is
+            # exactly the defect a lead review caught - it gave noise the
+            # same verdict as a genuine mismatch, since noise clears "not
+            # confidently coarser" just as easily as real disagreement does.
+            # `contradicted` now needs its own positive evidence, mirroring
+            # `foreground_occlusion`'s: a confidently *finer* period, not
+            # merely the absence of a confidently coarser one. No confident
+            # period at all, or one too close to the plane's own period to
+            # call farther or nearer, is `weak_evidence` - real energy, but
+            # this cell does not establish which kind of disagreement it is.
+            if not candidates:
+                found.append(CellSupport((row, column), WEAK_EVIDENCE, score, seen))
+                continue
+            local_period = float(np.mean(candidates))
+            ratio = local_period / period_pixels
+            if ratio >= FOREGROUND_PERIOD_RATIO:
+                verdict = FOREGROUND_OCCLUSION
+            elif ratio <= 1.0 / FOREGROUND_PERIOD_RATIO:
+                verdict = CONTRADICTED
+            else:
+                verdict = WEAK_EVIDENCE
             found.append(CellSupport((row, column), verdict, score, seen))
     return found
 

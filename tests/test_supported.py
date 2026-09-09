@@ -10,6 +10,8 @@ ones a lead review asked for by name: uniform-wall, opening, foreground-slab,
 invalid-pixel, nonzero-phase - each checked against real ground truth built
 into the synthetic image, not against another run of the code under test.
 """
+from collections import Counter
+
 import numpy as np
 import pytest
 
@@ -321,3 +323,38 @@ def test_control_nonzero_phase_lattice_is_still_supported():
                           local_window_periods=1.5)
     supported = sum(1 for c in found if c.verdict == SUPPORTED)
     assert supported > len(found) * 0.7
+
+
+def test_pure_noise_reads_as_weak_evidence_not_a_confident_geometric_verdict():
+    """A lead review's exact finding: noise fed through the original
+    contradicted/foreground_occlusion split confidently classified 44 of 64
+    cells contradicted and 20 foreground_occlusion, with zero weak_evidence -
+    because contradicted was the unguarded default whenever a confident
+    coarser reading was absent, which noise satisfies as easily as a real
+    mismatch. Regression-checked across several seeds, not just the one that
+    was reported, since a single-seed fix could still be a coincidence.
+    """
+    for seed in range(5):
+        rng = np.random.default_rng(seed)
+        patch = rng.normal(0, 1, (128, 128)).astype(np.float32)
+        found = support_cells(patch, np.ones_like(patch), 16.0, (0.0, 0.0))
+        verdicts = Counter(c.verdict for c in found)
+        assert verdicts.get(CONTRADICTED, 0) == 0, f"seed {seed}: {verdicts}"
+        assert verdicts.get(FOREGROUND_OCCLUSION, 0) == 0, f"seed {seed}: {verdicts}"
+        assert verdicts[WEAK_EVIDENCE] == len(found)
+
+
+def test_contradicted_needs_the_same_positive_evidence_foreground_occlusion_does():
+    """A confidently-periodic signal whose scale sits close to the plane's own
+    period - neither clearly coarser nor clearly finer - must not default to
+    `contradicted`: nothing here establishes it as a farther surface rather
+    than, say, a real but non-block-aligned material.
+    """
+    period = 32.0
+    # A real, confident periodic signal at 1.2x the plane's period - inside
+    # the symmetric [1/1.6, 1.6] band that neither verdict may claim.
+    patch = _bands(256, period * 1.2)
+    found = support_cells(patch, np.ones_like(patch), period, (0.0, 0.0))
+    verdicts = Counter(c.verdict for c in found)
+    assert verdicts.get(CONTRADICTED, 0) == 0
+    assert verdicts.get(FOREGROUND_OCCLUSION, 0) == 0
