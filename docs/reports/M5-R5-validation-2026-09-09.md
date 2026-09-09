@@ -33,7 +33,7 @@ control. No complete-palette or real-fixture sweep was run.
 
 ## Verification
 
-- Full suite: **415 passed in 163.52 seconds** before the R5 additions.
+- Final full suite after the R5 additions: **417 passed in 162.45 seconds**.
 - Post-R5 focused suites (`test_shape_fit.py`, `test_cli.py`): **39 passed**.
 - `compileall -q src` and `git diff --check` pass.
 - Implementation commits: `73c2e63` (R2/R4 scoring) and `8829c8c` (R5 cap,
