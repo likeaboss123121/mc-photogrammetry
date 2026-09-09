@@ -105,6 +105,26 @@ _OFF = ("false", "none")
 FULL_CUBE = (((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)),)
 
 
+class FitStateResult(dict):
+    """Accepted shape edits with their actual supporting frame provenance.
+
+    This remains a ``dict`` for callers that only need the edits, while making
+    support available without relying on optional diagnostics logging.
+    """
+
+    def __init__(
+        self,
+        values: Mapping[BlockCoordinate, BlockState | None] | None = None,
+        *,
+        supporting_frames: Mapping[BlockCoordinate, Sequence[str]] | None = None,
+    ) -> None:
+        super().__init__(values or {})
+        self.supporting_frames = {
+            coordinate: tuple(frames)
+            for coordinate, frames in (supporting_frames or {}).items()
+        }
+
+
 def is_canonical(state: BlockState) -> bool:
     """Whether every derived property of this state sits at its off value."""
     properties = dict(state.properties)
@@ -422,6 +442,9 @@ def fit_states(
         "candidate_renders": 0,
     }
     capped = False
+    considered_shapes: list[str] = []
+    material_refinements: list[str] = []
+    unresolved_budget_exits: list[dict[str, object]] = []
 
     def count(name: str) -> None:
         render_counts[name] += 1
@@ -430,7 +453,7 @@ def fit_states(
         palette, families, include_full_cubes=True
     )
     if not shapes:
-        return {}
+        return FitStateResult()
     colours, block_shapes, model_faces = face_colours(palette), face_shapes(palette), face_model_faces(palette)
     occluding_slots = face_occluding_slots(palette)
     index, positions = None, {}
@@ -577,12 +600,73 @@ def fit_states(
             if current_scores:
                 baseline_score = float(np.mean(current_scores))
 
+        # Spend the bounded render budget on one representative per geometry
+        # hypothesis before considering material variants.  A complete vanilla
+        # palette can contain hundreds of full-cube states; walking those first
+        # used to exhaust the cap before a slab or carpet was ever rendered.
+        full_cube_key = tuple(
+            (tuple(round(v, 3) for v in low), tuple(round(v, 3) for v in high))
+            for low, high in FULL_CUBE
+        )
+        shape_keys = sorted(
+            shapes,
+            key=lambda key: (key == full_cube_key, repr(key)),
+        )
+        representative_scores: dict[tuple, float] = {}
+        representative_states: dict[tuple, BlockState] = {}
+        for key in shape_keys:
+            representative = materials[key][0]
+            considered_shapes.append(representative.name)
+            total, counted = 0.0, 0
+            candidate_blocks = {**context_blocks, coordinate: representative}
+            complete = True
+            for frame_id, camera, usable in views:
+                if (
+                    max_candidate_renders is not None
+                    and render_counts["candidate_renders"] >= max_candidate_renders
+                ):
+                    capped = True
+                    complete = False
+                    unresolved_budget_exits.append({
+                        "coordinate": coordinate,
+                        "phase": "shape_representative",
+                    })
+                    break
+                height, width = frames[frame_id].shape[:2]
+                rendered, _face_index = render_result(
+                    candidate_blocks, scene, camera, width, height, colours,
+                    block_shapes, scale, ambient=True,
+                    occluding_slots=occluding_slots, model_faces=model_faces,
+                )
+                count("candidate_renders")
+                if (
+                    max_candidate_renders is not None
+                    and render_counts["candidate_renders"] >= max_candidate_renders
+                ):
+                    capped = True
+                painted = rendered.colour * gains[frame_id]
+                score = _score_image(
+                    painted, photos[frame_id], usable, edge_weight, edges[frame_id],
+                )
+                if score is not None:
+                    total += score
+                    counted += 1
+            if not complete or counted != len(views):
+                continue
+            representative_scores[key] = total / counted
+            representative_states[key] = representative
+        if capped and not representative_scores:
+            break
+
         ranked: list[tuple[float, float, float, BlockState | None]] = [
             (air_score, air_score, air_score, None)
         ]
         if current_state is not None:
             ranked.append((baseline_score, baseline_score, baseline_score, current_state))
-        for key, boxes in shapes.items():
+        for key in shape_keys:
+            if key not in representative_scores:
+                continue
+            boxes = shapes[key]
             # The grain the candidate's own faces would show, gathered once per
             # shape and scored for every material that shares it.
             texture_cost = None
@@ -618,12 +702,43 @@ def fit_states(
             plain_best, plain_state = None, None
             joint_best, joint_state = None, None
             plain_scores: dict[BlockState, float] = {}
-            for state in materials[key]:
+            representative = representative_states[key]
+            representative_score = representative_scores[key]
+            representative_joint = representative_score
+            if texture_cost is not None:
+                position = positions.get(representative)
+                if position is not None:
+                    representative_joint += texture_weight * float(texture_cost[position])
+            ranked.append((
+                representative_score, representative_score, representative_joint,
+                representative,
+            ))
+            plain_scores[representative] = representative_score
+            plain_best, plain_state = representative_score, representative
+            joint_best, joint_state = representative_joint, representative
+
+            # Texture ranking is computed from rectified faces.  Render only the
+            # best material for each geometry in this bounded refinement pass;
+            # rendering every material variant is what starved rare shapes.
+            material_candidates = list(materials[key])
+            if texture_cost is not None:
+                material_candidates.sort(key=lambda state: (
+                    float(texture_cost[positions[state]]), state.name, state.properties,
+                ))
+            else:
+                material_candidates = material_candidates[:1]
+            for state in material_candidates[:1]:
+                if state == representative:
+                    continue
                 if (
                     max_candidate_renders is not None
                     and render_counts["candidate_renders"] >= max_candidate_renders
                 ):
                     capped = True
+                    unresolved_budget_exits.append({
+                        "coordinate": coordinate,
+                        "phase": "material_refinement",
+                    })
                     break
                 table = colours.get(state.name, {})
                 if not table:
@@ -645,6 +760,12 @@ def fit_states(
                         ambient=True, occluding_slots=occluding_slots, model_faces=model_faces,
                     )
                     count("candidate_renders")
+                    if (
+                        max_candidate_renders is not None
+                        and render_counts["candidate_renders"] >= max_candidate_renders
+                    ):
+                        capped = True
+                    material_refinements.append(state.name)
                     painted = rendered.colour * gains[frame_id]
                     score = _score_image(
                         painted, photos[frame_id], usable, edge_weight, edges[frame_id],
@@ -716,8 +837,11 @@ def fit_states(
         diagnostics["shape_fit_candidate_render_cap_reached"] = capped
         diagnostics["shape_fit_render_work"] = sum(render_counts.values())
         diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
+        diagnostics["shape_fit_considered_shapes"] = list(considered_shapes)
+        diagnostics["shape_fit_material_refinements"] = list(material_refinements)
+        diagnostics["shape_fit_unresolved_budget_exits"] = list(unresolved_budget_exits)
         diagnostics["shape_fit_supporting_frames"] = {
             str(coordinate): frames
             for coordinate, frames in supporting_frames.items()
         }
-    return chosen
+    return FitStateResult(chosen, supporting_frames=supporting_frames)

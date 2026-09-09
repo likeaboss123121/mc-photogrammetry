@@ -496,3 +496,55 @@ def test_candidate_render_cap_is_global_and_rejects_partial_multiview_hypotheses
     assert diagnostics["shape_fit_candidate_renders"] <= 1
     assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
     assert target not in fitted
+
+
+def test_shape_balanced_schedule_reaches_partial_shapes_before_cube_materials():
+    """A cube-heavy palette must not exhaust the cap inside one material group."""
+    cubes = tuple(
+        _entry(f"stone_variant_{number}", (120 + number % 8,) * 3, ())
+        for number in range(100)
+    )
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = cubes + (slab, carpet)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    frame = np.zeros((120, 120, 3), dtype=np.uint8)
+    diagnostics = {}
+
+    fit_states(
+        [target], {}, scene, {"cube-heavy.png": camera}, {"cube-heavy.png": frame},
+        palette, scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        diagnostics=diagnostics, max_candidate_renders=3,
+    )
+
+    considered = diagnostics["shape_fit_considered_shapes"]
+    assert any("quartz_slab" in name for name in considered)
+    assert any("white_carpet" in name for name in considered)
+    assert diagnostics["shape_fit_candidate_renders"] == 3
+    assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
+
+
+def test_shape_fit_returns_supporting_frames_without_diagnostics():
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = (carpet, slab)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    colours = face_colours(palette)
+    photo, _owner, _index, _depth = render_volume(
+        {target: slab.state}, scene, camera, 120, 120, colours,
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+
+    fitted = fit_states(
+        [target], {}, scene, {"slab.png": camera},
+        {"slab.png": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+    )
+
+    assert fitted[target] == slab.state
+    assert fitted.supporting_frames[target] == ("slab.png",)
