@@ -25,8 +25,5 @@ required result channel directly, so enabling optional diagnostics cannot change
 block provenance or silently fall back to every input frame.
 
 Focused shape-fit, raycast, and CLI tests pass. The workspace currently has 461
-collected tests. The latest full run reached 100% with one unrelated
-`test_litematic.py` failure from a concurrent exporter edit in the shared tree;
-this scheduling control does not touch that exporter. No fixture sweep or
-production-quality claim is made by this bounded control. The remaining 453
-tests, excluding that concurrent exporter module, pass.
+collected tests, and the final full `.venv` run passes all 461. No fixture sweep
+or production-quality claim is made by this bounded control.
