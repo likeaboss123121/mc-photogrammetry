@@ -22,13 +22,17 @@ def _reconstruct_source(
     output_root: Path,
     progress: Queue[tuple[str, int]],
     cancel_event: Event,
+    *,
+    developer_mode: bool = False,
 ) -> tuple[str, int, Path, Path]:
     image_frames = list(discover_media([source]).image_frames)
     if not image_frames:
         raise ValueError("No supported screenshots found.")
     cameras_path = source / "cameras.json"
     scene_path = source / "scene.json"
-    if len(image_frames) >= 2 and cameras_path.exists() and scene_path.exists():
+    # Sidecar calibration is an advanced diagnostic input. Normal desktop mode
+    # must not discover or consume neighboring manifests implicitly.
+    if developer_mode and len(image_frames) >= 2 and cameras_path.exists() and scene_path.exists():
         progress.put(("Loading calibrated screenshots", 5))
         cameras = load_camera_manifest(cameras_path)
         filenames = [Path(frame.source_path).name for frame in image_frames]
@@ -84,7 +88,7 @@ def _reconstruct_source(
     return output.name, len(volume.blocks), output, project_file
 
 
-def run_desktop(project_path: Path | None = None) -> int:
+def run_desktop(project_path: Path | None = None, *, developer_mode: bool = False) -> int:
     try:
         from PySide6.QtCore import QTimer
         from PySide6.QtWidgets import QApplication, QFileDialog, QLabel, QMainWindow, QProgressBar, QPushButton, QVBoxLayout, QWidget
@@ -100,7 +104,11 @@ def run_desktop(project_path: Path | None = None) -> int:
     layout = QVBoxLayout(content)
     title = QLabel("Minecraft Photogrammetry")
     title.setStyleSheet("font-size: 24px; font-weight: 600;")
-    status = QLabel(f"Project: {project_path or 'New scan'}\nTarget: Minecraft Java {project.minecraft_version}")
+    mode_label = "developer diagnostic (sidecar calibration allowed)" if developer_mode else "normal image-only mode"
+    status = QLabel(
+        f"Project: {project_path or 'New scan'}\n"
+        f"Target: Minecraft Java {project.minecraft_version}\nMode: {mode_label}"
+    )
     status.setWordWrap(True)
     selected_source: Path | None = None
     executor = ThreadPoolExecutor(max_workers=1)
@@ -134,7 +142,10 @@ def run_desktop(project_path: Path | None = None) -> int:
         choose_button.setEnabled(False)
         reconstruct_button.setEnabled(False)
         cancel_button.setEnabled(True)
-        future = executor.submit(_reconstruct_source, selected_source, Path.cwd() / "exports", messages, cancel_event)
+        future = executor.submit(
+            _reconstruct_source, selected_source, Path.cwd() / "exports", messages,
+            cancel_event, developer_mode=developer_mode,
+        )
 
     def cancel_reconstruction() -> None:
         cancel_event.set()

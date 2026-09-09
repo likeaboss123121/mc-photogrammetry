@@ -306,16 +306,19 @@ class VanillaJarTextureProvider:
         if not requested:
             return ()
         exact = {sample.state: sample for sample in self.samples}
-        by_name: dict[str, TextureSample] = {}
-        for sample in self.samples:
-            by_name.setdefault(sample.state.name, sample)
         selected: list[PaletteColor] = []
         for state in requested:
-            sample = exact.get(state) or by_name.get(state.name)
+            # Blockstate extraction materialises only defaults that are justified
+            # by the block family. Resolve against that normalized key, never by
+            # name alone: a missing top slab, stair facing, or fence connection
+            # must remain unavailable rather than inherit another variant's mesh.
+            normalized = BlockState(
+                state.name, _complete_properties(state.name, state.properties)
+            )
+            sample = exact.get(state) or exact.get(normalized)
             if sample is not None and (include_partial or sample.full_cube):
-                # A cache can predate newly materialised default properties. If
-                # only the block name matches, retain the requested state key so
-                # reference calibration and renderer lookups still line up.
+                # Keep the caller's state key so calibration and renderer lookups
+                # line up even when the caller omitted a justified default.
                 selected.append(_palette_color(sample, state=state))
         return tuple(selected)
 

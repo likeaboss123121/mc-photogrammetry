@@ -58,6 +58,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum estimated camera-ray depth for visible surface blocks",
     )
     reconstruct.add_argument("--horizon", type=float, help="override normalized perspective horizon")
+    reconstruct.add_argument(
+        "--mode", choices=("normal", "developer"), default="normal",
+        help="normal image-only mode, or developer mode for supplied camera/scene diagnostics",
+    )
     reconstruct.add_argument("--camera-manifest", type=Path, help="camera JSON keyed by image filename")
     reconstruct.add_argument("--scene", type=Path, help="scene JSON for local/world coordinate conversion")
     reconstruct.add_argument("--minecraft-jar", type=Path, help="local Minecraft client JAR for texture palette")
@@ -70,8 +74,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     multiview.add_argument("sources", type=Path)
     multiview.add_argument("output", type=Path, nargs="?")
-    multiview.add_argument("--cameras", type=Path, default=Path("templates/cameras.json"))
-    multiview.add_argument("--scene", type=Path, default=Path("templates/scene.json"))
+    multiview.add_argument(
+        "--mode", choices=("normal", "developer"), default="normal",
+        help="normal image-only mode, or developer mode for supplied camera/scene diagnostics",
+    )
+    multiview.add_argument("--cameras", type=Path, help="developer-mode camera manifest")
+    multiview.add_argument("--scene", type=Path, help="developer-mode scene bounds")
     multiview.add_argument("--max-reprojection-error", type=float, default=8.0)
     multiview.add_argument("--max-features", type=int, default=1600)
 
@@ -81,8 +89,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     surfaces.add_argument("sources", type=Path)
     surfaces.add_argument("output", type=Path, nargs="?")
-    surfaces.add_argument("--cameras", type=Path, required=True)
-    surfaces.add_argument("--scene", type=Path, required=True)
+    surfaces.add_argument(
+        "--mode", choices=("normal", "developer"), default="normal",
+        help="normal image-only mode, or developer mode for supplied camera/scene diagnostics",
+    )
+    surfaces.add_argument("--cameras", type=Path, help="developer-mode camera manifest")
+    surfaces.add_argument("--scene", type=Path, help="developer-mode scene bounds")
     surfaces.add_argument("--columns", type=int, default=36)
     surfaces.add_argument("--rows", type=int, default=48)
     surfaces.add_argument("--depth-layers", type=int, default=8)
@@ -150,7 +162,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="pixels a block must win before it counts as reachable (default 1)",
     )
 
-    commands.add_parser("desktop", help="launch the optional desktop shell")
+    desktop = commands.add_parser("desktop", help="launch the optional desktop shell")
+    desktop.add_argument(
+        "--mode", choices=("normal", "developer"), default="normal",
+        help="normal image-only mode, or developer mode for supplied sidecar calibration",
+    )
     return parser
 
 
@@ -212,7 +228,7 @@ def main() -> int:
     if args.command == "desktop":
         from mc_photogrammetry.ui.main_window import run_desktop
 
-        return run_desktop()
+        return run_desktop(developer_mode=args.mode == "developer")
 
     if args.command == "scan":
         manifest = discover_media(args.sources, recursive=args.recursive)
@@ -224,6 +240,10 @@ def main() -> int:
         return 0
 
     if args.command == "reconstruct":
+        if args.mode == "normal" and (args.camera_manifest or args.scene):
+            raise SystemExit(
+                "camera and scene manifests are developer diagnostics; rerun with --mode developer"
+            )
         export_directory = Path.cwd() / "exports"
         output_path = args.output or export_directory / f"{args.image.stem}.litematic"
         image = load_image(args.image)
@@ -272,12 +292,20 @@ def main() -> int:
             name=args.image.stem,
             description="Visible surface blocks with estimated depth; hidden geometry omitted",
         )
+        if args.mode == "developer":
+            print("Mode: developer diagnostic (supplied camera/scene metadata)")
         print(f"Created {output_path} with {len(volume.blocks)} block(s)")
         print("Visible-surface mode: depth estimated per visible block; hidden geometry omitted.")
         print(f"Saved project {project_path}")
         return 0
 
     if args.command == "reconstruct-multiview":
+        if args.mode != "developer":
+            raise SystemExit(
+                "automatic camera recovery is unresolved; reconstruct-multiview requires --mode developer"
+            )
+        if args.cameras is None or args.scene is None:
+            raise SystemExit("developer mode requires explicit --cameras and --scene paths")
         manifest = discover_media([args.sources])
         image_frames = [frame for frame in manifest.image_frames]
         if len(image_frames) < 2:
@@ -307,11 +335,18 @@ def main() -> int:
             name=args.sources.name,
             description="Calibrated multi-view sparse 3D reconstruction; low-confidence shell",
         )
+        print("Mode: developer diagnostic (supplied cameras and scene)")
         print(f"Created {output_path} with {len(volume.blocks)} reconstructed block(s)")
         print(f"Saved project {project_path}")
         return 0
 
     if args.command == "reconstruct-visible-multiview":
+        if args.mode != "developer":
+            raise SystemExit(
+                "automatic camera recovery is unresolved; reconstruct-visible-multiview requires --mode developer"
+            )
+        if args.cameras is None or args.scene is None:
+            raise SystemExit("developer mode requires explicit --cameras and --scene paths")
         manifest = discover_media([args.sources])
         image_frames = list(manifest.image_frames)
         cameras = load_camera_manifest(args.cameras)
@@ -364,6 +399,7 @@ def main() -> int:
             name=args.sources.name,
             description="Calibrated visible surfaces only; hidden geometry omitted",
         )
+        print("Mode: developer diagnostic (supplied cameras and scene)")
         print(f"Created {output_path} with {len(volume.blocks)} visible block(s)")
         print(f"Saved project {project_path}")
         return 0

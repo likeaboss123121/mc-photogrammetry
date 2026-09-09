@@ -1,5 +1,8 @@
 
 
+import pytest
+
+
 def test_the_parser_builds_and_every_command_is_reachable():
     """A smoke test for the argument parser.
 
@@ -50,3 +53,48 @@ def test_visible_multiview_exposes_opt_in_partial_shape_fitting():
         "--cameras", "c.json", "--scene", "s.json", "--fit-partial-shapes",
     ])
     assert args.fit_partial_shapes is True
+
+
+def test_calibrated_multiview_defaults_to_normal_mode_without_sidecars():
+    from mc_photogrammetry.cli import build_parser
+
+    args = build_parser().parse_args(["reconstruct-multiview", "images"])
+
+    assert args.mode == "normal"
+    assert args.cameras is None
+    assert args.scene is None
+
+
+def test_calibrated_multiview_sidecars_require_explicit_developer_mode():
+    from mc_photogrammetry.cli import build_parser
+
+    args = build_parser().parse_args([
+        "reconstruct-visible-multiview", "images", "--mode", "developer",
+        "--cameras", "c.json", "--scene", "s.json",
+    ])
+
+    assert args.mode == "developer"
+    assert args.cameras.name == "c.json"
+
+
+def test_normal_multiview_rejects_before_reading_fixture_inputs(monkeypatch):
+    from mc_photogrammetry import cli
+
+    monkeypatch.setattr(
+        "sys.argv", ["mc-photogrammetry", "reconstruct-visible-multiview", "images"]
+    )
+    with pytest.raises(SystemExit, match="requires --mode developer"):
+        cli.main()
+
+
+def test_normal_single_view_rejects_supplied_camera_metadata(monkeypatch):
+    from mc_photogrammetry import cli
+
+    monkeypatch.setattr(
+        "sys.argv", [
+            "mc-photogrammetry", "reconstruct", "image.png",
+            "--camera-manifest", "c.json",
+        ]
+    )
+    with pytest.raises(SystemExit, match="developer diagnostics"):
+        cli.main()

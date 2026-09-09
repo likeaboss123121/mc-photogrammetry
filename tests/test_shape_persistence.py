@@ -139,3 +139,45 @@ def test_palette_for_states_keeps_exact_partial_renderer_metadata(tmp_path):
     assert slab.covered_slots
     assert provider.palette_for_states(requested, include_partial=False) == ()
     assert provider.palette_for_states((BlockState("minecraft:missing"),)) == ()
+
+
+def test_palette_for_states_does_not_relabel_a_missing_variant(tmp_path):
+    provider, _jar_path = _provider(tmp_path)
+    slab = provider.resolve("minecraft:slab_block")
+    assert slab is not None
+    provider.samples = [slab]
+
+    top = BlockState(
+        "minecraft:slab_block", (("type", "top"), ("waterlogged", "false"))
+    )
+
+    assert provider.palette_for_states((top,)) == ()
+
+
+def test_palette_for_states_does_not_relabel_a_missing_facing_variant(tmp_path):
+    provider, _jar_path = _provider(tmp_path)
+    stair = provider.resolve("minecraft:stair_block")
+    assert stair is not None
+    provider.samples = [stair]
+
+    facing = BlockState(
+        "minecraft:stair_block",
+        (
+            ("facing", "south"),
+            ("half", "bottom"),
+            ("shape", "straight"),
+            ("waterlogged", "false"),
+        ),
+    )
+
+    assert provider.palette_for_states((facing,)) == ()
+
+
+def test_palette_for_states_completes_only_justified_defaults(tmp_path):
+    provider, _jar_path = _provider(tmp_path)
+
+    selected = provider.palette_for_states((BlockState("minecraft:slab_block"),))
+
+    assert len(selected) == 1
+    assert selected[0].state == BlockState("minecraft:slab_block")
+    assert selected[0].shape_boxes == provider.resolve("minecraft:slab_block").shape_boxes
