@@ -1,0 +1,1620 @@
+{
+  "baseline_blocks": 814,
+  "candidate_blocks": 815,
+  "cell_family_coverage": {
+    "carpet": 7,
+    "other": 5,
+    "slab": 1,
+    "stairs": 6
+  },
+  "cell_results": [
+    {
+      "air_score": 136.92149353027344,
+      "candidate_renders": 256,
+      "coordinate": [
+        1,
+        1,
+        12
+      ],
+      "current_score": null,
+      "current_state": null,
+      "reference_family": "stairs",
+      "reference_state": {
+        "name": "minecraft:oak_stairs",
+        "properties": {
+          "facing": "west",
+          "half": "bottom",
+          "shape": "straight",
+          "waterlogged": "false"
+        }
+      },
+      "selected_family": "stairs",
+      "selected_joint_score": 612.4520929574164,
+      "selected_plain_score": 93.78266143798828,
+      "selected_state": "minecraft:spruce_stairs",
+      "status": "partly_tested",
+      "supporting_frames": [
+        "2026-09-02_13.22.14.png",
+        "2026-09-02_13.24.24.png",
+        "2026-09-02_13.24.33.png"
+      ],
+      "usable_views": 3
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        1,
+        3,
+        10
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        2,
+        1,
+        1
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        2,
+        1,
+        2
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        2,
+        1,
+        13
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        2,
+        1,
+        14
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        3,
+        1,
+        3
+      ],
+      "current_state": null,
+      "reference_family": "stairs",
+      "reference_state": {
+        "name": "minecraft:oak_stairs",
+        "properties": {
+          "facing": "north",
+          "half": "top",
+          "shape": "outer_right",
+          "waterlogged": "false"
+        }
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        3,
+        1,
+        4
+      ],
+      "current_state": null,
+      "reference_family": "carpet",
+      "reference_state": {
+        "name": "minecraft:gray_carpet",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        3,
+        1,
+        13
+      ],
+      "current_state": null,
+      "reference_family": "stairs",
+      "reference_state": {
+        "name": "minecraft:oak_stairs",
+        "properties": {
+          "facing": "east",
+          "half": "top",
+          "shape": "straight",
+          "waterlogged": "false"
+        }
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        3,
+        1,
+        14
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        3,
+        1,
+        15
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        1,
+        1
+      ],
+      "current_state": null,
+      "reference_family": "other",
+      "reference_state": {
+        "name": "minecraft:oak_planks",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        1,
+        2
+      ],
+      "current_state": null,
+      "reference_family": "other",
+      "reference_state": {
+        "name": "minecraft:oak_planks",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        1,
+        3
+      ],
+      "current_state": null,
+      "reference_family": "stairs",
+      "reference_state": {
+        "name": "minecraft:oak_stairs",
+        "properties": {
+          "facing": "north",
+          "half": "top",
+          "shape": "straight",
+          "waterlogged": "false"
+        }
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        1,
+        4
+      ],
+      "current_state": null,
+      "reference_family": "carpet",
+      "reference_state": {
+        "name": "minecraft:gray_carpet",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        1,
+        13
+      ],
+      "current_state": null,
+      "reference_family": "slab",
+      "reference_state": {
+        "name": "minecraft:oak_slab",
+        "properties": {
+          "type": "top",
+          "waterlogged": "false"
+        }
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        1,
+        14
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        1,
+        15
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        4,
+        3,
+        8
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        5,
+        1,
+        4
+      ],
+      "current_state": null,
+      "reference_family": "carpet",
+      "reference_state": {
+        "name": "minecraft:gray_carpet",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        5,
+        1,
+        13
+      ],
+      "current_state": null,
+      "reference_family": "stairs",
+      "reference_state": {
+        "name": "minecraft:oak_stairs",
+        "properties": {
+          "facing": "west",
+          "half": "top",
+          "shape": "straight",
+          "waterlogged": "false"
+        }
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        5,
+        1,
+        14
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        5,
+        2,
+        8
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        1,
+        2
+      ],
+      "current_state": null,
+      "reference_family": "other",
+      "reference_state": {
+        "name": "minecraft:oak_planks",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        1,
+        3
+      ],
+      "current_state": null,
+      "reference_family": "stairs",
+      "reference_state": {
+        "name": "minecraft:oak_stairs",
+        "properties": {
+          "facing": "north",
+          "half": "top",
+          "shape": "straight",
+          "waterlogged": "false"
+        }
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        1,
+        4
+      ],
+      "current_state": null,
+      "reference_family": "carpet",
+      "reference_state": {
+        "name": "minecraft:gray_carpet",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        1,
+        10
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        1,
+        13
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        1,
+        14
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        1,
+        15
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        2,
+        1
+      ],
+      "current_state": null,
+      "reference_family": "carpet",
+      "reference_state": {
+        "name": "minecraft:white_carpet",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        2,
+        2
+      ],
+      "current_state": null,
+      "reference_family": "carpet",
+      "reference_state": {
+        "name": "minecraft:white_carpet",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        2,
+        9
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        3,
+        1
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        6,
+        3,
+        10
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        7,
+        1,
+        1
+      ],
+      "current_state": null,
+      "reference_family": "other",
+      "reference_state": {
+        "name": "minecraft:oak_planks",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        7,
+        1,
+        2
+      ],
+      "current_state": null,
+      "reference_family": "other",
+      "reference_state": {
+        "name": "minecraft:oak_planks",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        7,
+        2,
+        1
+      ],
+      "current_state": null,
+      "reference_family": "carpet",
+      "reference_state": {
+        "name": "minecraft:white_carpet",
+        "properties": {}
+      },
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        7,
+        2,
+        10
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    },
+    {
+      "candidate_renders": 0,
+      "coordinate": [
+        7,
+        3,
+        7
+      ],
+      "current_state": null,
+      "reference_family": null,
+      "reference_state": null,
+      "selected_family": null,
+      "status": "not_reached",
+      "supporting_frames": [],
+      "usable_views": 0
+    }
+  ],
+  "changes": {
+    "additions": [
+      [
+        1,
+        1,
+        12
+      ]
+    ],
+    "deletions": [],
+    "lost_exact_cells": 0,
+    "phantoms_after": [
+      [
+        0,
+        1,
+        3
+      ],
+      [
+        0,
+        1,
+        4
+      ],
+      [
+        0,
+        1,
+        5
+      ],
+      [
+        0,
+        2,
+        3
+      ],
+      [
+        0,
+        2,
+        4
+      ],
+      [
+        0,
+        2,
+        5
+      ],
+      [
+        0,
+        3,
+        3
+      ],
+      [
+        0,
+        3,
+        4
+      ],
+      [
+        0,
+        3,
+        5
+      ],
+      [
+        0,
+        4,
+        4
+      ],
+      [
+        1,
+        2,
+        9
+      ],
+      [
+        1,
+        2,
+        11
+      ],
+      [
+        1,
+        2,
+        12
+      ],
+      [
+        1,
+        2,
+        15
+      ],
+      [
+        1,
+        3,
+        9
+      ],
+      [
+        1,
+        3,
+        11
+      ],
+      [
+        1,
+        3,
+        12
+      ],
+      [
+        2,
+        2,
+        2
+      ],
+      [
+        2,
+        6,
+        15
+      ],
+      [
+        2,
+        7,
+        15
+      ],
+      [
+        3,
+        3,
+        2
+      ],
+      [
+        3,
+        6,
+        15
+      ],
+      [
+        3,
+        7,
+        15
+      ],
+      [
+        4,
+        2,
+        8
+      ],
+      [
+        4,
+        7,
+        15
+      ],
+      [
+        5,
+        6,
+        15
+      ],
+      [
+        5,
+        7,
+        15
+      ],
+      [
+        6,
+        2,
+        10
+      ],
+      [
+        6,
+        6,
+        15
+      ],
+      [
+        6,
+        8,
+        1
+      ],
+      [
+        7,
+        2,
+        7
+      ],
+      [
+        7,
+        6,
+        5
+      ],
+      [
+        7,
+        6,
+        6
+      ],
+      [
+        7,
+        6,
+        15
+      ]
+    ],
+    "phantoms_before": [
+      [
+        0,
+        1,
+        3
+      ],
+      [
+        0,
+        1,
+        4
+      ],
+      [
+        0,
+        1,
+        5
+      ],
+      [
+        0,
+        2,
+        3
+      ],
+      [
+        0,
+        2,
+        4
+      ],
+      [
+        0,
+        2,
+        5
+      ],
+      [
+        0,
+        3,
+        3
+      ],
+      [
+        0,
+        3,
+        4
+      ],
+      [
+        0,
+        3,
+        5
+      ],
+      [
+        0,
+        4,
+        4
+      ],
+      [
+        1,
+        2,
+        9
+      ],
+      [
+        1,
+        2,
+        11
+      ],
+      [
+        1,
+        2,
+        12
+      ],
+      [
+        1,
+        2,
+        15
+      ],
+      [
+        1,
+        3,
+        9
+      ],
+      [
+        1,
+        3,
+        11
+      ],
+      [
+        1,
+        3,
+        12
+      ],
+      [
+        2,
+        2,
+        2
+      ],
+      [
+        2,
+        6,
+        15
+      ],
+      [
+        2,
+        7,
+        15
+      ],
+      [
+        3,
+        3,
+        2
+      ],
+      [
+        3,
+        6,
+        15
+      ],
+      [
+        3,
+        7,
+        15
+      ],
+      [
+        4,
+        2,
+        8
+      ],
+      [
+        4,
+        7,
+        15
+      ],
+      [
+        5,
+        6,
+        15
+      ],
+      [
+        5,
+        7,
+        15
+      ],
+      [
+        6,
+        2,
+        10
+      ],
+      [
+        6,
+        6,
+        15
+      ],
+      [
+        6,
+        8,
+        1
+      ],
+      [
+        7,
+        2,
+        7
+      ],
+      [
+        7,
+        6,
+        5
+      ],
+      [
+        7,
+        6,
+        6
+      ],
+      [
+        7,
+        6,
+        15
+      ]
+    ],
+    "state_changes": []
+  },
+  "effective_settings": {
+    "cache_schema_version": 15,
+    "candidate_render_cap": 256,
+    "family_eligibility": {
+      "bars": 16,
+      "carpet": 67,
+      "fence": 400,
+      "pane": 272,
+      "slab": 114,
+      "stairs": 1296,
+      "torch": 23,
+      "wall": 1434
+    },
+    "geometry_groups": 38,
+    "material_groups": 38,
+    "non_full_palette_entries": 5415,
+    "palette": "VanillaJarTextureProvider.complete_palette",
+    "palette_entries": 6163,
+    "palette_sha256": "d1f9aa75e61c80e48612c65f025fcd384a46903d54f26c1350c5431371db6db8",
+    "proposal_order": "lexicographic unique v2 inventory",
+    "shape_fit_edge_weight": 0.25,
+    "shape_fit_scale": 0.5,
+    "shape_fit_texture_weight": 40.0,
+    "texture_source": "cached",
+    "usable_mask_policy": "frozen supplied JSON masks"
+  },
+  "exact_reference_cells": {
+    "after": 678,
+    "before": 678
+  },
+  "experiment": "M5-Template-2-matched-v2",
+  "inputs": {
+    "baseline": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\reports\\M5-t2-before.litematic",
+      "sha256": "577833e0c1ab427db7055d560c5ac60a1a71586b31b88120360ecedf6cf4c096"
+    },
+    "camera_manifest": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\cameras.json",
+      "sha256": "4f743e4fc478430f608e0e879f73cd4a3dc9ce50c726841d2da897be78be6126"
+    },
+    "frame:2026-09-02_13.22.14.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\2026-09-02_13.22.14.png",
+      "sha256": "eb22541171e030ff94d6839a6626e7160c69ae3a780f07aec0298322be665d46"
+    },
+    "frame:2026-09-02_13.24.24.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\2026-09-02_13.24.24.png",
+      "sha256": "e2fd9fd6c83bf9005fe0973987da9e46d213a4351ec91393ce578f8e6d3961ae"
+    },
+    "frame:2026-09-02_13.24.33.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\2026-09-02_13.24.33.png",
+      "sha256": "35d9debb206c2505f65d3be29183f4a4f3d2bf3f9c05644ce75570f48381d1fc"
+    },
+    "jar": {
+      "path": "C:\\Users\\Likea\\AppData\\Roaming\\.minecraft\\versions\\1.21.5\\1.21.5.jar",
+      "sha256": "522672ad20b460c02c2e39b6c5035ef6a849af28eb11ab2ac7eb293d395a8c11"
+    },
+    "mask:2026-09-02_13.22.14.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\evaluation_masks\\templates-2\\2026-09-02_13.22.14.json",
+      "sha256": "2b0e18cfc26d225c6bb5cb1043792cdcc252983215b5fb7fd09480e88622850e"
+    },
+    "mask:2026-09-02_13.24.24.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\evaluation_masks\\templates-2\\2026-09-02_13.24.24.json",
+      "sha256": "068c7fe623e66d770e77af98538916eafe34a7f4e7b0f3d7080ed5fa5d5687c7"
+    },
+    "mask:2026-09-02_13.24.33.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\evaluation_masks\\templates-2\\2026-09-02_13.24.33.json",
+      "sha256": "212a5d7e49b66d14eed26a829f75440e15b20b8281b433907c7f4319fd830dd2"
+    },
+    "proposals": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\reports\\M5-t2-frozen-proposals-v2.json",
+      "sha256": "b12011c383d736529bfaf0671a91e880b762609b435329df5820cfd34024f761"
+    },
+    "reference": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\Template 2.litematic",
+      "sha256": "519034a6a439ab98145aa820792d5afc588b5d697ecad961c14c36cbef2f3416"
+    },
+    "scene": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\scene.json",
+      "sha256": "9620608a2544e9460240c2efd0ff83da354d3ffcbee8c01e61e2d9a05b627881"
+    }
+  },
+  "mode": "supplied-camera diagnostic",
+  "outputs": {
+    "after": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\reports\\M5-t2-v2-after.litematic",
+      "sha256": "778f7f52da7e0dcb8b898fef9eafdef9afa38e4570260a04f82b7870ef53e9a7"
+    },
+    "before": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\reports\\M5-t2-before.litematic",
+      "sha256": "577833e0c1ab427db7055d560c5ac60a1a71586b31b88120360ecedf6cf4c096"
+    }
+  },
+  "partial_family": {
+    "exact_after": 0,
+    "exact_before": 0,
+    "recall_after": 0.0,
+    "recall_before": 0.0,
+    "reference_total": 69
+  },
+  "peak_python_heap_bytes": 368476514,
+  "processing_order": [
+    [
+      1,
+      1,
+      12
+    ],
+    [
+      1,
+      3,
+      10
+    ],
+    [
+      2,
+      1,
+      1
+    ],
+    [
+      2,
+      1,
+      2
+    ],
+    [
+      2,
+      1,
+      13
+    ],
+    [
+      2,
+      1,
+      14
+    ],
+    [
+      3,
+      1,
+      3
+    ],
+    [
+      3,
+      1,
+      4
+    ],
+    [
+      3,
+      1,
+      13
+    ],
+    [
+      3,
+      1,
+      14
+    ],
+    [
+      3,
+      1,
+      15
+    ],
+    [
+      4,
+      1,
+      1
+    ],
+    [
+      4,
+      1,
+      2
+    ],
+    [
+      4,
+      1,
+      3
+    ],
+    [
+      4,
+      1,
+      4
+    ],
+    [
+      4,
+      1,
+      13
+    ],
+    [
+      4,
+      1,
+      14
+    ],
+    [
+      4,
+      1,
+      15
+    ],
+    [
+      4,
+      3,
+      8
+    ],
+    [
+      5,
+      1,
+      4
+    ],
+    [
+      5,
+      1,
+      13
+    ],
+    [
+      5,
+      1,
+      14
+    ],
+    [
+      5,
+      2,
+      8
+    ],
+    [
+      6,
+      1,
+      2
+    ],
+    [
+      6,
+      1,
+      3
+    ],
+    [
+      6,
+      1,
+      4
+    ],
+    [
+      6,
+      1,
+      10
+    ],
+    [
+      6,
+      1,
+      13
+    ],
+    [
+      6,
+      1,
+      14
+    ],
+    [
+      6,
+      1,
+      15
+    ],
+    [
+      6,
+      2,
+      1
+    ],
+    [
+      6,
+      2,
+      2
+    ],
+    [
+      6,
+      2,
+      9
+    ],
+    [
+      6,
+      3,
+      1
+    ],
+    [
+      6,
+      3,
+      10
+    ],
+    [
+      7,
+      1,
+      1
+    ],
+    [
+      7,
+      1,
+      2
+    ],
+    [
+      7,
+      2,
+      1
+    ],
+    [
+      7,
+      2,
+      10
+    ],
+    [
+      7,
+      3,
+      7
+    ]
+  ],
+  "production_promotion": false,
+  "provenance": {
+    "revision": "c36bb6a9283bab60d807399368cdcca46e29c675",
+    "status": [
+      "M docs/reports/M5-shape-scheduling-2026-09-09.md",
+      " M docs/reports/M5-t2-matched-diagnostic.md",
+      " M src/mc_photogrammetry/reconstruction/shape_fit.py",
+      " M tests/test_shape_fit.py",
+      "?? docs/reports/M5-t2-frozen-proposals-v2.json",
+      "?? docs/reports/M5-t2-matched-v2-smoke.json",
+      "?? docs/reports/M5-t2-matched-v2.json",
+      "?? scripts/m5_matched_t2_diagnostic.py"
+    ]
+  },
+  "render_diagnostics": {
+    "shape_fit_background_renders": 3,
+    "shape_fit_candidate_render_cap": 256,
+    "shape_fit_candidate_render_cap_reached": true,
+    "shape_fit_candidate_renders": 256,
+    "shape_fit_cell_results": [
+      {
+        "air_score": 136.92149353027344,
+        "candidate_renders": 256,
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "current_score": null,
+        "current_state": null,
+        "selected_joint_score": 612.4520929574164,
+        "selected_plain_score": 93.78266143798828,
+        "selected_state": "minecraft:spruce_stairs",
+        "status": "partly_tested",
+        "usable_views": 3
+      }
+    ],
+    "shape_fit_considered_shapes": [
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:mud_brick_stairs",
+      "minecraft:wall_torch",
+      "minecraft:redstone_wall_torch",
+      "minecraft:brown_carpet",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_slab",
+      "minecraft:grass_block",
+      "minecraft:vault",
+      "minecraft:honey_block",
+      "minecraft:slime_block",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:jungle_fence_gate",
+      "minecraft:jungle_fence_gate",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_slab",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:torchflower",
+      "minecraft:redstone_wall_torch",
+      "minecraft:redstone_wall_torch",
+      "minecraft:jungle_fence",
+      "minecraft:redstone_torch",
+      "minecraft:jungle_fence_gate",
+      "minecraft:torch",
+      "minecraft:brown_stained_glass_pane",
+      "minecraft:iron_bars",
+      "minecraft:wall_torch",
+      "minecraft:wall_torch",
+      "minecraft:jungle_fence_gate",
+      "minecraft:redstone_wall_torch",
+      "minecraft:wall_torch",
+      "minecraft:bookshelf"
+    ],
+    "shape_fit_context_renders": 3,
+    "shape_fit_current_renders": 0,
+    "shape_fit_material_refinements": [
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:brain_coral_wall_fan",
+      "minecraft:brain_coral_wall_fan",
+      "minecraft:brain_coral_wall_fan",
+      "minecraft:bubble_coral_wall_fan",
+      "minecraft:bubble_coral_wall_fan",
+      "minecraft:bubble_coral_wall_fan",
+      "minecraft:dead_brain_coral_wall_fan",
+      "minecraft:dead_brain_coral_wall_fan",
+      "minecraft:dead_brain_coral_wall_fan",
+      "minecraft:dead_bubble_coral_wall_fan",
+      "minecraft:dead_bubble_coral_wall_fan",
+      "minecraft:dead_bubble_coral_wall_fan",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:redstone_wall_torch",
+      "minecraft:redstone_wall_torch",
+      "minecraft:redstone_wall_torch",
+      "minecraft:soul_wall_torch",
+      "minecraft:soul_wall_torch",
+      "minecraft:soul_wall_torch",
+      "minecraft:black_carpet",
+      "minecraft:black_carpet",
+      "minecraft:black_carpet",
+      "minecraft:blue_carpet",
+      "minecraft:blue_carpet",
+      "minecraft:blue_carpet",
+      "minecraft:cyan_carpet",
+      "minecraft:cyan_carpet",
+      "minecraft:cyan_carpet",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:oak_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:spruce_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:jungle_stairs",
+      "minecraft:spruce_slab",
+      "minecraft:spruce_slab",
+      "minecraft:spruce_slab",
+      "minecraft:oak_slab",
+      "minecraft:oak_slab",
+      "minecraft:oak_slab",
+      "minecraft:jungle_slab",
+      "minecraft:jungle_slab",
+      "minecraft:jungle_slab",
+      "minecraft:spawner",
+      "minecraft:spawner",
+      "minecraft:spawner",
+      "minecraft:trial_spawner",
+      "minecraft:trial_spawner",
+      "minecraft:trial_spawner",
+      "minecraft:trial_spawner",
+      "minecraft:trial_spawner",
+      "minecraft:trial_spawner",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:vault",
+      "minecraft:brain_coral_wall_fan",
+      "minecraft:brain_coral_wall_fan",
+      "minecraft:brain_coral_wall_fan",
+      "minecraft:bubble_coral_wall_fan",
+      "minecraft:bubble_coral_wall_fan",
+      "minecraft:bubble_coral_wall_fan",
+      "minecraft:dead_brain_coral_wall_fan",
+      "minecraft:dead_brain_coral_wall_fan",
+      "minecraft:dead_brain_coral_wall_fan",
+      "minecraft:dead_bubble_coral_wall_fan",
+      "minecraft:dead_bubble_coral_wall_fan",
+      "minecraft:dead_bubble_coral_wall_fan",
+      "minecraft:oak_fence_gate",
+      "minecraft:oak_fence_gate",
+      "minecraft:oak_fence_gate",
+      "minecraft:spruce_fence_gate",
+      "minecraft:spruce_fence_gate",
+      "minecraft:spruce_fence_gate",
+      "minecraft:dark_oak_fence_gate",
+      "minecraft:dark_oak_fence_gate",
+      "minecraft:dark_oak_fence_gate",
+      "minecraft:oak_fence_gate",
+      "minecraft:oak_fence_gate",
+      "minecraft:oak_fence_gate",
+      "minecraft:spruce_fence_gate"
+    ],
+    "shape_fit_ownership_renders": 57,
+    "shape_fit_probe_renders": 3,
+    "shape_fit_render_work": 322,
+    "shape_fit_representative_fallbacks": [],
+    "shape_fit_seconds": 513.058938,
+    "shape_fit_supporting_frames": {
+      "(1, 1, 12)": [
+        "2026-09-02_13.22.14.png",
+        "2026-09-02_13.24.24.png",
+        "2026-09-02_13.24.33.png"
+      ]
+    },
+    "shape_fit_unresolved_budget_exits": [
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "material_refinement"
+      }
+    ]
+  },
+  "schema": 2,
+  "timing_seconds": {
+    "shape_fit": 513.1094778000843,
+    "total": 513.1094778000843
+  }
+}

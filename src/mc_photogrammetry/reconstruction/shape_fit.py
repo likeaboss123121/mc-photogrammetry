@@ -250,6 +250,7 @@ def _material_rgb_prior(
     colours: Mapping[object, Mapping[str, np.ndarray]],
     photos: Mapping[str, np.ndarray],
     views: Sequence[tuple[str, CameraModel, np.ndarray]],
+    observed_quantiles: Mapping[str, np.ndarray] | None = None,
 ) -> float:
     """Cheap deterministic material ordering when texture scoring is disabled."""
     table = colours.get(state.name)
@@ -262,9 +263,15 @@ def _material_rgb_prior(
     expected = np.mean(np.asarray(tuple(table.values()), dtype=np.float32), axis=0) * 0.8
     distances = []
     for frame_id, _camera, usable in views:
-        pixels = photos[frame_id][usable]
-        if pixels.size:
-            observed = np.quantile(pixels.astype(np.float32), 0.75, axis=0)
+        if observed_quantiles is not None:
+            observed = observed_quantiles.get(frame_id)
+        else:
+            pixels = photos[frame_id][usable]
+            observed = (
+                np.quantile(pixels.astype(np.float32), 0.75, axis=0)
+                if pixels.size else None
+            )
+        if observed is not None:
             distances.append(float(np.linalg.norm(observed - expected)))
     return float(np.mean(distances)) if distances else float("inf")
 
@@ -274,6 +281,8 @@ def _representative_material(
     colours: Mapping[object, Mapping[str, np.ndarray]],
     photos: Mapping[str, np.ndarray],
     views: Sequence[tuple[str, CameraModel, np.ndarray]],
+    observed_quantiles: Mapping[str, np.ndarray] | None = None,
+    prior_cache: Mapping[BlockState, float] | None = None,
 ) -> BlockState:
     """Pick the material used by the bounded representative probe.
 
@@ -285,10 +294,16 @@ def _representative_material(
     acceptance authority.
     """
     def key(state: BlockState) -> tuple[float, int, str, tuple[tuple[str, str], ...]]:
-        prior = _material_rgb_prior(state, colours, photos, views)
+        prior = (
+            prior_cache[state]
+            if prior_cache is not None and state in prior_cache
+            else _material_rgb_prior(
+                state, colours, photos, views, observed_quantiles,
+            )
+        )
         return (
-            prior if np.isfinite(prior) else 0.0,
             0 if np.isfinite(prior) else 1,
+            prior if np.isfinite(prior) else 0.0,
             state.name,
             state.properties,
         )
@@ -499,6 +514,7 @@ def fit_states(
     representative_fallbacks: list[str] = []
     material_refinements: list[str] = []
     unresolved_budget_exits: list[dict[str, object]] = []
+    cell_results: list[dict[str, object]] = []
 
     def count(name: str) -> None:
         render_counts[name] += 1
@@ -572,7 +588,15 @@ def fit_states(
     supporting_frames: dict[BlockCoordinate, list[str]] = {}
     working_blocks = dict(blocks)
     for coordinate in cells:
-        current_state = working_blocks.get(coordinate)
+        candidate_renders_before = render_counts["candidate_renders"]
+        cell_result: dict[str, object] = {
+            "coordinate": list(coordinate),
+            "current_state": current_state.name if (current_state := working_blocks.get(coordinate)) else None,
+            "status": "not_reached",
+            "usable_views": 0,
+            "candidate_renders": 0,
+        }
+        cell_results.append(cell_result)
         context_blocks = {
             cell: state for cell, state in working_blocks.items() if cell != coordinate
         }
@@ -615,7 +639,28 @@ def fit_states(
             if int(usable.sum()) >= MINIMUM_PIXELS:
                 views.append((frame_id, camera, usable))
         if not views:
+            cell_result["status"] = "no_usable_views"
             continue
+        cell_result["usable_views"] = len(views)
+        cell_result["status"] = "reached"
+
+        # Every material in one cell/view compares against the same robust
+        # silhouette statistic. Compute it once per view so palette size does
+        # not multiply identical quantile work.
+        observed_quantiles = {
+            frame_id: np.quantile(
+                photos[frame_id][usable].astype(np.float32), 0.75, axis=0,
+            )
+            for frame_id, _camera, usable in views
+            if photos[frame_id][usable].size
+        }
+        prior_cache = {
+            state: _material_rgb_prior(
+                state, colours, photos, views, observed_quantiles,
+            )
+            for group in materials.values()
+            for state in group
+        }
 
         # Per shape: the silhouette's own verdict, and the material the grain
         # picks within it. Which of the two settles the shape is a flag.
@@ -631,8 +676,10 @@ def fit_states(
             if score is not None:
                 air_scores.append(score)
         if not air_scores:
+            cell_result["status"] = "no_usable_views"
             continue
         air_score = float(np.mean(air_scores))
+        cell_result["air_score"] = air_score
         baseline_score = air_score
         if current_state is not None:
             current_scores = []
@@ -653,6 +700,7 @@ def fit_states(
                     current_scores.append(score)
             if current_scores:
                 baseline_score = float(np.mean(current_scores))
+        cell_result["current_score"] = baseline_score if current_state is not None else None
 
         # Spend the bounded render budget on one representative per geometry
         # hypothesis before considering material variants.  A complete vanilla
@@ -671,8 +719,9 @@ def fit_states(
         for key in shape_keys:
             representative = _representative_material(
                 materials[key], colours, photos, views,
+                observed_quantiles, prior_cache,
             )
-            if not np.isfinite(_material_rgb_prior(representative, colours, photos, views)):
+            if not np.isfinite(prior_cache[representative]):
                 representative_fallbacks.append(representative.name)
             considered_shapes.append(representative.name)
             total, counted = 0.0, 0
@@ -780,7 +829,8 @@ def fit_states(
                 ))
             elif material_candidates:
                 material_candidates.sort(key=lambda state: (
-                    _material_rgb_prior(state, colours, photos, views),
+                    0 if np.isfinite(prior_cache[state]) else 1,
+                    prior_cache[state] if np.isfinite(prior_cache[state]) else 0.0,
                     state.name,
                     state.properties,
                 ))
@@ -862,6 +912,12 @@ def fit_states(
             _shape_score, selected_plain, _joint_score, best_state = min(
                 ranked, key=lambda entry: entry[order]
             )
+            selected_entry = min(ranked, key=lambda entry: entry[order])
+            cell_result.update({
+                "selected_state": best_state.name if best_state is not None else None,
+                "selected_plain_score": float(selected_entry[1]),
+                "selected_joint_score": float(selected_entry[2]),
+            })
             # Keep air and the current state on ties or when a candidate does
             # not improve the rendered evidence. Returning only accepted edits
             # lets the caller preserve empty cells and existing geometry.
@@ -871,12 +927,14 @@ def fit_states(
                 chosen[coordinate] = None
                 working_blocks.pop(coordinate, None)
                 supporting_frames[coordinate] = [frame_id for frame_id, _camera, _usable in views]
+                cell_result["status"] = "accepted"
             elif best_state is not None and best_state == current_state:
                 # Report the retained state for callers that use this function
                 # as a per-cell decision, while leaving the volume unchanged.
                 chosen[coordinate] = current_state
                 working_blocks[coordinate] = current_state
                 supporting_frames[coordinate] = [frame_id for frame_id, _camera, _usable in views]
+                cell_result["status"] = "retained"
             elif (
                 best_state is not None
                 and selected_plain + 1e-6 < baseline_score
@@ -884,6 +942,14 @@ def fit_states(
                 chosen[coordinate] = best_state
                 working_blocks[coordinate] = best_state
                 supporting_frames[coordinate] = [frame_id for frame_id, _camera, _usable in views]
+                cell_result["status"] = "accepted"
+            elif cell_result["status"] == "reached":
+                cell_result["status"] = "completed"
+        cell_result["candidate_renders"] = (
+            render_counts["candidate_renders"] - candidate_renders_before
+        )
+        if any(entry["coordinate"] == coordinate for entry in unresolved_budget_exits):
+            cell_result["status"] = "partly_tested"
         if capped:
             break
     if diagnostics is not None:
@@ -898,6 +964,7 @@ def fit_states(
         diagnostics["shape_fit_representative_fallbacks"] = list(representative_fallbacks)
         diagnostics["shape_fit_material_refinements"] = list(material_refinements)
         diagnostics["shape_fit_unresolved_budget_exits"] = list(unresolved_budget_exits)
+        diagnostics["shape_fit_cell_results"] = list(cell_results)
         diagnostics["shape_fit_supporting_frames"] = {
             str(coordinate): frames
             for coordinate, frames in supporting_frames.items()

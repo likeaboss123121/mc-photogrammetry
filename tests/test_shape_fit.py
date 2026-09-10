@@ -23,6 +23,7 @@ from mc_photogrammetry.reconstruction.camera import CameraModel
 from mc_photogrammetry.reconstruction.facade import PaletteColor
 from mc_photogrammetry.reconstruction.scene import SceneTransform
 from mc_photogrammetry.reconstruction.shape_fit import (
+    _representative_material,
     candidate_states,
     fit_states,
     is_canonical,
@@ -637,3 +638,65 @@ def test_representative_material_is_order_independent_when_cap_ends_after_probe(
             max_candidate_renders=1,
         )
         assert fitted[target] == bbb.state
+
+
+def test_missing_material_metadata_never_beats_known_rgb_evidence():
+    """Unknown metadata is a fallback only after every known material loses."""
+    from mc_photogrammetry.reconstruction.camera import CameraModel
+
+    known = BlockState("minecraft:known_slab")
+    missing = BlockState("minecraft:missing_slab")
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    colours = {known.name: {slot: np.full(3, 100.0) for slot in SLOTS}}
+    observed = {"a.png": np.full(3, 100.0)}
+    views = [("a.png", camera, np.ones((1, 1), dtype=bool))]
+
+    for states in ((missing, known), (known, missing)):
+        assert _representative_material(
+            states, colours, {}, views, observed,
+        ) == known
+
+    unknown_colours = {}
+    first = _representative_material(
+        (missing, BlockState("minecraft:zzz_slab")), unknown_colours, {}, views, observed,
+    )
+    second = _representative_material(
+        (BlockState("minecraft:zzz_slab"), missing), unknown_colours, {}, views, observed,
+    )
+    assert first == second == missing
+
+
+def test_grain_evidence_beats_equal_shape_representative(monkeypatch):
+    """A texture preference must survive equal rendered shape scores."""
+    from mc_photogrammetry.reconstruction import raycast as raycast_module
+
+    class FakePaletteIndex:
+        def __init__(self, palette, *_args):
+            self.states = [item.state for item in palette]
+            self.count = len(self.states)
+
+        def costs(self, *_args, **_kwargs):
+            costs = np.asarray([
+                100.0 if state.name.endswith("aaa_slab") else 0.0
+                for state in self.states
+            ])
+            return costs, float(costs.min())
+
+    monkeypatch.setattr(raycast_module, "PaletteIndex", FakePaletteIndex)
+    aaa = _entry("aaa_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    bbb = _entry("bbb_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    photo, _owner, _index, _depth = render_volume(
+        {target: bbb.state}, scene, camera, 120, 120, face_colours((aaa, bbb)),
+        face_shapes((aaa, bbb)), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots((aaa, bbb)), model_faces=face_model_faces((aaa, bbb)),
+    )
+
+    fitted = fit_states(
+        [target], {}, scene, {"grain.png": camera},
+        {"grain.png": np.rint(photo).astype(np.uint8)}, (aaa, bbb),
+        scale=1.0, edge_weight=0.0, texture_weight=1.0, max_candidate_renders=8,
+    )
+    assert fitted[target] == bbb.state
