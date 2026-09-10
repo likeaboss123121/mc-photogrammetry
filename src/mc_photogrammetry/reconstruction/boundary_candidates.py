@@ -86,12 +86,16 @@ class Chain:
     coordinate `find_chains` clusters segments on. Used only to order
     distinct chains within one axis before pairing them; never compared
     across axes and never compared to the image centre."""
-    span: tuple[float, float]
-    """The chain's real along-line support: how far its member segments'
-    own endpoints extend, projected onto `direction` relative to `point` -
-    not the offset spread used for clustering. A candidate corner that
-    requires extrapolating far past this extent is evidence-free, not a
-    detection (see `CORNER_CONNECTIVITY_TOLERANCE`)."""
+    span: tuple[tuple[float, float], ...]
+    """The chain's real along-line support, as the union of its member
+    segments' own endpoint intervals (merged where they touch or overlap) -
+    not the single min-to-max envelope, and not the offset spread used for
+    clustering. Two segments detected 100px apart along the same line with
+    nothing detected between them are *not* evidence for that 100px gap;
+    treating the envelope as if it were fully observed would let a corner
+    sitting in that gap pass as supported. A candidate corner that requires
+    extrapolating past every one of these intervals is evidence-free, not
+    a detection (see `CORNER_CONNECTIVITY_TOLERANCE`)."""
     segment_count: int
 
 
@@ -243,19 +247,28 @@ def find_chains(
             else:
                 direction = np.array([x0, y0])
                 direction = direction / max(float(np.linalg.norm(direction)), 1e-9)
-            # Real along-line support: project every member segment's own
-            # endpoints (not just midpoints) onto the chain's direction.
+            # Real along-line support: each member segment's own two
+            # endpoints, projected onto the chain's direction, form one
+            # observed interval - not just the pooled min/max of every
+            # endpoint, which would silently call an unobserved gap between
+            # two segments "supported" too.
             group_segments = axis_segments[group]
-            endpoints = np.concatenate([
-                group_segments[:, 0:2], group_segments[:, 2:4],
-            ], axis=0)
-            projections = (endpoints - mean_point) @ direction
+            starts = (group_segments[:, 0:2] - mean_point) @ direction
+            ends = (group_segments[:, 2:4] - mean_point) @ direction
+            intervals = sorted(
+                (float(min(s, e)), float(max(s, e))) for s, e in zip(starts, ends))
+            merged: list[list[float]] = []
+            for low, high in intervals:
+                if merged and low <= merged[-1][1] + chain_gap:
+                    merged[-1][1] = max(merged[-1][1], high)
+                else:
+                    merged.append([low, high])
             chains.append(Chain(
                 axis=axis, strength=total,
                 point=(float(mean_point[0]), float(mean_point[1])),
                 direction=(float(direction[0]), float(direction[1])),
                 offset=mean_offset,
-                span=(float(projections.min()), float(projections.max())),
+                span=tuple((low, high) for low, high in merged),
                 segment_count=len(group),
             ))
     chains.sort(key=lambda chain: -chain.strength)
@@ -332,13 +345,20 @@ def _is_simple_quad(corners: list[tuple[float, float]]) -> bool:
 
 
 def _corner_supported(corner, chain: Chain | None, tolerance: float) -> bool:
+    """Whether `corner` falls near enough to at least one of `chain`'s own
+    observed intervals - never near a gap *between* two intervals, which
+    carries no segment evidence at all regardless of how close the two
+    real detections on either side of it are."""
     if chain is None:
         return True
     projection = ((corner[0] - chain.point[0]) * chain.direction[0]
                  + (corner[1] - chain.point[1]) * chain.direction[1])
-    low, high = chain.span
-    margin = max(tolerance, 0.5 * (high - low))
-    return low - margin <= projection <= high + margin
+    # A flat tolerance per interval, not scaled by that interval's own
+    # length: scaling by length was meant to forgive extrapolating a
+    # *short* observation a little further, but applied to two intervals
+    # split by a real gap it would just re-widen each side enough to
+    # bridge the very gap `span` now exists to record.
+    return any(low - tolerance <= projection <= high + tolerance for low, high in chain.span)
 
 
 def _clip_to_rect(polygon: list[tuple[float, float]], width: int, height: int):

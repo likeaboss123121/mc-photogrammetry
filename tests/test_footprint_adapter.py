@@ -363,15 +363,18 @@ def test_g1_extreme_grazing_does_not_allocate_a_raster_sized_to_the_quad():
     assert evidence[0].outside_image_fraction > 0.99
 
 
-def test_s3_pixel_aligned_unit_cell_matches_its_continuous_area_exactly():
-    """A lead follow-up review's exact reproduction: identity axes, a cell
+def test_s3_pixel_aligned_unit_cell_matches_its_continuous_area_closely():
+    """The original reproduction of this bug: identity axes, a cell
     projecting to the pixel-aligned unit square (2,2)-(3,3) - true
     continuous area 1 - fully covered by a matching VISIBLE polygon. The
-    old rasterizer fed continuous corner coordinates straight to
+    original rasterizer fed continuous corner coordinates straight to
     `cv2.fillPoly`, which treats an integer vertex as a pixel's own centre
     and includes boundary pixels, filling pixel-centres 2 through 3
-    inclusive in both axes - a 2x2, four-pixel block - so
-    `coverage_by_label` came back 4.0 for a cell whose true area is 1.
+    inclusive in both axes - a 2x2, four-pixel block - so `coverage_by_label`
+    came back 4.0 for a cell whose true area is 1. A follow-up review found
+    that fix (a half-pixel coordinate shift) only passed this one
+    pixel-grid-aligned case, not the general one (see the supersampling
+    controls below) - so this only checks the result is now close, not exact.
     """
     axes = np.eye(3)
     transform = LatticeTransform(axis=2, side=1.0, distance=1.0, axis_matrix=axes,
@@ -380,7 +383,7 @@ def test_s3_pixel_aligned_unit_cell_matches_its_continuous_area_exactly():
     regions = [RegionEvidence(VISIBLE, ((2, 2), (3, 2), (3, 3), (2, 3)))]
     evidence = rasterize_cells(transform, regions, image_size=(6, 6),
                                rows=range(1), columns=range(1))[0]
-    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(1.0, abs=1e-6)
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(1.0, abs=0.1)
     assert evidence.declared == VISIBLE
 
 
@@ -552,3 +555,121 @@ def test_s4_reproject_exported_volume_matches_expected_corners_across_axes_and_s
             expected_corners = cell_corners_pixels(transform, cell)
             assert reprojected[cell] == expected_corners, (axis, side, cell)
         assert isinstance(minimum, tuple) and len(minimum) == 3
+
+
+def test_e2_area_units_stay_consistent_off_the_pixel_grid():
+    """A lead follow-up review's exact counter-examples to the half-pixel
+    coordinate shift: that fix only reconciled raster and continuous area
+    for a cell whose corners happen to land on integer pixel-grid
+    coordinates. A non-integer principal point or non-unit focal moves the
+    cell off-grid without changing its true area, and the shift alone still
+    reported 4.0, 4.1667 and 1.5 for cells whose true area is 1 - not
+    "declared" mislabeling, actual area measurement.
+    """
+    axes = np.eye(3)
+    cases = [(1.0, (2.0, 3.0)), (1.0, (2.2, 3.2)), (1.2, (3.0, 4.0)), (2.0, (2.0, 3.0))]
+    for focal, principal_point in cases:
+        transform = LatticeTransform(axis=2, side=1.0, distance=1.0, axis_matrix=axes,
+                                     focal=focal, principal_point=principal_point,
+                                     lateral_origin=(0.0, 0.0), period=1.0)
+        corners = cell_corners_pixels(transform, (0, 0))
+        regions = [RegionEvidence(VISIBLE, tuple(corners))]
+        evidence = rasterize_cells(transform, regions, image_size=(12, 12),
+                                   rows=range(1), columns=range(1))[0]
+        assert evidence.coverage_by_label[VISIBLE] == pytest.approx(1.0, abs=0.1), (focal, principal_point)
+        assert evidence.declared == VISIBLE, (focal, principal_point)
+
+
+def test_e2_a_translated_fractional_cell_still_measures_its_true_area():
+    """A cell whose corners sit at fractional, non-grid-aligned coordinates
+    throughout (not just offset from one integer origin) - translated by a
+    non-integer amount in both axes - covered by a matching region."""
+    axes = np.eye(3)
+    transform = LatticeTransform(axis=2, side=1.0, distance=1.0, axis_matrix=axes,
+                                 focal=1.0, principal_point=(7.63, 9.41),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    regions = [RegionEvidence(VISIBLE, tuple(corners))]
+    evidence = rasterize_cells(transform, regions, image_size=(20, 20),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(1.0, abs=0.1)
+
+
+def test_e3_a_depth_shifted_block_is_rejected_not_silently_reprojected(tmp_path):
+    """A lead follow-up review's independent loader-injection control:
+    `reproject_exported_volume` used to pass every read-back block through
+    `block_to_cell`, which keeps only the two lateral coordinates and
+    silently discards the normal-axis one - so a block sitting at the
+    right lateral position but the wrong depth still produced a
+    valid-looking cell. This injects exactly that: a real exported/loaded
+    snapshot with one block's normal coordinate changed after loading, and
+    checks it is rejected rather than reprojected as if nothing were wrong.
+    """
+    import dataclasses
+
+    from mc_photogrammetry.export.litematic import LitematicExporter
+    from mc_photogrammetry.export.compare import load_litematic
+    from mc_photogrammetry.reconstruction.footprint import build_footprint, footprint_to_volume
+    from mc_photogrammetry.reconstruction.footprint_adapter import reproject_exported_volume
+
+    axes = np.eye(3)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    footprint = build_footprint(axis=2, face_coordinate=1, side=1.0, lateral_origin=(0, 0),
+                               rows=1, columns=2, declared={(0, 0): VISIBLE, (0, 1): VISIBLE})
+    volume = footprint_to_volume(footprint)
+    litematic_path = tmp_path / "e3_control.litematic"
+    LitematicExporter().export(volume, litematic_path, name="e3 control",
+                               description="E3 depth-shift injection control")
+
+    genuine = load_litematic(litematic_path)
+    assert len(genuine.blocks) == 2
+    corrupted_local_blocks = list(genuine.blocks.items())
+    (second_local, second_state) = corrupted_local_blocks[1]
+    # Shift the second block's normal-axis coordinate (index 2 = Z, since
+    # footprint.axis=2) away from the plane - exactly the review's
+    # (1,0,0) -> (1,0,3) example, adapted to this footprint's own axis.
+    depth_shifted_local = (second_local[0], second_local[1], second_local[2] + 3)
+    corrupted_blocks = dict(corrupted_local_blocks)
+    del corrupted_blocks[second_local]
+    corrupted_blocks[depth_shifted_local] = second_state
+    injected = dataclasses.replace(genuine, blocks=corrupted_blocks)
+
+    with pytest.raises(ValueError, match="off the declared plane"):
+        reproject_exported_volume(transform, footprint, litematic_path, _snapshot=injected)
+
+    # The genuine, uninjected file must still verify cleanly - this is not
+    # a false-positive rejection of ordinary read-back data.
+    reprojected, _ = reproject_exported_volume(transform, footprint, litematic_path)
+    assert len(reprojected) == 2
+
+
+def test_e3_a_persisted_minimum_shift_is_sufficient_without_recomputing(tmp_path):
+    """An immutable export transform (here, just its `minimum_shift`) must
+    be enough to verify a reload on its own - a caller should be able to
+    persist it once (as `export_transform.json` does) and pass it back in
+    on a later call without that call needing to recompute it from the
+    footprint's own pre-export `SUPPORTED` cells."""
+    from mc_photogrammetry.export.litematic import LitematicExporter
+    from mc_photogrammetry.reconstruction.footprint import build_footprint, footprint_to_volume
+    from mc_photogrammetry.reconstruction.footprint_adapter import reproject_exported_volume
+
+    axes = np.eye(3)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    footprint = build_footprint(axis=2, face_coordinate=1, side=1.0, lateral_origin=(0, 0),
+                               rows=2, columns=2,
+                               declared={(0, 0): VISIBLE, (1, 1): VISIBLE})
+    volume = footprint_to_volume(footprint)
+    litematic_path = tmp_path / "e3_persisted.litematic"
+    LitematicExporter().export(volume, litematic_path, name="e3 persisted control",
+                               description="E3 persisted-minimum-shift control")
+
+    _, minimum_shift = reproject_exported_volume(transform, footprint, litematic_path)
+
+    reprojected_again, returned_shift = reproject_exported_volume(
+        transform, footprint, litematic_path, minimum_shift=minimum_shift)
+    assert returned_shift == minimum_shift
+    assert len(reprojected_again) == 2

@@ -277,6 +277,24 @@ def reload_and_verify(out_dir: Path) -> None:
           f"{len(recovered_opening)} opening, {len(recovered_unknown)} unknown - "
           "matches the saved evidence.json exactly, from transform.json/regions.json alone")
 
+    # The export-to-reconstruction transform must be sufficient for this
+    # fresh process to re-verify the litematic file on its own - reading
+    # minimum_shift back from export_transform.json rather than
+    # recomputing it from footprint's expected cells, which `build`
+    # already did once in a different process.
+    from mc_photogrammetry.reconstruction.footprint_adapter import reproject_exported_volume
+
+    export_transform_record = json.loads((out_dir / "export_transform.json").read_text(encoding="utf-8"))
+    saved_export_hash = export_transform_record.pop("content_sha256")
+    assert _content_hash(export_transform_record) == saved_export_hash, (
+        "export_transform.json content changed since it was saved")
+    reprojected, _ = reproject_exported_volume(
+        transform, footprint, out_dir / "control.litematic",
+        minimum_shift=tuple(export_transform_record["minimum_shift"]))
+    print(f"RELOAD OK: {len(reprojected)} solid blocks in control.litematic independently "
+         f"reproject, using only the persisted export_transform.json minimum_shift "
+         f"{tuple(export_transform_record['minimum_shift'])} - nothing recomputed from footprint")
+
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])

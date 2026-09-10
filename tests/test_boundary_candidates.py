@@ -31,8 +31,10 @@ FOCAL, YAW, PITCH, ROLL = 500.0, 25.0, 0.0, 0.0
 # ---------------------------------------------------------------------------
 
 def _chain(axis, point, direction, offset, span, strength=10.0, segment_count=3):
+    """`span` here is the simple (low, high) envelope test callers already
+    use; wrapped as the single-interval form `Chain.span` now expects."""
     return Chain(axis=axis, strength=strength, point=point, direction=direction,
-                offset=offset, span=span, segment_count=segment_count)
+                offset=offset, span=(span,), segment_count=segment_count)
 
 
 def test_off_centre_rectangle_is_recovered_not_stretched_to_the_frame_edge():
@@ -272,12 +274,14 @@ def test_find_chains_on_a_blank_image_returns_nothing():
     assert chains == []
 
 
-def test_a_broken_edge_with_a_along_line_gap_still_forms_one_chain():
+def test_a_broken_edge_with_a_along_line_gap_still_forms_one_chain_with_two_intervals():
     """Two segment pieces on the exact same physical line, separated by a
     gap along the line itself (a furniture item interrupting a wall seam,
-    say) - offset-based clustering must still merge them into one chain,
+    say) - offset-based clustering must still merge them into one *chain*,
     since they share the same offset from the vanishing point regardless of
-    how far apart they sit along the line."""
+    how far apart they sit along the line. But the gap between the two
+    pieces was never actually observed, so `span` must record it as two
+    separate intervals, not one envelope spanning straight across it."""
     points = vanishing_points(FOCAL, YAW, PITCH, WIDTH, HEIGHT, ROLL)
     image = np.full((HEIGHT, WIDTH, 3), 40, dtype=np.uint8)
     direction = _line_point(points[1], (300.0, 200.0))
@@ -298,10 +302,28 @@ def test_a_broken_edge_with_a_along_line_gap_still_forms_one_chain():
     assert len(vertical_like) == 1
     chain = vertical_like[0]
     assert chain.segment_count >= 2
-    # The merged chain's real support must span both pieces, not just one -
-    # a detector fragmenting a thick line into several short pieces near a
-    # single location would also report segment_count > 1 without this.
-    assert chain.span[1] - chain.span[0] > 250.0
+    assert len(chain.span) == 2
+    lows = sorted(low for low, _ in chain.span)
+    highs = sorted(high for _, high in chain.span)
+    assert lows[0] == pytest.approx(-150.0, abs=5.0)
+    assert highs[0] == pytest.approx(-50.0, abs=5.0)
+    assert lows[1] == pytest.approx(50.0, abs=5.0)
+    assert highs[1] == pytest.approx(150.0, abs=5.0)
+
+
+def test_a_corner_in_the_gap_between_two_observed_intervals_is_not_supported():
+    """The review's own example: bridging min/max across a genuine gap
+    would let a corner that sits in the unobserved middle pass as
+    supported just because two real detections happen to sit on either
+    side of it. It must not."""
+    gapped = Chain(axis=1, strength=10.0, point=(0.0, 0.0), direction=(0.0, 1.0),
+                  offset=0.0, span=((-150.0, -50.0), (50.0, 150.0)), segment_count=2)
+
+    from mc_photogrammetry.reconstruction.boundary_candidates import _corner_supported
+
+    assert _corner_supported((0.0, -100.0), gapped, 5.0)  # inside the first interval
+    assert _corner_supported((0.0, 100.0), gapped, 5.0)   # inside the second interval
+    assert not _corner_supported((0.0, 0.0), gapped, 5.0)  # squarely in the unobserved gap
 
 
 def test_two_separate_planes_both_produce_candidates():

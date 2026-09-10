@@ -175,6 +175,8 @@ def reproject_exported_volume(
     *,
     row_offset: int = 0,
     column_offset: int = 0,
+    minimum_shift: tuple[int, int, int] | None = None,
+    _snapshot=None,
 ) -> tuple[dict[tuple[int, int], list[tuple[float, float]]], tuple[int, int, int]]:
     """Read a litematic back and independently reproject every solid block it
     actually contains through ``transform`` - not the pre-export footprint's
@@ -185,6 +187,20 @@ def reproject_exported_volume(
     values the file itself holds; every corner returned here traces back
     through a block tuple read straight out of ``litematic_path``.
 
+    A follow-up review found a second, deeper gap in that same fix: every
+    read-back block was passed through `block_to_cell`, which - correctly,
+    for its own purpose - keeps only the two *lateral* coordinates and
+    discards the normal-axis one entirely. A block sitting at the right
+    lateral position but the wrong depth (corrupted, or from a nonplanar
+    extrusion) would still produce a valid-looking cell and pass, since
+    nothing ever checked the coordinate that would have caught it. Every
+    block is now checked against the plane's own declared normal-axis
+    placement (`cell_to_block`'s own ``axis_value`` formula - see its
+    docstring) *before* it is reduced to a 2D cell at all; a block that
+    fails this is not a supported cell with a slightly-off corner, it is
+    not on the declared plane, and this raises rather than silently
+    accepting it.
+
     Returns ``(reprojected, minimum_shift)``. ``reprojected`` maps each
     footprint-local ``(row, column)`` cell (`footprint.py`'s own indexing,
     from `block_to_cell`) the file actually contains to its pixel corners.
@@ -193,7 +209,12 @@ def reproject_exported_volume(
     single-region litematic always stores its shape local to its own
     minimum corner rather than an absolute position (see `export.litematic`
     and `export.validation`; this is a tested format invariant, not a bug
-    routed around here).
+    routed around here). Pass a previously-returned ``minimum_shift`` back
+    in explicitly to verify a reload needs nothing recomputed from the
+    footprint's own expected cells - an immutable value a caller can
+    persist (e.g. in ``export_transform.json``) once and reuse; when
+    omitted it is computed from ``footprint``'s pre-export `SUPPORTED`
+    cells, as before.
 
     ``row_offset``/``column_offset`` translate `footprint.py`'s own local
     (0-indexed) cell space into ``transform``'s lattice coordinate space,
@@ -201,34 +222,48 @@ def reproject_exported_volume(
     against a translated sub-grid rather than starting at the transform's
     own cell (0, 0).
 
-    Raises `ValueError` if the file's own solid-block cell set does not
-    match the footprint's pre-export `SUPPORTED` cells.
+    Raises `ValueError` if any read-back block sits off the declared plane,
+    or if the file's own solid-block cell set does not match the
+    footprint's pre-export `SUPPORTED` cells.
     """
     from mc_photogrammetry.reconstruction.footprint import SUPPORTED, block_to_cell, cell_to_block
     from mc_photogrammetry.export.compare import load_litematic
 
-    snapshot = load_litematic(litematic_path)
+    snapshot = _snapshot if _snapshot is not None else load_litematic(litematic_path)
     expected_cells = {c.cell for c in footprint.of(SUPPORTED)}
-    exported_blocks = {cell_to_block(footprint, cell) for cell in expected_cells}
-    minimum = tuple(min(block[axis] for block in exported_blocks) for axis in range(3))
+    if minimum_shift is None:
+        exported_blocks = {cell_to_block(footprint, cell) for cell in expected_cells}
+        minimum_shift = tuple(min(block[axis] for block in exported_blocks) for axis in range(3))
+
+    expected_axis_value = (footprint.face_coordinate - 1 if footprint.side > 0
+                           else footprint.face_coordinate)
 
     reprojected: dict[tuple[int, int], list[tuple[float, float]]] = {}
+    off_plane: list[tuple[int, int, int]] = []
     for local_block, state in snapshot.blocks.items():
         if state.name == "minecraft:air":
             continue
-        absolute_block = tuple(local_block[index] + minimum[index] for index in range(3))
+        absolute_block = tuple(local_block[index] + minimum_shift[index] for index in range(3))
+        if absolute_block[footprint.axis] != expected_axis_value:
+            off_plane.append(absolute_block)
+            continue
         local_cell = block_to_cell(footprint, absolute_block)
         world_cell = (local_cell[0] + row_offset, local_cell[1] + column_offset)
         corners = cell_corners_pixels(transform, world_cell)
         if corners is not None:
             reprojected[local_cell] = corners
 
+    if off_plane:
+        raise ValueError(
+            f"{len(off_plane)} read-back block(s) sit off the declared plane "
+            f"(axis {footprint.axis} must equal {expected_axis_value}): {sorted(off_plane)}")
+
     readback_cells = set(reprojected)
     if readback_cells != expected_cells:
         raise ValueError(
             f"read-back cells {sorted(readback_cells)} != pre-export supported cells "
             f"{sorted(expected_cells)}")
-    return reprojected, minimum
+    return reprojected, minimum_shift
 
 
 @dataclass(frozen=True)
@@ -320,28 +355,107 @@ def _rasterize_polygon(polygon: list[tuple[float, float]], shape: tuple[int, int
     return mask
 
 
-def _label_masks(regions: list[RegionEvidence], image_size: tuple[int, int]) -> dict[str, np.ndarray]:
-    """One mutually-exclusive label per image pixel, bounded by the image
-    itself - built once for the whole call, not per cell, and never sized by
-    a cell's own (potentially enormous) projected extent.
+MAX_SUPERSAMPLED_CELLS = 4_000_000
+"""Budget for one cell's local supersampled raster (crop area x factor^2).
+Bounds the per-cell cost regardless of how finely `_supersample_factor`
+would otherwise want to subdivide a small crop, and regardless of how
+large a crop itself already is."""
 
-    ``OPENING`` and ``FOREGROUND_OCCLUSION`` are drawn over ``VISIBLE``
-    (a person typically draws a broad visible-extent polygon for a whole
-    wall, then a smaller region inside it marking a specific doorway or
-    occluder - the smaller, more specific claim is the one that applies
-    where they overlap). Where ``OPENING`` and ``FOREGROUND_OCCLUSION``
-    overlap *each other*, that is a genuine conflict between two specific
-    claims - resolved to neither, not by which region a caller happened to
-    list first.
+MAX_SUPERSAMPLE_FACTOR = 32
+"""Never subdivide a pixel finer than this even when the crop is tiny -
+diminishing returns past this resolution for this module's purposes."""
+
+
+def _supersample_factor(crop_shape: tuple[int, int]) -> int:
+    """How finely to subdivide each pixel of a crop this size when measuring
+    continuous overlap area - finer for a small, typical cell crop (where a
+    lead review's counter-examples showed single-sample rasterization is
+    badly wrong for anything not pixel-grid-aligned), coarser for a crop
+    that is already most of the image (where the same relative error
+    matters far less and a fine subdivision would not stay bounded)."""
+    area = max(1, crop_shape[0] * crop_shape[1])
+    factor = int((MAX_SUPERSAMPLED_CELLS // area) ** 0.5)
+    return max(1, min(MAX_SUPERSAMPLE_FACTOR, factor))
+
+
+def _clip_polygon_to_rect(polygon, x0: float, y0: float, x1: float, y1: float):
+    """Sutherland-Hodgman clip of a region polygon - which may extend far
+    outside one cell's own crop, even across the whole image or beyond -
+    down to that crop's rectangle, so rasterizing it at a finer local
+    resolution stays bounded by the crop rather than by the polygon's own
+    (potentially enormous) extent."""
+    def clip(points, inside, intersect):
+        if not points:
+            return points
+        result = []
+        prev = points[-1]
+        prev_inside = inside(prev)
+        for curr in points:
+            curr_inside = inside(curr)
+            if curr_inside:
+                if not prev_inside:
+                    result.append(intersect(prev, curr))
+                result.append(curr)
+            elif prev_inside:
+                result.append(intersect(prev, curr))
+            prev, prev_inside = curr, curr_inside
+        return result
+
+    def edge_intersect(axis_index: int, value: float):
+        def intersect(a, b):
+            denominator = b[axis_index] - a[axis_index]
+            t = (value - a[axis_index]) / denominator
+            return (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))
+        return intersect
+
+    points = list(polygon)
+    points = clip(points, lambda p: p[0] >= x0, edge_intersect(0, x0))
+    points = clip(points, lambda p: p[0] <= x1, edge_intersect(0, x1))
+    points = clip(points, lambda p: p[1] >= y0, edge_intersect(1, y0))
+    points = clip(points, lambda p: p[1] <= y1, edge_intersect(1, y1))
+    return points
+
+
+def _local_supersampled_masks(
+    regions: list[RegionEvidence], crop_x0: int, crop_y0: int, crop_x1: int, crop_y1: int,
+    supersample: int,
+) -> dict[str, np.ndarray]:
+    """One mutually-exclusive label per *supersampled sub-pixel*, rasterized
+    directly within one cell's own bounded crop - not sliced out of a
+    whole-image, single-sample mask. Continuous area and raster pixel
+    count only agree when a shape happens to land on the pixel grid (the
+    case a half-pixel coordinate shift alone fixes); a lead review's
+    counter-examples - a non-integer principal point, a non-unit focal -
+    showed that is not area integration in general. Subdividing each pixel
+    into `supersample^2` samples and counting sub-pixel hits converges to
+    the true continuous intersection area regardless of alignment, while
+    staying bounded to this one crop (`_supersample_factor`) rather than to
+    a declared region polygon's own extent, which can be far larger.
+
+    ``OPENING`` and ``FOREGROUND_OCCLUSION`` are drawn over ``VISIBLE`` (a
+    person typically draws a broad visible-extent polygon for a whole wall,
+    then a smaller region inside it marking a specific doorway or occluder
+    - the smaller, more specific claim is the one that applies where they
+    overlap). Where ``OPENING`` and ``FOREGROUND_OCCLUSION`` overlap *each
+    other*, that is a genuine conflict between two specific claims -
+    resolved to neither, not by which region a caller happened to list
+    first.
     """
-    width, height = image_size
-    shape = (height, width)
+    high_shape = ((crop_y1 - crop_y0) * supersample, (crop_x1 - crop_x0) * supersample)
+
+    def local_points(polygon):
+        return [((x - crop_x0) * supersample, (y - crop_y0) * supersample) for x, y in polygon]
 
     def union(label: str) -> np.ndarray:
-        mask = np.zeros(shape, dtype=np.uint8)
+        mask = np.zeros(high_shape, dtype=np.uint8)
         for region in regions:
-            if region.label == label:
-                mask |= _rasterize_polygon([(p[0], p[1]) for p in region.polygon], shape)
+            if region.label != label:
+                continue
+            clipped = _clip_polygon_to_rect(
+                [(p[0], p[1]) for p in region.polygon], crop_x0, crop_y0, crop_x1, crop_y1)
+            if len(clipped) < 3:
+                continue
+            mask |= _rasterize_polygon(local_points(clipped), high_shape)
         return mask
 
     visible = union(VISIBLE).astype(bool)
@@ -365,16 +479,19 @@ def rasterize_cells(
     columns: range,
 ) -> list[CellEvidence]:
     """Project every candidate cell into image space and measure how much of
-    it each declared region covers, against the cell's true full area.
+    it each declared region covers, against the cell's true full area, both
+    in the same continuous units (`_local_supersampled_masks`) - not a
+    raster pixel count divided by a continuous shoelace area, which only
+    agrees when a shape happens to land on the pixel grid.
 
-    Every raster allocation here is bounded by ``image_size`` - the label
-    masks once, up front, and each cell's own crop clipped to the image
-    before it is ever rasterized. A cell's projected quadrilateral can be
-    far larger than the photograph itself (a near-grazing candidate,
-    especially); nothing about its own extent is used to size an array.
+    Every raster allocation here is bounded by one cell's own crop, clipped
+    to the image before it is ever rasterized, with a supersample factor
+    itself bounded by that crop's size (`_supersample_factor`). A cell's
+    projected quadrilateral can be far larger than the photograph itself (a
+    near-grazing candidate, especially); nothing about its own extent is
+    used to size an array.
     """
     width, height = image_size
-    masks = _label_masks(regions, image_size)
 
     found: list[CellEvidence] = []
     for row in rows:
@@ -399,20 +516,26 @@ def rasterize_cells(
                 found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0))
                 continue
             crop_shape = (crop_y1 - crop_y0, crop_x1 - crop_x0)
-            local_corners = [(px - crop_x0, py - crop_y0) for px, py in corners]
-            cell_mask = _rasterize_polygon(local_corners, crop_shape).astype(bool)
-            in_frame_pixels = int(cell_mask.sum())
+            supersample = _supersample_factor(crop_shape)
+            sample_area = float(supersample * supersample)
+            high_shape = (crop_shape[0] * supersample, crop_shape[1] * supersample)
+            local_corners = [((px - crop_x0) * supersample, (py - crop_y0) * supersample)
+                             for px, py in corners]
+            cell_mask = _rasterize_polygon(local_corners, high_shape).astype(bool)
+            in_frame_area = float(cell_mask.sum()) / sample_area
+
+            masks = _local_supersampled_masks(regions, crop_x0, crop_y0, crop_x1, crop_y1,
+                                              supersample)
 
             coverage: dict[str, float] = {}
             coverage_in_frame: dict[str, float] = {}
             for label in (VISIBLE, OPENING, FOREGROUND_OCCLUSION):
-                label_crop = masks[label][crop_y0:crop_y1, crop_x0:crop_x1]
-                overlap = int((cell_mask & label_crop).sum())
+                overlap = float((cell_mask & masks[label]).sum()) / sample_area
                 coverage[label] = overlap / full_area
-                coverage_in_frame[label] = overlap / in_frame_pixels if in_frame_pixels else 0.0
-            conflict_crop = masks["_conflict"][crop_y0:crop_y1, crop_x0:crop_x1]
-            conflict_fraction = int((cell_mask & conflict_crop).sum()) / full_area
-            outside_fraction = max(0.0, 1.0 - in_frame_pixels / full_area)
+                coverage_in_frame[label] = overlap / in_frame_area if in_frame_area else 0.0
+            conflict_area = float((cell_mask & masks["_conflict"]).sum()) / sample_area
+            conflict_fraction = conflict_area / full_area
+            outside_fraction = max(0.0, 1.0 - in_frame_area / full_area)
 
             declared = None
             if full_area >= RESOLVABLE_AREA_PIXELS:

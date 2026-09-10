@@ -112,3 +112,56 @@ def test_a_partially_occluded_positive_region_still_scores_a_covering_candidate_
     metrics_box = region_metrics(bounding_box_candidate, positive, domain, unknown)
     assert metrics_box["precision"] < 1.0
     assert metrics_box["recall"] == pytest.approx(1.0)
+
+
+def test_e1_a_negative_polygon_is_subtracted_from_the_broad_positive_extent():
+    """A lead follow-up review's exact finding: target_masks ignored
+    negative_polygons entirely, so a declared occluder/opening overlapping
+    the broad positive extent still counted as positive. A specific
+    negative claim must override the broad positive one where they overlap
+    - the composition footprint_adapter's own region masks already use."""
+    target = {"positive_polygon": [[0, 0], [100, 0], [100, 100], [0, 100]],
+             "negative_polygons": {"foreground_occlusion": [[[0, 0], [50, 0], [50, 100], [0, 100]]]},
+             "uncertain_polygons": []}
+    domain = usable_domain(WIDTH, HEIGHT, top_exclude=0, bottom_exclude=0)
+    positive, unknown = target_masks(target, WIDTH, HEIGHT, domain)
+
+    assert positive[50, 25] == False  # inside the declared occluder
+    assert positive[50, 75] == True   # inside the positive extent, clear of the occluder
+
+    candidate = fill_polygon([[0, 0], [100, 0], [100, 100], [0, 100]], WIDTH, HEIGHT)
+    metrics = region_metrics(candidate, positive, domain, unknown)
+    # Covering the whole declared extent (including the occluder) must not
+    # score perfect precision any more - half of it is a declared negative.
+    assert metrics["precision"] == pytest.approx(0.5, abs=0.02)
+    assert metrics["recall"] == pytest.approx(1.0)
+
+
+def test_e1_negative_and_uncertain_overlap_becomes_unknown_not_negative():
+    """A pixel both a negative polygon and an uncertain polygon claim is an
+    unresolved disagreement between two specific annotations - excluded as
+    unknown, not silently kept as a confident negative."""
+    target = {"positive_polygon": [[0, 0], [100, 0], [100, 100], [0, 100]],
+             "negative_polygons": {"opening": [[[40, 40], [80, 40], [80, 80], [40, 80]]]},
+             "uncertain_polygons": [[[60, 40], [100, 40], [100, 80], [60, 80]]]}
+    domain = usable_domain(WIDTH, HEIGHT, top_exclude=0, bottom_exclude=0)
+    positive, unknown = target_masks(target, WIDTH, HEIGHT, domain)
+
+    assert positive[60, 50] == False   # negative-only region
+    assert unknown[60, 70] == True     # negative/uncertain overlap
+    assert positive[60, 70] == False   # overlap must not read as positive either
+
+
+def test_e1_an_absent_negative_polygons_key_behaves_like_an_empty_one():
+    """A target with no negative_polygons key at all (an older-style
+    annotation) must score identically to one with an explicit empty dict -
+    absence is not an error, and not silently different behaviour."""
+    target_without_key = {"positive_polygon": [[10, 10], [50, 10], [50, 50], [10, 50]],
+                          "uncertain_polygons": []}
+    target_with_empty = {"positive_polygon": [[10, 10], [50, 10], [50, 50], [10, 50]],
+                         "negative_polygons": {}, "uncertain_polygons": []}
+    domain = usable_domain(WIDTH, HEIGHT, top_exclude=0, bottom_exclude=0)
+    positive_a, unknown_a = target_masks(target_without_key, WIDTH, HEIGHT, domain)
+    positive_b, unknown_b = target_masks(target_with_empty, WIDTH, HEIGHT, domain)
+    assert (positive_a == positive_b).all()
+    assert (unknown_a == unknown_b).all()

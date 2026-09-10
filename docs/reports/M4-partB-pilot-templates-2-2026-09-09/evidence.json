@@ -103,12 +103,12 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 0.3949854012421909
+        "foreground_occlusion": 0.3857459310915388
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 0.38992016456874173
+        "foreground_occlusion": 0.38518621638442135
       },
       "declared": null,
       "outside_image_fraction": 0.0,
@@ -122,7 +122,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 1.0112948085981905
+        "foreground_occlusion": 1.0013337112208698
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -141,7 +141,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 1.007680838492643
+        "foreground_occlusion": 0.9982211933889443
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -149,7 +149,7 @@
         "foreground_occlusion": 1.0
       },
       "declared": "foreground_occlusion",
-      "outside_image_fraction": 0.0,
+      "outside_image_fraction": 0.0017788066110556722,
       "conflict_fraction": 0.0
     },
     {
@@ -160,7 +160,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 0.06979226869157204
+        "foreground_occlusion": 0.06945808601189513
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -168,7 +168,7 @@
         "foreground_occlusion": 1.0
       },
       "declared": null,
-      "outside_image_fraction": 0.9302077313084279,
+      "outside_image_fraction": 0.9305419139881048,
       "conflict_fraction": 0.0
     },
     {
@@ -207,12 +207,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.5245331516740851,
+        "visible": 0.48760243032706047,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.5016510033020066,
+        "visible": 0.4870482158589683,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -226,12 +226,12 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 0.4622402181810602,
+        "visible": 0.43868628513033087,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.4518477043673012,
+        "visible": 0.43809757106798525,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -245,12 +245,12 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 0.2919299064551123,
+        "visible": 0.2739411750803625,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.2847962986762627,
+        "visible": 0.2735163812892934,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -264,12 +264,12 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 0.12312116865519657,
+        "visible": 0.11046949591433178,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.12125329031162435,
+        "visible": 0.11030316277974879,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -283,14 +283,14 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 0.005258473377495204,
+        "visible": 0.003232500440110246,
         "opening": 0.0,
-        "foreground_occlusion": 0.3575236049358989
+        "foreground_occlusion": 0.3466473291667797
       },
       "coverage_of_in_frame": {
-        "visible": 0.00519777535214928,
+        "visible": 0.0032286042961008,
         "opening": 0.0,
-        "foreground_occlusion": 0.35339674619262956
+        "foreground_occlusion": 0.34622951393675994
       },
       "declared": null,
       "outside_image_fraction": 0.0,
@@ -304,7 +304,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 1.0144709474905897
+        "foreground_occlusion": 1.0012908845974298
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -323,7 +323,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 1.009999867396175
+        "foreground_occlusion": 1.0023008442167451
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -342,7 +342,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 0.1300052275871266
+        "foreground_occlusion": 0.1293059361834171
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -350,7 +350,7 @@
         "foreground_occlusion": 1.0
       },
       "declared": null,
-      "outside_image_fraction": 0.8699947724128734,
+      "outside_image_fraction": 0.8706940638165829,
       "conflict_fraction": 0.0
     },
     {
@@ -389,12 +389,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.8533491832320328,
+        "visible": 0.8168668448283424,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.8257173219978746,
+        "visible": 0.8161712902433872,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -408,7 +408,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.0291785349374547,
+        "visible": 1.0012318118590102,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -427,7 +427,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0196804541746385,
+        "visible": 1.0008700700732371,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -446,7 +446,7 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 1.0183808624840354,
+        "visible": 1.0011031130296717,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -465,14 +465,14 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 0.67427478583188,
+        "visible": 0.671870435673112,
         "opening": 0.0,
-        "foreground_occlusion": 0.3163168207642621
+        "foreground_occlusion": 0.30690299437197893
       },
       "coverage_of_in_frame": {
-        "visible": 0.6668869067283338,
+        "visible": 0.670923088360196,
         "opening": 0.0,
-        "foreground_occlusion": 0.3128510075982821
+        "foreground_occlusion": 0.30647025658265664
       },
       "declared": "visible",
       "outside_image_fraction": 0.0,
@@ -486,7 +486,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 1.0098247661588398
+        "foreground_occlusion": 1.000958171580317
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -505,7 +505,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 1.0058463885938955
+        "foreground_occlusion": 1.0011919281235453
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -524,7 +524,7 @@
       "coverage_by_label": {
         "visible": 0.0,
         "opening": 0.0,
-        "foreground_occlusion": 0.1901311897309476
+        "foreground_occlusion": 0.18937345645064219
       },
       "coverage_of_in_frame": {
         "visible": 0.0,
@@ -532,7 +532,7 @@
         "foreground_occlusion": 1.0
       },
       "declared": null,
-      "outside_image_fraction": 0.8098688102690524,
+      "outside_image_fraction": 0.8106265435493578,
       "conflict_fraction": 0.0
     },
     {
@@ -571,12 +571,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.8427199999578998,
+        "visible": 0.8040333657649528,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.813921622362291,
+        "visible": 0.8037097967131985,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -590,7 +590,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.0347133566041524,
+        "visible": 1.0010945923119035,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -609,7 +609,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0249816324104977,
+        "visible": 1.0008990290936821,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -628,7 +628,7 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 1.0251107531240833,
+        "visible": 1.0009645386981874,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -647,14 +647,14 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 0.9634562854687517,
+        "visible": 0.9479396512896784,
         "opening": 0.0,
-        "foreground_occlusion": 0.05669467784334909
+        "foreground_occlusion": 0.05339208399924148
       },
       "coverage_of_in_frame": {
-        "visible": 0.9444252077562327,
+        "visible": 0.9466789255572371,
         "opening": 0.0,
-        "foreground_occlusion": 0.05557479224376731
+        "foreground_occlusion": 0.053321074442762934
       },
       "declared": "visible",
       "outside_image_fraction": 0.0,
@@ -666,14 +666,14 @@
         0
       ],
       "coverage_by_label": {
-        "visible": 0.8431768461820662,
+        "visible": 0.834801724915887,
         "opening": 0.0,
-        "foreground_occlusion": 0.17287391234558014
+        "foreground_occlusion": 0.16660006881889822
       },
       "coverage_of_in_frame": {
-        "visible": 0.8298570116751935,
+        "visible": 0.8336331431986418,
         "opening": 0.0,
-        "foreground_occlusion": 0.1701429883248065
+        "foreground_occlusion": 0.16636685680135815
       },
       "declared": "visible",
       "outside_image_fraction": 0.0,
@@ -685,14 +685,14 @@
         1
       ],
       "coverage_by_label": {
-        "visible": 0.8734468332104077,
+        "visible": 0.867869517712621,
         "opening": 0.0,
-        "foreground_occlusion": 0.13675119513119596
+        "foreground_occlusion": 0.13294846475355768
       },
       "coverage_of_in_frame": {
-        "visible": 0.8646293189111701,
+        "visible": 0.8671601958770255,
         "opening": 0.0,
-        "foreground_occlusion": 0.13537068108882988
+        "foreground_occlusion": 0.13283980412297447
       },
       "declared": "visible",
       "outside_image_fraction": 0.0,
@@ -704,17 +704,17 @@
         2
       ],
       "coverage_by_label": {
-        "visible": 0.1051710348207329,
+        "visible": 0.10433813759038209,
         "opening": 0.0,
-        "foreground_occlusion": 0.026104675330133813
+        "foreground_occlusion": 0.025217967608322202
       },
       "coverage_of_in_frame": {
-        "visible": 0.40779580032692064,
+        "visible": 0.4083483349852006,
         "opening": 0.0,
-        "foreground_occlusion": 0.10121966553501824
+        "foreground_occlusion": 0.09869559992527928
       },
       "declared": null,
-      "outside_image_fraction": 0.7420987790055227,
+      "outside_image_fraction": 0.7444874176010452,
       "conflict_fraction": 0.0
     },
     {
@@ -753,12 +753,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.8330606821580286,
+        "visible": 0.7922104843084427,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.8021450747953711,
+        "visible": 0.7914017950858662,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -772,7 +772,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.024699260028135,
+        "visible": 1.0012502817279423,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -791,7 +791,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0272818450351295,
+        "visible": 1.0014672692495616,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -810,7 +810,7 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 1.0180702399022474,
+        "visible": 1.001478942053428,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -829,7 +829,7 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 1.012487456938257,
+        "visible": 1.001065488200977,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -848,7 +848,7 @@
         0
       ],
       "coverage_by_label": {
-        "visible": 1.0121973825061856,
+        "visible": 1.001457585476674,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -867,7 +867,7 @@
         1
       ],
       "coverage_by_label": {
-        "visible": 1.0086246495891436,
+        "visible": 1.0010330949495592,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -886,17 +886,17 @@
         2
       ],
       "coverage_by_label": {
-        "visible": 0.17471493967608334,
+        "visible": 0.17309705611640525,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.5288093035549095,
+        "visible": 0.527451487054541,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.6696069102764157,
+      "outside_image_fraction": 0.6718237404485576,
       "conflict_fraction": 0.0
     },
     {
@@ -935,12 +935,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.8273054613607899,
+        "visible": 0.778781213156902,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7910274963820549,
+        "visible": 0.7780026752774162,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -954,7 +954,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.03065545980373,
+        "visible": 1.0007548770274817,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -973,7 +973,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0376758730561564,
+        "visible": 1.0010512879167424,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -992,7 +992,7 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 1.0226810285843289,
+        "visible": 1.0015107762582691,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1011,7 +1011,7 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 1.0174356953528176,
+        "visible": 1.0016088315565832,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1030,7 +1030,7 @@
         0
       ],
       "coverage_by_label": {
-        "visible": 1.0111040283056416,
+        "visible": 1.001605792416316,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1049,7 +1049,7 @@
         1
       ],
       "coverage_by_label": {
-        "visible": 1.0074650358160284,
+        "visible": 1.00164084609453,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1068,17 +1068,17 @@
         2
       ],
       "coverage_by_label": {
-        "visible": 0.23520019516916366,
+        "visible": 0.23439089485129683,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.5758269314970346,
+        "visible": 0.5760432419233555,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.5915436005091143,
+      "outside_image_fraction": 0.5931019100776408,
       "conflict_fraction": 0.0
     },
     {
@@ -1117,12 +1117,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.8100021715211907,
+        "visible": 0.7667135596311918,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7811934900542495,
+        "visible": 0.7660334825522298,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1136,7 +1136,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.0231196337888084,
+        "visible": 1.0012806260052356,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1155,7 +1155,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0210953723294698,
+        "visible": 1.0011626825185391,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1174,7 +1174,7 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 1.0104636914955356,
+        "visible": 1.0009990233190786,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1193,7 +1193,7 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 1.0133099903992009,
+        "visible": 1.001567767088216,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1212,7 +1212,7 @@
         0
       ],
       "coverage_by_label": {
-        "visible": 1.0132611135978749,
+        "visible": 1.0017755040566025,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1231,12 +1231,12 @@
         1
       ],
       "coverage_by_label": {
-        "visible": 0.7180641726104037,
+        "visible": 0.7107961273821983,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7107021670795428,
+        "visible": 0.7097589818114781,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1250,17 +1250,17 @@
         2
       ],
       "coverage_by_label": {
-        "visible": 0.030894451269693805,
+        "visible": 0.030333720596766107,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.09182302026772754,
+        "visible": 0.09030451522576129,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.6635435081571578,
+      "outside_image_fraction": 0.6640951947869738,
       "conflict_fraction": 0.0
     },
     {
@@ -1299,12 +1299,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.800123915930341,
+        "visible": 0.7538097076954102,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7666872682323856,
+        "visible": 0.7530629806518743,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1318,7 +1318,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.0275062664110346,
+        "visible": 1.0011444766178865,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1337,7 +1337,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0243007939700843,
+        "visible": 1.0012124322671179,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1356,7 +1356,7 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 1.0255674784895283,
+        "visible": 1.0013094891164152,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1375,7 +1375,7 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 1.017117019093931,
+        "visible": 1.0015565681979215,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1394,12 +1394,12 @@
         0
       ],
       "coverage_by_label": {
-        "visible": 0.7271107725531734,
+        "visible": 0.719903470833565,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7185623642635097,
+        "visible": 0.7192821880062762,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1413,17 +1413,17 @@
         1
       ],
       "coverage_by_label": {
-        "visible": 0.03561262267170442,
+        "visible": 0.03361729594475496,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.05532020052248817,
+        "visible": 0.05300262748450691,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.35624559681001955,
+      "outside_image_fraction": 0.3657428406812179,
       "conflict_fraction": 0.0
     },
     {
@@ -1442,7 +1442,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.9958099746388265,
+      "outside_image_fraction": 0.9963859186568357,
       "conflict_fraction": 0.0
     },
     {
@@ -1481,12 +1481,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.7682297873866059,
+        "visible": 0.7412347850192891,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7516276041666666,
+        "visible": 0.7399639729102043,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1500,7 +1500,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.0341747053149037,
+        "visible": 1.001821852305338,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1519,7 +1519,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0245583991115779,
+        "visible": 1.0017441409603713,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1538,7 +1538,7 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 1.0199579531401322,
+        "visible": 1.0017438511278058,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1557,12 +1557,12 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 0.7409918762436264,
+        "visible": 0.7252918481683944,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7232082678049876,
+        "visible": 0.7242138508671024,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1576,17 +1576,17 @@
         0
       ],
       "coverage_by_label": {
-        "visible": 0.03814960630750183,
+        "visible": 0.03562958925477647,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.04657534246575343,
+        "visible": 0.043910387079379685,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.1809055116330489,
+      "outside_image_fraction": 0.18858403160130366,
       "conflict_fraction": 0.0
     },
     {
@@ -1605,7 +1605,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.9570619081158382,
+      "outside_image_fraction": 0.9589303708089615,
       "conflict_fraction": 0.0
     },
     {
@@ -1655,12 +1655,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.763130982097547,
+        "visible": 0.7284748749154666,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7381347494191836,
+        "visible": 0.7272441917235203,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1674,7 +1674,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.0411558337311198,
+        "visible": 1.0014174570154053,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1693,7 +1693,7 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 1.0334412811386207,
+        "visible": 1.0015366032010258,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1712,12 +1712,12 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 0.7434398254012309,
+        "visible": 0.7289549591136746,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7251000849205387,
+        "visible": 0.7280805258697087,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1731,17 +1731,17 @@
         -1
       ],
       "coverage_by_label": {
-        "visible": 0.0396171475409189,
+        "visible": 0.03684181307490507,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.041955054259591555,
+        "visible": 0.03960181612247485,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.055724078062375004,
+      "outside_image_fraction": 0.06969385037883191,
       "conflict_fraction": 0.0
     },
     {
@@ -1760,7 +1760,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.8696618213939361,
+      "outside_image_fraction": 0.8733112855933741,
       "conflict_fraction": 0.0
     },
     {
@@ -1821,12 +1821,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.7507062062041175,
+        "visible": 0.7142122695287266,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7269612881123673,
+        "visible": 0.7133646972602289,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1840,7 +1840,7 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 1.0291187062543643,
+        "visible": 1.001201166565679,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1859,12 +1859,12 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 0.7471225343499325,
+        "visible": 0.7321613299477564,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7269392994681827,
+        "visible": 0.7311687350165854,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1878,17 +1878,17 @@
         -2
       ],
       "coverage_by_label": {
-        "visible": 0.03972558760685091,
+        "visible": 0.037820345666504974,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.039499160965535046,
+        "visible": 0.03809832749266937,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.0,
+      "outside_image_fraction": 0.0072964312204487625,
       "conflict_fraction": 0.0
     },
     {
@@ -1907,7 +1907,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.7263451469773088,
+      "outside_image_fraction": 0.7349797290459252,
       "conflict_fraction": 0.0
     },
     {
@@ -1979,12 +1979,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.7339977500682686,
+        "visible": 0.7022490363333458,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7143364088005678,
+        "visible": 0.7014479083242863,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -1998,12 +1998,12 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 0.7554195888141275,
+        "visible": 0.7345326722737655,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.7302545263710313,
+        "visible": 0.7333489738828952,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -2017,12 +2017,12 @@
         -3
       ],
       "coverage_by_label": {
-        "visible": 0.04264813026536579,
+        "visible": 0.03848065100537662,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.04147640791476408,
+        "visible": 0.03844944889927668,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -2046,7 +2046,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.5367393671950464,
+      "outside_image_fraction": 0.5457205180794955,
       "conflict_fraction": 0.0
     },
     {
@@ -2129,12 +2129,12 @@
         -5
       ],
       "coverage_by_label": {
-        "visible": 0.45422629695724176,
+        "visible": 0.4252392780701696,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.43598990263252796,
+        "visible": 0.4245519783864286,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -2148,12 +2148,12 @@
         -4
       ],
       "coverage_by_label": {
-        "visible": 0.0451685840785632,
+        "visible": 0.03907183381756111,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
       "coverage_of_in_frame": {
-        "visible": 0.043128850790249126,
+        "visible": 0.039010743204256314,
         "opening": 0.0,
         "foreground_occlusion": 0.0
       },
@@ -2177,7 +2177,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.33405927450687645,
+      "outside_image_fraction": 0.3417650424516743,
       "conflict_fraction": 0.0
     },
     {
@@ -2196,7 +2196,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.9943532288394922,
+      "outside_image_fraction": 0.9957777426676545,
       "conflict_fraction": 0.0
     },
     {
@@ -2308,7 +2308,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.1460698445987033,
+      "outside_image_fraction": 0.1783177251855914,
       "conflict_fraction": 0.0
     },
     {
@@ -2327,7 +2327,7 @@
         "foreground_occlusion": 0.0
       },
       "declared": null,
-      "outside_image_fraction": 0.9467473634714181,
+      "outside_image_fraction": 0.954109395763243,
       "conflict_fraction": 0.0
     },
     {

@@ -46,18 +46,34 @@ def fill_polygon(polygon, width: int, height: int) -> np.ndarray:
 
 def target_masks(target: dict, width: int, height: int, domain: np.ndarray):
     """Returns ``(positive_mask, unknown_mask)``, both already intersected
-    with `domain`. Everything in `domain` that is neither is treated as a
-    known negative - the target's explicit ``negative_polygons`` exist for
-    documentation/overlay clarity (which negative pixels are an occluder
-    versus an opening versus simply a different surface), not as a
-    separate scoring category, since any non-positive, non-unknown pixel
-    in the domain is a negative by construction either way."""
+    with `domain`.
+
+    Composition is explicit, in this order: start from ``positive_polygon``
+    (the broad claim - "this is the wall"), then remove every polygon in
+    ``negative_polygons`` (any sub-category - an occluder or an opening is
+    a specific, more-local claim that overrides the broad one where they
+    overlap, the same "more specific wins" rule `footprint_adapter`'s own
+    region composition uses), then remove ``uncertain_polygons`` (a
+    genuinely ambiguous transition is excluded regardless of what the
+    broad or specific claims said). A pixel a negative polygon and an
+    uncertain polygon both cover is therefore excluded as unknown, not
+    silently kept negative - an unresolved specific disagreement is
+    exactly the kind of thing this category exists for. Everything in
+    ``domain`` that ends up in neither ``positive`` nor ``unknown`` is a
+    negative by construction; ``negative_polygons`` exist to make that
+    explicit and to label overlays, not as a separate scoring category
+    computed independently of ``positive_polygon``.
+    """
     positive = fill_polygon(target.get("positive_polygon", []), width, height)
+    negative = np.zeros((height, width), dtype=bool)
+    for group in target.get("negative_polygons", {}).values():
+        for polygon in group:
+            negative |= fill_polygon(polygon, width, height)
     unknown = np.zeros((height, width), dtype=bool)
     for polygon in target.get("uncertain_polygons", []):
         unknown |= fill_polygon(polygon, width, height)
     unknown &= domain
-    positive = positive & domain & ~unknown
+    positive = positive & domain & ~negative & ~unknown
     return positive, unknown
 
 

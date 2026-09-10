@@ -1,0 +1,441 @@
+{
+  "note": "Re-scores boundary_pilot_c2.py's already-saved candidate polygons (read from M4-C2-boundary-pilot-2026-09-09/results.json, never regenerated) against the corrected v2 annotation. No proposer code ran in this script.",
+  "targets_v2_sha256": "193086408c57ad75e145c9636f34b8bda4b1adf7b3fd8e49ff22f9fa475cd574",
+  "original_results_path": "docs\\reports\\M4-C2-boundary-pilot-2026-09-09\\results.json",
+  "precision_gate": 0.9,
+  "recall_gate": 0.5,
+  "frames": [
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "top1": {
+        "rank": 0,
+        "strength": 54043.35189176328,
+        "complete": true,
+        "polygon": [
+          [
+            1532.5006784878217,
+            823.4241218231308
+          ],
+          [
+            1097.1536725275207,
+            1054.8614533335895
+          ],
+          [
+            1033.8741859906431,
+            992.7831443676109
+          ],
+          [
+            1481.9688214604157,
+            816.8205323763659
+          ]
+        ],
+        "precision": 0.0,
+        "recall": 0.0,
+        "iou": 0.0,
+        "candidate_area": 27424,
+        "positive_area": 476624,
+        "true_positive_area": 0,
+        "excluded_unknown_area": 169296,
+        "normalized_boundary_error": 0.1436103003815097
+      },
+      "best_matched_evaluator_only": {
+        "rank": 0,
+        "strength": 54043.35189176328,
+        "complete": true,
+        "polygon": [
+          [
+            1532.5006784878217,
+            823.4241218231308
+          ],
+          [
+            1097.1536725275207,
+            1054.8614533335895
+          ],
+          [
+            1033.8741859906431,
+            992.7831443676109
+          ],
+          [
+            1481.9688214604157,
+            816.8205323763659
+          ]
+        ],
+        "precision": 0.0,
+        "recall": 0.0,
+        "iou": 0.0,
+        "candidate_area": 27424,
+        "positive_area": 476624,
+        "true_positive_area": 0,
+        "excluded_unknown_area": 169296,
+        "normalized_boundary_error": 0.1436103003815097
+      },
+      "candidates": [
+        {
+          "rank": 0,
+          "strength": 54043.35189176328,
+          "complete": true,
+          "polygon": [
+            [
+              1532.5006784878217,
+              823.4241218231308
+            ],
+            [
+              1097.1536725275207,
+              1054.8614533335895
+            ],
+            [
+              1033.8741859906431,
+              992.7831443676109
+            ],
+            [
+              1481.9688214604157,
+              816.8205323763659
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 27424,
+          "positive_area": 476624,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 169296,
+          "normalized_boundary_error": 0.1436103003815097
+        }
+      ],
+      "gate_passed": false,
+      "v1_top1_for_comparison": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "iou": 0.0
+      }
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "top1": {
+        "rank": 0,
+        "strength": 24420.636981577907,
+        "complete": true,
+        "polygon": [
+          [
+            211.6744670025522,
+            1043.2386316795078
+          ],
+          [
+            127.46506529404314,
+            1050.4061703111527
+          ],
+          [
+            229.56949141152575,
+            792.1914739258158
+          ],
+          [
+            304.0715861244414,
+            791.7745206186238
+          ]
+        ],
+        "precision": 0.0,
+        "recall": 0.0,
+        "iou": 0.0,
+        "candidate_area": 20220,
+        "positive_area": 513000,
+        "true_positive_area": 0,
+        "excluded_unknown_area": 41796,
+        "normalized_boundary_error": 0.13064340992550985
+      },
+      "best_matched_evaluator_only": {
+        "rank": 0,
+        "strength": 24420.636981577907,
+        "complete": true,
+        "polygon": [
+          [
+            211.6744670025522,
+            1043.2386316795078
+          ],
+          [
+            127.46506529404314,
+            1050.4061703111527
+          ],
+          [
+            229.56949141152575,
+            792.1914739258158
+          ],
+          [
+            304.0715861244414,
+            791.7745206186238
+          ]
+        ],
+        "precision": 0.0,
+        "recall": 0.0,
+        "iou": 0.0,
+        "candidate_area": 20220,
+        "positive_area": 513000,
+        "true_positive_area": 0,
+        "excluded_unknown_area": 41796,
+        "normalized_boundary_error": 0.13064340992550985
+      },
+      "candidates": [
+        {
+          "rank": 0,
+          "strength": 24420.636981577907,
+          "complete": true,
+          "polygon": [
+            [
+              211.6744670025522,
+              1043.2386316795078
+            ],
+            [
+              127.46506529404314,
+              1050.4061703111527
+            ],
+            [
+              229.56949141152575,
+              792.1914739258158
+            ],
+            [
+              304.0715861244414,
+              791.7745206186238
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 20220,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.13064340992550985
+        },
+        {
+          "rank": 1,
+          "strength": 24391.28949793508,
+          "complete": true,
+          "polygon": [
+            [
+              1682.803297417534,
+              918.0225333556493
+            ],
+            [
+              127.46506529404314,
+              1050.4061703111527
+            ],
+            [
+              229.56949141152575,
+              792.1914739258158
+            ],
+            [
+              1663.4244997888095,
+              784.1668594491287
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 291708,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.13312747366463232
+        },
+        {
+          "rank": 2,
+          "strength": 24384.881184562175,
+          "complete": true,
+          "polygon": [
+            [
+              1918.3065884128996,
+              897.9775157941693
+            ],
+            [
+              127.46506529404314,
+              1050.4061703111527
+            ],
+            [
+              229.56949141152575,
+              792.1914739258158
+            ],
+            [
+              1891.711733648296,
+              782.8892427926545
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 320850,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.14465368962021558
+        },
+        {
+          "rank": 3,
+          "strength": 24344.09392962968,
+          "complete": true,
+          "polygon": [
+            [
+              1760.1829891726716,
+              911.4363099802649
+            ],
+            [
+              127.46506529404314,
+              1050.4061703111527
+            ],
+            [
+              229.56949141152575,
+              792.1914739258158
+            ],
+            [
+              1738.0937422097059,
+              783.7489706945522
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 302007,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.13670698572620835
+        },
+        {
+          "rank": 4,
+          "strength": 24230.4634129469,
+          "complete": true,
+          "polygon": [
+            [
+              1682.803297417534,
+              918.0225333556493
+            ],
+            [
+              211.6744670025522,
+              1043.2386316795078
+            ],
+            [
+              304.0715861244414,
+              791.7745206186238
+            ],
+            [
+              1663.4244997888095,
+              784.1668594491287
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 272263,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.1360962579583267
+        },
+        {
+          "rank": 5,
+          "strength": 24224.055099573998,
+          "complete": true,
+          "polygon": [
+            [
+              1918.3065884128996,
+              897.9775157941693
+            ],
+            [
+              211.6744670025522,
+              1043.2386316795078
+            ],
+            [
+              304.0715861244414,
+              791.7745206186238
+            ],
+            [
+              1891.711733648296,
+              782.8892427926545
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 301500,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.14793067083799818
+        },
+        {
+          "rank": 6,
+          "strength": 24194.70761593117,
+          "complete": true,
+          "polygon": [
+            [
+              1918.3065884128996,
+              897.9775157941693
+            ],
+            [
+              1682.803297417534,
+              918.0225333556493
+            ],
+            [
+              1663.4244997888095,
+              784.1668594491287
+            ],
+            [
+              1891.711733648296,
+              782.8892427926545
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 29506,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.35776437267879085
+        },
+        {
+          "rank": 7,
+          "strength": 24153.920360998673,
+          "complete": true,
+          "polygon": [
+            [
+              1760.1829891726716,
+              911.4363099802649
+            ],
+            [
+              1682.803297417534,
+              918.0225333556493
+            ],
+            [
+              1663.4244997888095,
+              784.1668594491287
+            ],
+            [
+              1738.0937422097059,
+              783.7489706945522
+            ]
+          ],
+          "precision": 0.0,
+          "recall": 0.0,
+          "iou": 0.0,
+          "candidate_area": 10312,
+          "positive_area": 513000,
+          "true_positive_area": 0,
+          "excluded_unknown_area": 41796,
+          "normalized_boundary_error": 0.34467379295142003
+        }
+      ],
+      "gate_passed": false,
+      "v1_top1_for_comparison": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "iou": 0.0
+      }
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "note": "original C2 run had no candidates",
+      "gate_passed": false
+    }
+  ],
+  "frames_passed": 0,
+  "continuation_condition_met": false
+}
