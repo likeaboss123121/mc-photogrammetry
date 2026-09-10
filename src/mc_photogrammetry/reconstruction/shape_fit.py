@@ -473,7 +473,7 @@ def _face_ownership(
     return masks
 
 
-def fit_states(
+def _fit_states_sequential(
     cells: Sequence[BlockCoordinate],
     blocks: Mapping[BlockCoordinate, BlockState],
     scene: SceneTransform,
@@ -515,9 +515,21 @@ def fit_states(
     material_refinements: list[str] = []
     unresolved_budget_exits: list[dict[str, object]] = []
     cell_results: list[dict[str, object]] = []
+    stage_seconds = {
+        "render": 0.0,
+        "ownership": 0.0,
+        "rectification": 0.0,
+        "texture": 0.0,
+    }
 
     def count(name: str) -> None:
         render_counts[name] += 1
+
+    def timed_stage(name: str, function, *stage_args, **stage_kwargs):
+        started_stage = time.perf_counter()
+        result = function(*stage_args, **stage_kwargs)
+        stage_seconds[name] += time.perf_counter() - started_stage
+        return result
 
     shapes, materials = candidate_states(
         palette, families, include_full_cubes=True
@@ -551,10 +563,11 @@ def fit_states(
         if camera is None:
             continue
         height, width = image.shape[:2]
-        canvas, _o, _i, _d = render_volume(background_blocks, scene, camera, width,
-                                           height, colours, block_shapes, scale,
-                                           ambient=True, occluding_slots=occluding_slots,
-                                           model_faces=model_faces)
+        canvas, _o, _i, _d = timed_stage(
+            "render", render_volume, background_blocks, scene, camera, width,
+            height, colours, block_shapes, scale, ambient=True,
+            occluding_slots=occluding_slots, model_faces=model_faces,
+        )
         count("background_renders")
         source_mask, usable_mask = _frame_masks(
             frame_id, image.shape[:2], canvas.shape[:2], usable_masks,
@@ -605,10 +618,10 @@ def fit_states(
             if frame_id not in backgrounds:
                 continue
             height, width = frames[frame_id].shape[:2]
-            context_backgrounds[frame_id], _owner, _index, _depth = render_volume(
-                context_blocks, scene, camera, width, height, colours, block_shapes,
-                scale, ambient=True, occluding_slots=occluding_slots,
-                model_faces=model_faces,
+            context_backgrounds[frame_id], _owner, _index, _depth = timed_stage(
+                "render", render_volume, context_blocks, scene, camera, width, height,
+                colours, block_shapes, scale, ambient=True,
+                occluding_slots=occluding_slots, model_faces=model_faces,
             )
             # Air/current/candidates must use the same exposure convention.
             context_backgrounds[frame_id] *= gains[frame_id]
@@ -628,10 +641,10 @@ def fit_states(
             if window is None:
                 continue
             height, width = frames[frame_id].shape[:2]
-            probe_render, probe_index = render_result(
-                {**context_blocks, coordinate: probe}, scene, camera, width, height,
-                colours, block_shapes, scale, ambient=True,
-                occluding_slots=occluding_slots, model_faces=model_faces,
+            probe_render, probe_index = timed_stage(
+                "render", render_result, {**context_blocks, coordinate: probe},
+                scene, camera, width, height, colours, block_shapes, scale,
+                ambient=True, occluding_slots=occluding_slots, model_faces=model_faces,
             )
             count("probe_renders")
             usable = _coordinate_ownership(probe_render.ownership, probe_index, coordinate)
@@ -686,9 +699,9 @@ def fit_states(
             current_blocks = {**context_blocks, coordinate: current_state}
             for frame_id, camera, usable in views:
                 height, width = frames[frame_id].shape[:2]
-                rendered, _face_index = render_result(
-                    current_blocks, scene, camera, width, height, colours,
-                    block_shapes, scale, ambient=True,
+                rendered, _face_index = timed_stage(
+                    "render", render_result, current_blocks, scene, camera,
+                    width, height, colours, block_shapes, scale, ambient=True,
                     occluding_slots=occluding_slots, model_faces=model_faces,
                 )
                 count("current_renders")
@@ -740,9 +753,9 @@ def fit_states(
                     })
                     break
                 height, width = frames[frame_id].shape[:2]
-                rendered, _face_index = render_result(
-                    candidate_blocks, scene, camera, width, height, colours,
-                    block_shapes, scale, ambient=True,
+                rendered, _face_index = timed_stage(
+                    "render", render_result, candidate_blocks, scene, camera,
+                    width, height, colours, block_shapes, scale, ambient=True,
                     occluding_slots=occluding_slots, model_faces=model_faces,
                 )
                 count("candidate_renders")
@@ -772,6 +785,16 @@ def fit_states(
         ]
         if current_state is not None:
             ranked.append((baseline_score, baseline_score, baseline_score, current_state))
+        ranked_positions: dict[tuple, int] = {}
+        for key in shape_keys:
+            if key not in representative_scores:
+                continue
+            representative = representative_states[key]
+            ranked_positions[key] = len(ranked)
+            ranked.append((
+                representative_scores[key], representative_scores[key],
+                representative_scores[key], representative,
+            ))
         for key in shape_keys:
             if key not in representative_scores:
                 continue
@@ -784,24 +807,28 @@ def fit_states(
                 pooled = np.zeros(index.count, dtype=np.float64)
                 representative = representative_states[key]
                 for frame_id, camera, _usable in views:
-                    owner_masks = _face_ownership(
-                        scene, camera, coordinate, representative, context_blocks,
-                        colours, block_shapes, occluding_slots, model_faces,
-                        frames[frame_id].shape[:2], scale,
+                    owner_masks = timed_stage(
+                        "ownership", _face_ownership, scene, camera, coordinate,
+                        representative, context_blocks, colours, block_shapes,
+                        occluding_slots, model_faces, frames[frame_id].shape[:2], scale,
                     )
                     count("ownership_renders")
                     mask = source_masks[frame_id]
-                    for slot, patch, weight, _valid, coverage in _face_patches(
-                            scene, camera, coordinate, boxes, frames[frame_id], scale,
-                            usable_mask=mask, owner_masks=owner_masks):
+                    patches = timed_stage(
+                        "rectification", _face_patches, scene, camera, coordinate,
+                        boxes, frames[frame_id], scale,
+                        usable_mask=mask, owner_masks=owner_masks,
+                    )
+                    for slot, patch, weight, _valid, coverage in patches:
                         pixels = patch.reshape(-1, 3)
                         weights = coverage.reshape(-1)
                         if float(weights.sum()) <= 1e-6:
                             continue
                         mean = np.average(pixels, axis=0, weights=weights)
-                        costs, _best = index.costs(
-                            mean, (), slot,
-                            pattern=_normalised_pattern(patch, coverage), texture_weight=1.0)
+                        costs, _best = timed_stage(
+                            "texture", index.costs, mean, (), slot,
+                            pattern=_normalised_pattern(patch, coverage), texture_weight=1.0,
+                        )
                         if costs.size:
                             pooled += weight * costs
                             total_weight += weight
@@ -818,7 +845,6 @@ def fit_states(
             material_results: list[tuple[BlockState, float, float]] = [
                 (representative, representative_score, representative_joint)
             ]
-
             # Texture ranking is computed from rectified faces.  Render only the
             # best material for each geometry in this bounded refinement pass;
             # rendering every material variant is what starved rare shapes.
@@ -862,9 +888,10 @@ def fit_states(
                         complete = False
                         break
                     height, width = frames[frame_id].shape[:2]
-                    rendered, _face_index = render_result(
-                        candidate_blocks, scene, camera, width, height, colours, block_shapes, scale,
-                        ambient=True, occluding_slots=occluding_slots, model_faces=model_faces,
+                    rendered, _face_index = timed_stage(
+                        "render", render_result, candidate_blocks, scene, camera,
+                        width, height, colours, block_shapes, scale, ambient=True,
+                        occluding_slots=occluding_slots, model_faces=model_faces,
                     )
                     count("candidate_renders")
                     if (
@@ -900,10 +927,10 @@ def fit_states(
             selected_state, selected_plain, selected_joint = min(
                 material_results, key=lambda entry: entry[material_order]
             )
-            ranked.append((
+            ranked[ranked_positions[key]] = (
                 representative_score, selected_plain, selected_joint, selected_state,
-            ))
-            if capped and (not representative_phase_capped or not representatives_complete):
+            )
+            if capped:
                 break
         if ranked:
             # Silhouette answers "which shape", grain answers "which material".
@@ -969,4 +996,115 @@ def fit_states(
             str(coordinate): frames
             for coordinate, frames in supporting_frames.items()
         }
+        measured = sum(stage_seconds.values())
+        diagnostics["shape_fit_stage_seconds"] = {
+            **{name: round(value, 6) for name, value in stage_seconds.items()},
+            "setup": round(max(0.0, time.perf_counter() - started - measured), 6),
+        }
+    return FitStateResult(chosen, supporting_frames=supporting_frames)
+
+
+def fit_states(
+    cells: Sequence[BlockCoordinate],
+    blocks: Mapping[BlockCoordinate, BlockState],
+    scene: SceneTransform,
+    cameras: Mapping[str, CameraModel],
+    frames: Mapping[str, np.ndarray],
+    palette: Sequence,
+    *args,
+    **kwargs,
+) -> FitStateResult:
+    """Fit cells with a deterministic shared budget.
+
+    A single cell keeps the detailed sequential path. With multiple cells and
+    a bounded cap, divide the remaining candidate budget across sorted cells,
+    apply each completed decision before the next cell, and aggregate the same
+    diagnostics. This prevents the first proposal from consuming all material
+    work while preserving context invalidation through the updated block map.
+    """
+    max_candidate_renders = kwargs.get(
+        "max_candidate_renders", DEFAULT_MAX_CANDIDATE_RENDERS,
+    )
+    ordered_cells = sorted(set(cells))
+    if len(ordered_cells) <= 1 or max_candidate_renders is None:
+        return _fit_states_sequential(
+            ordered_cells, blocks, scene, cameras, frames, palette, *args, **kwargs,
+        )
+
+    if max_candidate_renders < 0:
+        raise ValueError("max_candidate_renders cannot be negative")
+    started = time.perf_counter()
+    working_blocks = dict(blocks)
+    chosen: dict[BlockCoordinate, BlockState | None] = {}
+    supporting_frames: dict[BlockCoordinate, Sequence[str]] = {}
+    remaining = int(max_candidate_renders)
+    aggregate: MutableMapping[str, object] = {}
+    cell_diags: list[dict[str, object]] = []
+    for index, coordinate in enumerate(ordered_cells):
+        slots_left = len(ordered_cells) - index
+        allocation = (remaining + slots_left - 1) // slots_left
+        local_kwargs = dict(kwargs)
+        local_kwargs["max_candidate_renders"] = allocation
+        local_diag: dict[str, object] = {}
+        local_kwargs["diagnostics"] = local_diag
+        result = _fit_states_sequential(
+            [coordinate], working_blocks, scene, cameras, frames, palette,
+            *args, **local_kwargs,
+        )
+        used = int(local_diag.get("shape_fit_candidate_renders", 0))
+        remaining = max(0, remaining - used)
+        for key, state in result.items():
+            chosen[key] = state
+            if state is None:
+                working_blocks.pop(key, None)
+            else:
+                working_blocks[key] = state
+            if key in result.supporting_frames:
+                supporting_frames[key] = result.supporting_frames[key]
+        cell_diags.extend(local_diag.get("shape_fit_cell_results", []))
+        for key, value in local_diag.items():
+            if key.startswith("shape_fit_") and key not in {
+                "shape_fit_cell_results", "shape_fit_candidate_render_cap",
+                "shape_fit_candidate_render_cap_reached", "shape_fit_render_work",
+                "shape_fit_seconds", "shape_fit_considered_shapes",
+                "shape_fit_material_refinements", "shape_fit_unresolved_budget_exits",
+                "shape_fit_supporting_frames", "shape_fit_representative_fallbacks",
+            }:
+                if isinstance(value, (int, float)):
+                    aggregate[key] = aggregate.get(key, 0) + value
+        for key in (
+            "shape_fit_considered_shapes", "shape_fit_material_refinements",
+            "shape_fit_unresolved_budget_exits", "shape_fit_representative_fallbacks",
+        ):
+            value = local_diag.get(key, [])
+            aggregate.setdefault(key, [])
+            aggregate[key].extend(value)  # type: ignore[union-attr]
+        local_stages = local_diag.get("shape_fit_stage_seconds", {})
+        if isinstance(local_stages, dict):
+            stage_totals = aggregate.setdefault("shape_fit_stage_seconds", {})
+            if isinstance(stage_totals, dict):
+                for name, value in local_stages.items():
+                    if isinstance(value, (int, float)):
+                        stage_totals[name] = stage_totals.get(name, 0.0) + float(value)
+    diagnostics = kwargs.get("diagnostics")
+    if diagnostics is not None:
+        diagnostics.update(aggregate)
+        diagnostics["shape_fit_candidate_render_cap"] = max_candidate_renders
+        diagnostics["shape_fit_candidate_render_cap_reached"] = remaining == 0
+        diagnostics["shape_fit_render_work"] = sum(
+            int(value) for key, value in aggregate.items()
+            if key.endswith("_renders") and isinstance(value, (int, float))
+        )
+        diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
+        diagnostics["shape_fit_cell_results"] = cell_diags
+        diagnostics["shape_fit_supporting_frames"] = {
+            str(coordinate): list(frames)
+            for coordinate, frames in supporting_frames.items()
+        }
+        stage_totals = aggregate.get("shape_fit_stage_seconds", {})
+        if isinstance(stage_totals, dict):
+            diagnostics["shape_fit_stage_seconds"] = {
+                name: round(float(value), 6)
+                for name, value in stage_totals.items()
+            }
     return FitStateResult(chosen, supporting_frames=supporting_frames)

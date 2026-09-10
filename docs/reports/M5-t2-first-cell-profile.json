@@ -1,0 +1,477 @@
+{
+  "cell": [
+    1,
+    1,
+    12
+  ],
+  "effective_settings": {
+    "cache_schema_version": 15,
+    "candidate_render_cap": 12,
+    "geometry_groups": 38,
+    "material_groups": 38,
+    "palette": "VanillaJarTextureProvider.complete_palette",
+    "palette_entries": 6163,
+    "palette_sha256": "d1f9aa75e61c80e48612c65f025fcd384a46903d54f26c1350c5431371db6db8",
+    "proposal_order": "first lexicographic entry from frozen v2 inventory",
+    "shape_fit_edge_weight": 0.25,
+    "shape_fit_scale": 0.5,
+    "shape_fit_texture_weight": 40.0,
+    "texture_source": "cached",
+    "usable_mask_policy": "frozen supplied JSON masks"
+  },
+  "executed_code": {
+    "profile_runner.py": "95758803a8c02f1b0c9fb5954652f32a2f42070165fae6eb9ad4f411d64e94fa",
+    "shape_fit.py": "3791ea872bfa43e59ca35e535c65c08b4c7dde4ae734ebb62ab3cbdd93f102d3"
+  },
+  "experiment": "M5-Template-2-first-cell-profile",
+  "inputs": {
+    "baseline": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\reports\\M5-t2-before.litematic",
+      "sha256": "577833e0c1ab427db7055d560c5ac60a1a71586b31b88120360ecedf6cf4c096"
+    },
+    "camera_manifest": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\cameras.json",
+      "sha256": "4f743e4fc478430f608e0e879f73cd4a3dc9ce50c726841d2da897be78be6126"
+    },
+    "frame:2026-09-02_13.22.14.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\2026-09-02_13.22.14.png",
+      "sha256": "eb22541171e030ff94d6839a6626e7160c69ae3a780f07aec0298322be665d46"
+    },
+    "frame:2026-09-02_13.24.24.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\2026-09-02_13.24.24.png",
+      "sha256": "e2fd9fd6c83bf9005fe0973987da9e46d213a4351ec91393ce578f8e6d3961ae"
+    },
+    "frame:2026-09-02_13.24.33.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\2026-09-02_13.24.33.png",
+      "sha256": "35d9debb206c2505f65d3be29183f4a4f3d2bf3f9c05644ce75570f48381d1fc"
+    },
+    "jar": {
+      "path": "C:\\Users\\Likea\\AppData\\Roaming\\.minecraft\\versions\\1.21.5\\1.21.5.jar",
+      "sha256": "522672ad20b460c02c2e39b6c5035ef6a849af28eb11ab2ac7eb293d395a8c11"
+    },
+    "mask:2026-09-02_13.22.14.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\evaluation_masks\\templates-2\\2026-09-02_13.22.14.json",
+      "sha256": "2b0e18cfc26d225c6bb5cb1043792cdcc252983215b5fb7fd09480e88622850e"
+    },
+    "mask:2026-09-02_13.24.24.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\evaluation_masks\\templates-2\\2026-09-02_13.24.24.json",
+      "sha256": "068c7fe623e66d770e77af98538916eafe34a7f4e7b0f3d7080ed5fa5d5687c7"
+    },
+    "mask:2026-09-02_13.24.33.png": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\evaluation_masks\\templates-2\\2026-09-02_13.24.33.json",
+      "sha256": "212a5d7e49b66d14eed26a829f75440e15b20b8281b433907c7f4319fd830dd2"
+    },
+    "proposals": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\docs\\reports\\M5-t2-frozen-proposals-v2.json",
+      "sha256": "b12011c383d736529bfaf0671a91e880b762609b435329df5820cfd34024f761"
+    },
+    "scene": {
+      "path": "C:\\Users\\Likea\\Documents\\mc photogrammetry project\\templates 2\\scene.json",
+      "sha256": "9620608a2544e9460240c2efd0ff83da354d3ffcbee8c01e61e2d9a05b627881"
+    }
+  },
+  "mode": "supplied-camera one-cell control",
+  "peak_python_heap_bytes": 368282160,
+  "production_promotion": false,
+  "provenance": {
+    "revision": "774d66fe4a045d7f393c3b83b9c5990e90df85bc",
+    "status": [
+      "M AGENT_COMMS.md",
+      " M AGENT_HANDOFF.md",
+      " M docs/reports/M4-E1-E3-corrections-2026-09-09.md",
+      " M docs/reports/M5-shape-scheduling-2026-09-09.md",
+      " M docs/reports/M5-t2-first-cell-profile.md",
+      " M docs/reports/M5-t2-matched-diagnostic.md",
+      " M docs/reports/M5-t2-matched-v2.md",
+      " M scripts/m5_profile_t2_cell.py",
+      " M src/mc_photogrammetry/reconstruction/footprint_adapter.py",
+      " M tests/test_footprint_adapter.py",
+      "?? docs/implementation-next.md",
+      "?? docs/planned-data-and-appearance-scope.md",
+      "?? docs/reports/LEAD-review-2026-09-09-fourth.md",
+      "?? docs/reports/M4-F3-annotation-audit-2026-09-09/"
+    ]
+  },
+  "render_diagnostics": {
+    "shape_fit_background_renders": 3,
+    "shape_fit_candidate_render_cap": 12,
+    "shape_fit_candidate_render_cap_reached": true,
+    "shape_fit_candidate_renders": 12,
+    "shape_fit_cell_results": [
+      {
+        "air_score": 136.92149353027344,
+        "candidate_renders": 12,
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "current_score": null,
+        "current_state": null,
+        "selected_joint_score": 88.60962422688802,
+        "selected_plain_score": 88.60962422688802,
+        "selected_state": "minecraft:mud_brick_stairs",
+        "status": "partly_tested",
+        "usable_views": 3
+      }
+    ],
+    "shape_fit_considered_shapes": [
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:mud_brick_stairs",
+      "minecraft:wall_torch",
+      "minecraft:redstone_wall_torch",
+      "minecraft:brown_carpet",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_slab",
+      "minecraft:grass_block",
+      "minecraft:vault",
+      "minecraft:honey_block",
+      "minecraft:slime_block",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:jungle_fence_gate",
+      "minecraft:jungle_fence_gate",
+      "minecraft:mud_brick_stairs",
+      "minecraft:mud_brick_slab",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:dead_fire_coral_wall_fan",
+      "minecraft:torchflower",
+      "minecraft:redstone_wall_torch",
+      "minecraft:redstone_wall_torch",
+      "minecraft:jungle_fence",
+      "minecraft:redstone_torch",
+      "minecraft:jungle_fence_gate",
+      "minecraft:torch",
+      "minecraft:brown_stained_glass_pane",
+      "minecraft:iron_bars",
+      "minecraft:wall_torch",
+      "minecraft:wall_torch",
+      "minecraft:jungle_fence_gate",
+      "minecraft:redstone_wall_torch",
+      "minecraft:wall_torch",
+      "minecraft:bookshelf"
+    ],
+    "shape_fit_context_renders": 3,
+    "shape_fit_current_renders": 0,
+    "shape_fit_material_refinements": [],
+    "shape_fit_ownership_renders": 3,
+    "shape_fit_probe_renders": 3,
+    "shape_fit_render_work": 24,
+    "shape_fit_representative_fallbacks": [],
+    "shape_fit_seconds": 50.189875,
+    "shape_fit_stage_seconds": {
+      "ownership": 5.511819,
+      "rectification": 0.736879,
+      "render": 40.336777,
+      "setup": 3.595251,
+      "texture": 0.009203
+    },
+    "shape_fit_supporting_frames": {
+      "(1, 1, 12)": [
+        "2026-09-02_13.22.14.png",
+        "2026-09-02_13.24.24.png",
+        "2026-09-02_13.24.33.png"
+      ]
+    },
+    "shape_fit_unresolved_budget_exits": [
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      },
+      {
+        "coordinate": [
+          1,
+          1,
+          12
+        ],
+        "phase": "shape_representative"
+      }
+    ]
+  },
+  "schema": 1,
+  "selected_state": {
+    "name": "minecraft:mud_brick_stairs",
+    "properties": {
+      "facing": "west",
+      "half": "bottom",
+      "shape": "straight",
+      "waterlogged": "false"
+    }
+  },
+  "stage_seconds": {
+    "ownership": 5.511819,
+    "rectification": 0.736879,
+    "render": 40.336777,
+    "setup": 3.595251,
+    "texture": 0.009203
+  },
+  "timing_seconds": {
+    "fit_only": 50.27441339986399,
+    "setup": 8.64147870009765,
+    "total_process": 58.91589209996164
+  }
+}

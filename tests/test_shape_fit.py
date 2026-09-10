@@ -700,3 +700,92 @@ def test_grain_evidence_beats_equal_shape_representative(monkeypatch):
         scale=1.0, edge_weight=0.0, texture_weight=1.0, max_candidate_renders=8,
     )
     assert fitted[target] == bbb.state
+
+
+def test_completed_geometry_decisions_survive_a_later_refinement_cap():
+    """A partial refinement must not hide a completed perfect cube decision."""
+    aaa = _entry("aaa_carpet", (100, 100, 100), CARPET)
+    bbb = _entry("bbb_carpet", (200, 200, 200), CARPET)
+    stone = _entry("stone", (120, 120, 120), ())
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.5, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    palette = (aaa, bbb, stone)
+    photo, _owner, _index, _depth = render_volume(
+        {target: stone.state}, scene, camera, 120, 120, face_colours(palette),
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+    frames = {"cap.png": np.rint(photo).astype(np.uint8)}
+
+    for cap in (2, 3, 4):
+        fitted = fit_states(
+            [target], {}, scene, {"cap.png": camera}, frames, palette,
+            scale=1.0, edge_weight=0.0, texture_weight=0.0,
+            max_candidate_renders=cap,
+        )
+        assert fitted[target] == stone.state
+
+
+def test_multi_cell_budget_round_robin_covers_both_shape_families_and_order():
+    """Two cells receive all representative hypotheses before refinement work."""
+    slab = _entry("quartz_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (120, 120, 120), CARPET)
+    stone = _entry("stone", (120, 120, 120), ())
+    palette = (slab, carpet, stone)
+    scene = SceneTransform((0, 0, 0), (4, 2, 2))
+    cameras = {
+        "front": CameraModel((1.5, 0.5, -5.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+        "back": CameraModel((1.5, 0.5, 5.0), 180.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+    }
+    target_blocks = {(0, 0, 0): slab.state, (2, 0, 0): carpet.state}
+    frames = {}
+    for frame_id, camera in cameras.items():
+        photo, _owner, _index, _depth = render_volume(
+            target_blocks, scene, camera, 160, 120, face_colours(palette),
+            face_shapes(palette), scale=1.0, ambient=True,
+            occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+        )
+        frames[frame_id] = np.rint(photo).astype(np.uint8)
+
+    for cells in ([(0, 0, 0), (2, 0, 0)], [(2, 0, 0), (0, 0, 0)]):
+        diagnostics = {}
+        fitted = fit_states(
+            cells, {}, scene, cameras, frames, palette,
+            scale=1.0, edge_weight=0.0, texture_weight=0.0,
+            max_candidate_renders=12, diagnostics=diagnostics,
+        )
+        assert fitted[(0, 0, 0)] == slab.state
+        assert fitted[(2, 0, 0)] == carpet.state
+        assert diagnostics["shape_fit_candidate_renders"] == 12
+        results = diagnostics["shape_fit_cell_results"]
+        assert [item["candidate_renders"] for item in results] == [6, 6]
+        assert diagnostics["shape_fit_stage_seconds"]["render"] > 0.0
+        assert diagnostics["shape_fit_stage_seconds"]["ownership"] >= 0.0
+
+
+def test_multi_cell_context_edits_invalidate_an_occluded_later_cell():
+    """A committed foreground edit removes stale visibility for a later cell."""
+    stone = _entry("stone", (120, 120, 120), ())
+    carpet = _entry("white_carpet", (240, 240, 240), CARPET)
+    palette = (stone, carpet)
+    scene = SceneTransform((0, 0, 0), (2, 2, 3))
+    camera = CameraModel((0.5, 0.5, -5.0), 0.0, 0.0, fov_degrees=70.0, eye_height=0.0)
+    target_blocks = {(0, 0, 0): stone.state, (0, 0, 1): carpet.state}
+    photo, _owner, _index, _depth = render_volume(
+        target_blocks, scene, camera, 160, 120, face_colours(palette),
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+    diagnostics = {}
+    fitted = fit_states(
+        [(0, 0, 0), (0, 0, 1)], {}, scene, {"front": camera},
+        {"front": np.rint(photo).astype(np.uint8)}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        max_candidate_renders=6, diagnostics=diagnostics,
+    )
+    assert fitted[(0, 0, 0)] == stone.state
+    assert (0, 0, 1) not in fitted
+    results = diagnostics["shape_fit_cell_results"]
+    assert results[0]["status"] == "accepted"
+    assert results[1]["status"] == "no_usable_views"
