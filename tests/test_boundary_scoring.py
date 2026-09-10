@@ -165,3 +165,50 @@ def test_e1_an_absent_negative_polygons_key_behaves_like_an_empty_one():
     positive_b, unknown_b = target_masks(target_with_empty, WIDTH, HEIGHT, domain)
     assert (positive_a == positive_b).all()
     assert (unknown_a == unknown_b).all()
+
+
+def test_f3_v3_annotation_anchors_match_the_composed_masks():
+    """The lead's fourth review's F3 finding: the v2 annotation's table
+    polygon still removed real wall - source pixels (400,600) and (600,600)
+    in frame 1 are wall but were recorded as a known negative. The
+    replacement `M4-C2-boundary-targets-v3-2026-09-09.json` was built by
+    tracing each frame's actual boundaries directly from a labelled
+    source-coordinate grid (see `docs/reports/M4-F3-annotation-audit-2026-09-09/`
+    for the crop-by-crop trace and contact sheets) - the anchors below were
+    placed by reading the image first, not by adjusting vertices until this
+    test passed. This test only guards against a future edit silently
+    breaking what the trace already established: every `wall_interior_anchors`
+    point (including the review's own (400,600) and (600,600)) must resolve
+    positive, and every `negative_anchors` point must resolve negative, in
+    all three frames.
+    """
+    import hashlib
+    import json
+    from pathlib import Path
+
+    path = (Path(__file__).resolve().parents[1]
+           / "docs/reports/M4-C2-boundary-targets-v3-2026-09-09.json")
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "082ec648845be2354a5324821e6484291ca867563948e0396cecb496e5adf56a"
+    ), "the frozen v3 annotation file changed - re-verify and re-freeze before editing this test"
+    data = json.loads(raw)
+
+    for target in data["targets"]:
+        width, height = target["image_size"]
+        domain = usable_domain(width, height, top_exclude=0, bottom_exclude=0)
+        positive, unknown = target_masks(target, width, height, domain)
+        for x, y in target["wall_interior_anchors"]:
+            assert positive[y, x], (target["frame"], "wall_interior_anchor", x, y)
+        for x, y in target["negative_anchors"]:
+            assert not positive[y, x] and not unknown[y, x], (
+                target["frame"], "negative_anchor", x, y)
+
+    # The review's own two cited pixels, checked by name rather than only by
+    # position in the list, so a reordering of the anchors above cannot
+    # silently drop this specific check.
+    frame1 = next(t for t in data["targets"] if t["frame"] == "2026-09-02_13.22.14.png")
+    width, height = frame1["image_size"]
+    domain = usable_domain(width, height, top_exclude=0, bottom_exclude=0)
+    positive, _ = target_masks(frame1, width, height, domain)
+    assert positive[600, 400] and positive[600, 600]

@@ -1,0 +1,140 @@
+{
+  "note": "Corrected per the lead's fourth review (F3): the v2 annotation still removed real wall as negative - source pixels (400,600) and (600,600) in frame 1 are wall but v2's foreground_occlusion table polygon (starting at (0,435)/(785,405)) covered them as a known negative, and the review named this a workflow problem, not a two-anchor problem. This version was built by a different workflow: (1) a labelled source-coordinate grid drawn directly onto each ORIGINAL 2560x1369 frame at native resolution before any resize (scripts in M4-F3-annotation-audit-2026-09-09/, all crops named with their own [x0,y0,x1,y1) source bounds - no resize ever precedes a grid draw, so no crop-origin/scale bug can enter silently); (2) forward-mapping verified at the image's own top-left and bottom-right corners (f1_corner_check.png, f1_corner_check_br.png) before tracing anything; (3) every wall/furniture boundary retraced from these grids by reading off real pixel transitions, at progressively finer grid spacing (50px down to 10px) around each boundary, NOT by adjusting vertices until a scorer accepted them - the anchors below were chosen by looking at the image first, then checked once against the composed masks as a bug check, the same order the review required. Frame 1's table polygon is now traced to its real corner (approx. (0,800)-(788,790)-(850,1040)-(862,1369)), which independently produces the review's own (400,600)/(600,600) as positive - not the other way around. Frame 2's furniture/bench boundary had the SAME class of bug (v1/v2 marked x:600-980,y:650-1369 negative, but the real wall/bench transition runs far lower, y:825-970 depending on x - found only because this audit re-traced every frame instead of the one named example). Frame 3's positive extent was previously cut off around y:600-750 even though the wall in this steep, close-up downward-pitched view genuinely fills the frame to y=1369 for x<1080 - re-traced and extended, with a genuinely ambiguous ceiling strip at the top (y<100 for x>650) now marked uncertain rather than silently included or excluded. uncertain_polygons remain genuinely ambiguous transitions excluded from scoring. wall_interior_anchors and negative_anchors are independently placed on both sides of each retraced boundary at several horizontal positions (not just the two the review cited) and checked by tests/test_boundary_scoring.py and scripts/verify_boundary_targets_v3.py against the composed masks - a check that the JSON encodes what the image trace found, not a re-decision of what the image shows. See M4-F3-annotation-audit-2026-09-09/ for the full contact sheet, corner-mapping checks, and this exact anchor table with reasons. v1 and v2 files are preserved untouched; this is a versioned annotation audit only - the proposal path never reads this file.",
+  "targets": [
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall (diamond-pattern panelling), frontal-ish view. Broad positive silhouette from the frame's left edge to a corner/support-beam junction (marked uncertain); the foreground table (a bed-like white/grey object in the near-left of frame) is now traced to its true corner instead of a rectangle chosen for being easy to draw. Dining table/chairs, two wall-mounted candle sconces and a roof gap are also traced and removed as negatives.",
+      "crop_provenance": [
+        {"file": "f1_corner_check.png", "source_bounds": [0, 0, 200, 200], "grid_step": 25, "upscale": 2.0, "purpose": "forward-mapping check at the image's own top-left corner"},
+        {"file": "f1_corner_check_br.png", "source_bounds": [2400, 1200, 2560, 1369], "grid_step": 25, "upscale": 2.0, "purpose": "forward-mapping check at the image's own bottom-right corner"},
+        {"file": "f1_boundary_region.png", "source_bounds": [0, 300, 900, 900], "grid_step": 50, "upscale": 1.5, "purpose": "coarse trace of the table's top boundary - first pass"},
+        {"file": "f1_full_foreground.png", "source_bounds": [0, 600, 1500, 1369], "grid_step": 50, "upscale": 1.0, "purpose": "full extent of the foreground table object and its relation to the dining area"},
+        {"file": "f1_top_edge.png", "source_bounds": [0, 770, 950, 950], "grid_step": 25, "upscale": 2.0, "purpose": "precise trace of the table's near-flat top edge, x:0-800"},
+        {"file": "f1_right_edge.png", "source_bounds": [750, 750, 1000, 1369], "grid_step": 25, "upscale": 1.5, "purpose": "precise trace of the table's peak and its descending right edge"},
+        {"file": "f1_corner_finegrain2.png", "source_bounds": [780, 770, 900, 1100], "grid_step": 20, "upscale": 3.0, "purpose": "sub-25px localisation of the table's peak vertex"},
+        {"file": "f1_lower_edge.png", "source_bounds": [800, 1050, 950, 1369], "grid_step": 20, "upscale": 2.0, "purpose": "trace of the table's near-vertical front edge down to the frame bottom"},
+        {"file": "f1_dining_area.png", "source_bounds": [950, 550, 1650, 900], "grid_step": 25, "upscale": 1.5, "purpose": "dining table/chairs/flower bounding trace"},
+        {"file": "f1_dining_wide.png", "source_bounds": [950, 550, 2000, 1369], "grid_step": 25, "upscale": 1.2, "purpose": "confirms wall (not the dining set) continues behind/around the furniture, and locates the floor-rug/corner area further right"},
+        {"file": "f1_roof_gap.png", "source_bounds": [850, 0, 1750, 350], "grid_step": 25, "upscale": 1.3, "purpose": "trace of the diamond-shaped stone roof gap"},
+        {"file": "f1_candles.png", "source_bounds": [1250, 260, 1560, 480], "grid_step": 10, "upscale": 2.5, "purpose": "precise bounding boxes for the two wall-mounted candle sconces"},
+        {"file": "f1_farright.png", "source_bounds": [1700, 0, 2560, 700], "grid_step": 50, "upscale": 1.0, "purpose": "checked whether wall panelling continues to the image's right edge - it does, but a texture/brightness seam near x=2150-2250 is consistent with a real room corner (a different plane), so the positive claim was NOT extended that far despite the panelling texture continuing; kept at the same right bound as v2, which the corner-uncertainty band already anticipated"}
+      ],
+      "positive_polygon": [[0, 0], [1280, 0], [1280, 825], [0, 825]],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [[0, 800], [788, 790], [850, 1040], [862, 1369], [0, 1369]],
+          [[1075, 700], [1820, 700], [1820, 1369], [1075, 1369]],
+          [[1288, 288], [1336, 288], [1336, 380], [1288, 380]],
+          [[1288, 388], [1322, 388], [1322, 432], [1288, 432]],
+          [[1488, 288], [1532, 288], [1532, 382], [1488, 382]]
+        ],
+        "opening": [
+          [[1200, 0], [1370, 130], [1230, 290], [1000, 150]]
+        ]
+      },
+      "uncertain_polygons": [
+        [[900, 0], [1450, 0], [1450, 230], [900, 230]],
+        [[1260, 220], [1450, 220], [1450, 825], [1260, 825]]
+      ],
+      "wall_interior_anchors": [[400, 400], [400, 600], [600, 600], [700, 600], [100, 700], [50, 300]],
+      "wall_interior_anchor_reasons": [
+        "(400,400): the review's own cited example - traced as clear wall, well above the retraced table boundary (~y795 at x=400)",
+        "(400,600): the review's other cited pixel - same boundary check, 600 < ~795",
+        "(600,600): the review's third cited pixel - boundary at x=600 is ~y792, 600 clears it",
+        "(700,600): an independently-chosen point near the table's peak x-range, not one the review named",
+        "(100,700): a closer-margin point (~99px above the boundary at x=100) checking the trace holds near the boundary, not just far from it",
+        "(50,300): far above any furniture, a baseline sanity point"
+      ],
+      "negative_anchors": [[400, 900], [700, 1000], [830, 1100], [200, 1200], [1400, 900], [1510, 330], [1230, 270]],
+      "negative_anchor_reasons": [
+        "(400,900): inside the retraced table top, ~100px below its boundary at this x",
+        "(700,1000): inside the table's descending right edge region, checked against the interpolated right boundary at this y (~x840)",
+        "(830,1100): inside the table's lower/front-face region, close to but inside its right edge (~x852 at this y)",
+        "(200,1200): deep inside the table's front face, a baseline sanity point",
+        "(1400,900): inside the dining table/chair bounding region",
+        "(1510,330): inside the right candle sconce's flame - chosen over the left candle, which sits inside the corner-uncertainty band below and so composes to unknown (a specific negative and a specific uncertain claim both covering it - correct per the composition rule, just not a clean single-label demonstration point)",
+        "(1230,270): inside the roof-gap diamond's lower tip, below uncertain band 1's y<230 cutoff and left of uncertain band 2's x>1260 start - the diamond's upper portion overlaps both uncertain bands and also composes to unknown there, same reasoning as the left candle"
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall panelling looking down the room's length. Broad positive silhouette down to the real bench/table boundary - retraced far lower than v1/v2's y:650 cut, which was removing real wall the same way frame 1's table polygon was. A hanging-lantern beam, the far gable-end dining area and its own roof gap are traced as negatives past the left wall's own extent.",
+      "crop_provenance": [
+        {"file": "f2_overview.png", "source_bounds": [0, 0, 1400, 900], "grid_step": 50, "upscale": 1.0, "purpose": "orientation pass - located the roof gap, hanging lanterns and far dining table"},
+        {"file": "f2_lower_region.png", "source_bounds": [300, 500, 1300, 1369], "grid_step": 50, "upscale": 1.2, "purpose": "found the real wall/bench boundary sits far below the v2 cut (y~650) - closer to y:825-970"},
+        {"file": "f2_transition_fine.png", "source_bounds": [500, 750, 1050, 950], "grid_step": 25, "upscale": 2.0, "purpose": "precise trace of the bench-top boundary, x:500-950"},
+        {"file": "f2_left_transition.png", "source_bounds": [0, 650, 1000, 1000], "grid_step": 25, "upscale": 1.3, "purpose": "trace of the boundary's left portion, x:0-600, where open floor (not furniture) is the occluder"},
+        {"file": "f2_farleft_lower.png", "source_bounds": [0, 900, 700, 1369], "grid_step": 25, "upscale": 1.3, "purpose": "confirmed the far-left (x<300) boundary sits around y:950-975, not lower - a dark, low-contrast region so cross-checked at two crop passes"},
+        {"file": "f2_right_region.png", "source_bounds": [950, 100, 1450, 950], "grid_step": 50, "upscale": 1.3, "purpose": "identified x>980 as a DIFFERENT surface (the room's far gable-end wall with its own roof peak, hanging lanterns and dining table), not a continuation of the left wall being annotated - kept out of the positive claim on that basis, not just distance from camera"}
+      ],
+      "positive_polygon": [[0, 0], [980, 0], [980, 825], [850, 850], [700, 905], [500, 930], [300, 970], [0, 955]],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [[0, 955], [300, 970], [500, 930], [700, 905], [850, 850], [980, 825], [980, 1369], [0, 1369]],
+          [[980, 700], [1450, 700], [1450, 1369], [980, 1369]],
+          [[1000, 395], [1350, 395], [1350, 570], [1000, 570]]
+        ],
+        "opening": [
+          [[990, 100], [1250, 100], [1250, 350], [990, 350]]
+        ]
+      },
+      "uncertain_polygons": [
+        [[960, 135], [1040, 135], [1040, 650], [960, 650]]
+      ],
+      "wall_interior_anchors": [[20, 400], [20, 700], [500, 300], [700, 700], [500, 900]],
+      "wall_interior_anchor_reasons": [
+        "(20,400): far above any furniture, baseline",
+        "(20,700): far above any furniture, baseline",
+        "(500,300): far above any furniture, baseline",
+        "(700,700): independently chosen just above the retraced boundary at x=700 (~y905) - under the OLD v2 boundary (y650) this point would have read negative, so it directly demonstrates the fix",
+        "(500,900): just above the retraced boundary at x=500 (~y930)"
+      ],
+      "negative_anchors": [[700, 950], [500, 950], [1200, 250], [1150, 850]],
+      "negative_anchor_reasons": [
+        "(700,950): just below the retraced boundary at x=700 (~y905) - paired with the wall anchor (700,700) above, both sides of the same boundary at the same x",
+        "(500,950): just below the retraced boundary at x=500 (~y930) - paired with (500,900) above",
+        "(1200,250): inside the far gable-end's own roof gap",
+        "(1150,850): inside the far gable-end dining table region"
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "image_size": [2560, 1369],
+      "description": "Left wall panelling from a steep downward-pitched view (yaw 8.2, pitch 39.6). At this angle the wall genuinely fills almost the entire frame down to its bottom edge for x<1080 - v1/v2's cut around y:600-750 was leaving real wall unclaimed (the safe direction of error, but still not the actual extent) rather than being wrong about what belongs to the room. A dining table/chairs/candles occupy only the bottom-right corner; a thin, genuinely ambiguous ceiling strip at the very top (not an opening - none is visible from this angle, per the original description) is marked uncertain rather than guessed either way.",
+      "crop_provenance": [
+        {"file": "f3_overview.png", "source_bounds": [0, 0, 1400, 1000], "grid_step": 50, "upscale": 1.0, "purpose": "orientation pass"},
+        {"file": "f3_lower_region.png", "source_bounds": [0, 550, 1600, 1369], "grid_step": 50, "upscale": 1.0, "purpose": "located the furniture in the bottom-right corner; showed x<1080 stays dark/ambiguous by eye alone"},
+        {"file": "f3_lower_bright.png", "source_bounds": [0, 550, 1100, 1369], "grid_step": 50, "upscale": 1.0, "purpose": "gamma-boosted (0.4) re-crop of the dark x<1080 region - confirmed continuous wall panelling texture all the way to the frame bottom, not floor blending into shadow"},
+        {"file": "f3_furniture_fine.png", "source_bounds": [950, 600, 1750, 1000], "grid_step": 25, "upscale": 1.3, "purpose": "bounding trace of the dining table/chairs/candles"},
+        {"file": "f3_roofgap.png", "source_bounds": [700, 0, 1400, 150], "grid_step": 25, "upscale": 1.5, "purpose": "first pass on the top ceiling strip"},
+        {"file": "f3_roofgap_wide.png", "source_bounds": [400, 0, 1900, 150], "grid_step": 50, "upscale": 1.0, "purpose": "found the ceiling strip spans roughly x:650-1900+ at y:0-95; x<650 stays ordinary wall at y=0"}
+      ],
+      "positive_polygon": [[0, 0], [1750, 0], [1750, 1369], [0, 1369]],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [[1080, 690], [1750, 690], [1750, 1369], [1080, 1369]]
+        ],
+        "opening": []
+      },
+      "uncertain_polygons": [
+        [[650, 0], [1900, 0], [1900, 100], [650, 100]]
+      ],
+      "wall_interior_anchors": [[20, 400], [20, 700], [600, 300], [1400, 300], [50, 1200], [1400, 650]],
+      "wall_interior_anchor_reasons": [
+        "(20,400): baseline",
+        "(20,700): baseline",
+        "(600,300): baseline, below the ceiling strip (x<650, unaffected by it anyway)",
+        "(1400,300): between the ceiling strip's bottom (y100) and the furniture's top (y690)",
+        "(50,1200): the key extension this pass makes - v2 never claimed this point (its positive polygon stopped near y700); the gamma-boosted crop confirms continuous wall texture here, not floor",
+        "(1400,650): just above the retraced furniture boundary at x=1400 (y690)"
+      ],
+      "negative_anchors": [[1200, 900], [1400, 750]],
+      "negative_anchor_reasons": [
+        "(1200,900): inside the dining table/chair region",
+        "(1400,750): just below the retraced furniture boundary at x=1400 (y690) - paired with the wall anchor (1400,650) above, both sides of the same boundary at the same x"
+      ]
+    }
+  ]
+}

@@ -303,8 +303,9 @@ class CellEvidence:
     """The label whose `coverage_by_label` cleared `VISIBLE_COVERAGE_THRESHOLD`,
     or `None` if none did - a genuinely mixed, conflicting, or under-covered
     cell, left undeclared rather than guessed. Decided against
-    `coverage_by_label` (the full-cell denominator), never
-    `coverage_of_in_frame`."""
+    `coverage_by_label` - a *certified lower bound*, never the raw estimate
+    and never `coverage_of_in_frame` - so a declared label's true coverage is
+    guaranteed to clear the threshold, not just estimated to."""
     outside_image_fraction: float
     conflict_fraction: float
     """Share of the cell's full area where a declared `OPENING` polygon and a
@@ -312,6 +313,12 @@ class CellEvidence:
     claims disagreeing about the same location. Excluded from every label's
     coverage rather than resolved by priority, since neither assertion is
     more authoritative than the other."""
+    coverage_upper_by_label: dict[str, float] = field(default_factory=dict)
+    """The same overlaps as `coverage_by_label`, but the certified *upper*
+    bound rather than the lower one - a cell whose lower bound misses the
+    threshold but whose upper bound clears it is a genuinely undecidable
+    near-threshold case (both are reported so a caller can see that, rather
+    than only a single number that looks like a confident miss)."""
 
 
 def _polygon_area(polygon: list[tuple[float, float]]) -> float:
@@ -361,9 +368,28 @@ Bounds the per-cell cost regardless of how finely `_supersample_factor`
 would otherwise want to subdivide a small crop, and regardless of how
 large a crop itself already is."""
 
-MAX_SUPERSAMPLE_FACTOR = 32
-"""Never subdivide a pixel finer than this even when the crop is tiny -
-diminishing returns past this resolution for this module's purposes."""
+MAX_SUPERSAMPLE_FACTOR = 2000
+"""A safety ceiling on subdivision, not a target - `_supersample_factor`'s
+own `sqrt(MAX_SUPERSAMPLED_CELLS / area)` formula already keeps a crop's
+total cost within budget, so this only guards the degenerate zero/near-zero
+area case from an unbounded result. Unlike the previous point-sampled
+estimate, finer subdivision directly *tightens* the certified interval
+(`BOUNDARY_BAND_SUBCELLS` worth of sub-pixels around every edge, in
+continuous units, shrinks as the sub-pixel itself shrinks) - a small crop
+should use all the resolution its own area allows within the shared budget,
+not stop early the way the old "diminishing returns" reasoning assumed."""
+
+BOUNDARY_BAND_SUBCELLS = 3
+"""Width, in supersampled sub-pixels, of the margin drawn around every
+polygon edge (`_fill_and_boundary`) before a sub-pixel is trusted to be
+unambiguously inside or outside that polygon. A straight edge that only
+grazes a sub-pixel's corner can fail to mark it through `cv2.polylines`'s
+own line rasterization at a bare 1-subcell width, and `_rasterize_polygon`'s
+half-pixel coordinate convention (see its own docstring) shifts every vertex
+by up to half a sub-pixel again - 3 gives headroom for both without needing
+either accounted for exactly. Widening this only makes the reported interval
+more conservative (wider, never wrong in the unsafe direction), never less
+correct - see `_fill_and_boundary`."""
 
 
 def _supersample_factor(crop_shape: tuple[int, int]) -> int:
@@ -372,10 +398,40 @@ def _supersample_factor(crop_shape: tuple[int, int]) -> int:
     lead review's counter-examples showed single-sample rasterization is
     badly wrong for anything not pixel-grid-aligned), coarser for a crop
     that is already most of the image (where the same relative error
-    matters far less and a fine subdivision would not stay bounded)."""
+    matters far less and a fine subdivision would not stay bounded).
+
+    Returns 1 (no subdivision at all) once the crop's own *unsupersampled*
+    pixel count already reaches the budget - `rasterize_cells` tiles that
+    case in row-bands instead (`_tile_row_bounds`) rather than ever
+    allocating an array sized to the crop itself, however large it is."""
     area = max(1, crop_shape[0] * crop_shape[1])
+    if area >= MAX_SUPERSAMPLED_CELLS:
+        return 1
     factor = int((MAX_SUPERSAMPLED_CELLS // area) ** 0.5)
     return max(1, min(MAX_SUPERSAMPLE_FACTOR, factor))
+
+
+def _tile_row_bounds(crop_y0: int, crop_y1: int, crop_width: int, supersample: int) -> list[tuple[int, int]]:
+    """Row-band boundaries covering ``[crop_y0, crop_y1)`` such that no
+    single band's own supersampled array (``band_rows * crop_width *
+    supersample**2``) exceeds `MAX_SUPERSAMPLED_CELLS`, however tall the
+    crop itself is - the bound `_supersample_factor` enforces per-pixel is
+    worthless if the crop is simply rasterized in one piece regardless of
+    its own height, which is exactly the gap a lead review named directly:
+    "the current factor>=1 fallback does not cap a crop already larger than
+    four million samples". `rasterize_cells` processes one band at a time,
+    accumulating each band's own area sums, so the full crop's mask never
+    exists as one array."""
+    sample_area = supersample * supersample
+    per_row_cost = max(1, crop_width * sample_area)
+    band_rows = max(1, MAX_SUPERSAMPLED_CELLS // per_row_cost)
+    bounds = []
+    row = crop_y0
+    while row < crop_y1:
+        end = min(crop_y1, row + band_rows)
+        bounds.append((row, end))
+        row = end
+    return bounds
 
 
 def _clip_polygon_to_rect(polygon, x0: float, y0: float, x1: float, y1: float):
@@ -416,59 +472,114 @@ def _clip_polygon_to_rect(polygon, x0: float, y0: float, x1: float, y1: float):
     return points
 
 
-def _local_supersampled_masks(
-    regions: list[RegionEvidence], crop_x0: int, crop_y0: int, crop_x1: int, crop_y1: int,
-    supersample: int,
-) -> dict[str, np.ndarray]:
-    """One mutually-exclusive label per *supersampled sub-pixel*, rasterized
-    directly within one cell's own bounded crop - not sliced out of a
-    whole-image, single-sample mask. Continuous area and raster pixel
-    count only agree when a shape happens to land on the pixel grid (the
-    case a half-pixel coordinate shift alone fixes); a lead review's
-    counter-examples - a non-integer principal point, a non-unit focal -
-    showed that is not area integration in general. Subdividing each pixel
-    into `supersample^2` samples and counting sub-pixel hits converges to
-    the true continuous intersection area regardless of alignment, while
-    staying bounded to this one crop (`_supersample_factor`) rather than to
-    a declared region polygon's own extent, which can be far larger.
+def _fill_and_boundary(
+    polygons: list[list[tuple[float, float]]], crop_x0: int, crop_y0: int, crop_x1: int,
+    crop_y1: int, supersample: int, high_shape: tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray]:
+    """A polygon group's *certain* and *possible* sub-pixel masks - a
+    rigorous conservative interval, not a point estimate. A lead follow-up
+    review found the previous point-sampled supersampling (one sample per
+    sub-pixel, majority-vote in effect) was "not a confidence bound": its
+    own exact counter-example (a cell 55% covered, true area below the 60%
+    export threshold) still reported 61.23% and exported an unsupported
+    cell, because a raw estimate has no guaranteed direction of error.
+
+    For each polygon, `cv2.fillPoly` still gives the ordinary point-sampled
+    fill, but `cv2.polylines` (drawn `BOUNDARY_BAND_SUBCELLS` sub-pixels
+    thick around every edge) marks a *boundary band* around it. Away from
+    that band, a straight polygon edge cannot pass through a sub-pixel
+    without crossing the band that surrounds it - by the Jordan curve
+    theorem, a sub-pixel disjoint from every edge is either entirely inside
+    the polygon or entirely outside it, regardless of concavity, so its
+    fill-mask sample is not just probably right there, it is *certified*
+    right. `fill & ~boundary` is exactly this "certified inside" set (a
+    guaranteed *lower* bound on the true area); `fill | boundary` is
+    "possibly inside" (a guaranteed *upper* bound, since every genuinely
+    covered sub-pixel is either certified or sits in the band). Both stay
+    correct for a union of several polygons for one label: a sub-pixel away
+    from *every* one of their bands has an unambiguous status for each, and
+    OR-ing the per-polygon fills computes the union correctly at exactly the
+    sub-pixels where that status is trustworthy.
+    """
+    import cv2
+
+    fill = np.zeros(high_shape, dtype=np.uint8)
+    boundary = np.zeros(high_shape, dtype=np.uint8)
+    for polygon in polygons:
+        clipped = _clip_polygon_to_rect(list(polygon), crop_x0, crop_y0, crop_x1, crop_y1)
+        if len(clipped) < 3:
+            continue
+        local = [((px - crop_x0) * supersample, (py - crop_y0) * supersample) for px, py in clipped]
+        fill |= _rasterize_polygon(local, high_shape)
+        points = np.array([[round(px - 0.5), round(py - 0.5)] for px, py in local], dtype=np.int32)
+        cv2.polylines(boundary, [points], True, 1, BOUNDARY_BAND_SUBCELLS, cv2.LINE_8)
+    fill_bool = fill.astype(bool)
+    boundary_bool = boundary.astype(bool)
+    return fill_bool & ~boundary_bool, fill_bool | boundary_bool
+
+
+def _tile_area_sums(
+    cell_corners: list[tuple[float, float]], regions: list[RegionEvidence],
+    crop_x0: int, band_y0: int, crop_x1: int, band_y1: int, supersample: int,
+) -> dict[str, float]:
+    """Certain/possible area sums (in original-image pixel units) for one
+    cell against every declared label, restricted to one row-band of its
+    crop - `rasterize_cells` accumulates these across bands so a crop far
+    larger than `MAX_SUPERSAMPLED_CELLS` is never rasterized as one array
+    (`_tile_row_bounds`); a crop that fits in one band is just the trivial
+    single-tile case.
 
     ``OPENING`` and ``FOREGROUND_OCCLUSION`` are drawn over ``VISIBLE`` (a
     person typically draws a broad visible-extent polygon for a whole wall,
     then a smaller region inside it marking a specific doorway or occluder
     - the smaller, more specific claim is the one that applies where they
-    overlap). Where ``OPENING`` and ``FOREGROUND_OCCLUSION`` overlap *each
-    other*, that is a genuine conflict between two specific claims -
-    resolved to neither, not by which region a caller happened to list
-    first.
+    overlap). A sub-pixel only counts toward a label's *certain* area when
+    it is certainly that label *and* certainly not any label that overrides
+    it (not even possibly, since "possibly overridden" is not "certainly
+    still this label"); it counts toward *possible* area when it might be
+    that label and is not *certainly* overridden. Where ``OPENING`` and
+    ``FOREGROUND_OCCLUSION`` overlap each other, that is a genuine conflict
+    between two specific claims - excluded from both, not resolved by
+    priority.
     """
-    high_shape = ((crop_y1 - crop_y0) * supersample, (crop_x1 - crop_x0) * supersample)
+    high_shape = ((band_y1 - band_y0) * supersample, (crop_x1 - crop_x0) * supersample)
+    sample_area = float(supersample * supersample)
 
-    def local_points(polygon):
-        return [((x - crop_x0) * supersample, (y - crop_y0) * supersample) for x, y in polygon]
+    def group(label: str) -> list[list[tuple[float, float]]]:
+        return [list(region.polygon) for region in regions if region.label == label]
 
-    def union(label: str) -> np.ndarray:
-        mask = np.zeros(high_shape, dtype=np.uint8)
-        for region in regions:
-            if region.label != label:
-                continue
-            clipped = _clip_polygon_to_rect(
-                [(p[0], p[1]) for p in region.polygon], crop_x0, crop_y0, crop_x1, crop_y1)
-            if len(clipped) < 3:
-                continue
-            mask |= _rasterize_polygon(local_points(clipped), high_shape)
-        return mask
+    cell_certain, cell_possible = _fill_and_boundary(
+        [cell_corners], crop_x0, band_y0, crop_x1, band_y1, supersample, high_shape)
+    visible_certain, visible_possible = _fill_and_boundary(
+        group(VISIBLE), crop_x0, band_y0, crop_x1, band_y1, supersample, high_shape)
+    opening_certain, opening_possible = _fill_and_boundary(
+        group(OPENING), crop_x0, band_y0, crop_x1, band_y1, supersample, high_shape)
+    occlusion_certain, occlusion_possible = _fill_and_boundary(
+        group(FOREGROUND_OCCLUSION), crop_x0, band_y0, crop_x1, band_y1, supersample, high_shape)
 
-    visible = union(VISIBLE).astype(bool)
-    opening = union(OPENING).astype(bool)
-    occlusion = union(FOREGROUND_OCCLUSION).astype(bool)
-    conflict = opening & occlusion
-
-    return {
-        VISIBLE: visible & ~opening & ~occlusion,
-        OPENING: opening & ~occlusion,
-        FOREGROUND_OCCLUSION: occlusion & ~opening,
-        "_conflict": conflict,
+    label_certain = {
+        VISIBLE: visible_certain & ~opening_possible & ~occlusion_possible,
+        OPENING: opening_certain & ~occlusion_possible,
+        FOREGROUND_OCCLUSION: occlusion_certain & ~opening_possible,
     }
+    label_possible = {
+        VISIBLE: visible_possible & ~opening_certain & ~occlusion_certain,
+        OPENING: opening_possible & ~occlusion_certain,
+        FOREGROUND_OCCLUSION: occlusion_possible & ~opening_certain,
+    }
+    conflict_certain = opening_certain & occlusion_certain
+    conflict_possible = opening_possible & occlusion_possible
+
+    sums = {
+        "cell_certain": float(cell_certain.sum()) / sample_area,
+        "cell_possible": float(cell_possible.sum()) / sample_area,
+        "conflict_lower": float((conflict_certain & cell_certain).sum()) / sample_area,
+        "conflict_upper": float((conflict_possible & cell_possible).sum()) / sample_area,
+    }
+    for label in (VISIBLE, OPENING, FOREGROUND_OCCLUSION):
+        sums[f"{label}_lower"] = float((label_certain[label] & cell_certain).sum()) / sample_area
+        sums[f"{label}_upper"] = float((label_possible[label] & cell_possible).sum()) / sample_area
+    return sums
 
 
 def rasterize_cells(
@@ -479,17 +590,34 @@ def rasterize_cells(
     columns: range,
 ) -> list[CellEvidence]:
     """Project every candidate cell into image space and measure how much of
-    it each declared region covers, against the cell's true full area, both
-    in the same continuous units (`_local_supersampled_masks`) - not a
-    raster pixel count divided by a continuous shoelace area, which only
-    agrees when a shape happens to land on the pixel grid.
+    it each declared region covers, against the cell's true full area
+    (`_polygon_area`, exact shoelace - never a raster count divided by it,
+    which only agrees when a shape happens to land on the pixel grid).
 
-    Every raster allocation here is bounded by one cell's own crop, clipped
-    to the image before it is ever rasterized, with a supersample factor
-    itself bounded by that crop's size (`_supersample_factor`). A cell's
-    projected quadrilateral can be far larger than the photograph itself (a
+    `coverage_by_label` is a certified *lower* bound on the true coverage
+    fraction, and `coverage_upper_by_label` an upper bound (`_tile_area_sums`
+    / `_fill_and_boundary`) - not a single point estimate. A lead follow-up
+    review's own exact counter-example (true coverage 55%, threshold 60%)
+    showed a raw supersampled estimate is not a confidence bound: it read
+    61.23% and exported an unsupported cell. `declared` is only ever set
+    from the lower bound clearing `VISIBLE_COVERAGE_THRESHOLD`, so a
+    declared label's true coverage is *guaranteed* to clear the threshold -
+    a cell whose true coverage sits close enough to the threshold that this
+    approximation cannot certify either side of it (including exactly at
+    the threshold) stays undeclared rather than guessing, per the review's
+    own "abstain if an approximation cannot certify it".
+
+    Every raster allocation here is bounded by `MAX_SUPERSAMPLED_CELLS`
+    regardless of a cell's own size: a crop that fits the budget at some
+    supersample factor (`_supersample_factor`) is measured in one pass:
+    one larger than the budget even with no subdivision at all - a lead
+    review named this gap directly, "the current factor>=1 fallback does
+    not cap a crop already larger than four million samples" - is instead
+    processed in bounded row-bands (`_tile_row_bounds`), accumulating area
+    sums across them, so the full crop's mask is never one array. A cell's
+    projected quadrilateral can itself be far larger than the photograph (a
     near-grazing candidate, especially); nothing about its own extent is
-    used to size an array.
+    used to size an array either way.
     """
     width, height = image_size
 
@@ -499,11 +627,11 @@ def rasterize_cells(
             cell = (row, column)
             corners = cell_corners_pixels(transform, cell)
             if corners is None:
-                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0))
+                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0, {}))
                 continue
             full_area = _polygon_area(corners)
             if full_area <= 0:
-                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0))
+                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0, {}))
                 continue
 
             xs = [p[0] for p in corners]
@@ -513,28 +641,47 @@ def rasterize_cells(
             crop_x1 = min(width, int(np.ceil(max(xs))) + 1)
             crop_y1 = min(height, int(np.ceil(max(ys))) + 1)
             if crop_x1 <= crop_x0 or crop_y1 <= crop_y0:
-                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0))
+                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0, {}))
                 continue
             crop_shape = (crop_y1 - crop_y0, crop_x1 - crop_x0)
             supersample = _supersample_factor(crop_shape)
-            sample_area = float(supersample * supersample)
-            high_shape = (crop_shape[0] * supersample, crop_shape[1] * supersample)
-            local_corners = [((px - crop_x0) * supersample, (py - crop_y0) * supersample)
-                             for px, py in corners]
-            cell_mask = _rasterize_polygon(local_corners, high_shape).astype(bool)
-            in_frame_area = float(cell_mask.sum()) / sample_area
 
-            masks = _local_supersampled_masks(regions, crop_x0, crop_y0, crop_x1, crop_y1,
-                                              supersample)
+            if crop_shape[1] * supersample * supersample > MAX_SUPERSAMPLED_CELLS:
+                # Even a single row-band would exceed the budget (the crop's
+                # own width alone, at this supersample factor, already does)
+                # - stop with an explicit unresolved cell rather than tiling
+                # down to a fraction of a row or allocating past the budget.
+                found.append(CellEvidence(cell, {}, {}, None, 1.0, 0.0, {}))
+                continue
+
+            totals: dict[str, float] = {}
+            for band_y0, band_y1 in _tile_row_bounds(crop_y0, crop_y1, crop_shape[1], supersample):
+                band_sums = _tile_area_sums(corners, regions, crop_x0, band_y0, crop_x1, band_y1,
+                                            supersample)
+                for key, value in band_sums.items():
+                    totals[key] = totals.get(key, 0.0) + value
+
+            # How much of the cell's own continuous area lies within the
+            # photograph - a fact about the image frame, not about label
+            # coverage, so measured by exactly clipping the cell's own
+            # (convex) corners to the image rectangle (both convex,
+            # `_clip_polygon_to_rect` is exact for that case) rather than
+            # from `totals["cell_certain"]`, which carries the same
+            # boundary-band margin every certified label area does and so
+            # would never read exactly "fully in frame" even for a cell
+            # nowhere near the image edge.
+            in_frame_polygon = _clip_polygon_to_rect(corners, 0, 0, width, height)
+            in_frame_area = _polygon_area(in_frame_polygon) if len(in_frame_polygon) >= 3 else 0.0
 
             coverage: dict[str, float] = {}
+            coverage_upper: dict[str, float] = {}
             coverage_in_frame: dict[str, float] = {}
             for label in (VISIBLE, OPENING, FOREGROUND_OCCLUSION):
-                overlap = float((cell_mask & masks[label]).sum()) / sample_area
-                coverage[label] = overlap / full_area
-                coverage_in_frame[label] = overlap / in_frame_area if in_frame_area else 0.0
-            conflict_area = float((cell_mask & masks["_conflict"]).sum()) / sample_area
-            conflict_fraction = conflict_area / full_area
+                coverage[label] = totals[f"{label}_lower"] / full_area
+                coverage_upper[label] = min(1.0, totals[f"{label}_upper"] / full_area)
+                coverage_in_frame[label] = (totals[f"{label}_lower"] / in_frame_area
+                                            if in_frame_area else 0.0)
+            conflict_fraction = totals["conflict_lower"] / full_area
             outside_fraction = max(0.0, 1.0 - in_frame_area / full_area)
 
             declared = None
@@ -544,7 +691,7 @@ def rasterize_cells(
                         declared = label
                         break
             found.append(CellEvidence(cell, coverage, coverage_in_frame, declared,
-                                      outside_fraction, conflict_fraction))
+                                      outside_fraction, conflict_fraction, coverage_upper))
     return found
 
 

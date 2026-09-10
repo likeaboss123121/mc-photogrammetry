@@ -25,6 +25,7 @@ from mc_photogrammetry.reconstruction.footprint import (
     build_footprint,
 )
 from mc_photogrammetry.reconstruction.footprint_adapter import (
+    VISIBLE_COVERAGE_THRESHOLD,
     LatticeTransform,
     RegionEvidence,
     cell_corners_pixels,
@@ -297,7 +298,10 @@ def test_g1_a_cell_mostly_outside_the_image_cannot_be_declared_from_its_sliver()
     evidence = rasterize_cells(transform, [visible], image_size=(10, 400),
                                rows=range(1), columns=range(1))[0]
     assert evidence.coverage_by_label[VISIBLE] == pytest.approx(0.10, abs=0.02)
-    assert evidence.coverage_of_in_frame[VISIBLE] == pytest.approx(1.0, abs=1e-6)
+    # `coverage_by_label` is now a certified lower bound (F4), so even a
+    # fully-covered in-frame sliver reads a hair under 1.0 here - the
+    # boundary margin around the sliver's own edges - rather than exactly.
+    assert evidence.coverage_of_in_frame[VISIBLE] == pytest.approx(1.0, abs=0.02)
     assert evidence.declared is None
     assert evidence.outside_image_fraction == pytest.approx(0.90, abs=0.02)
 
@@ -673,3 +677,202 @@ def test_e3_a_persisted_minimum_shift_is_sufficient_without_recomputing(tmp_path
         transform, footprint, litematic_path, minimum_shift=minimum_shift)
     assert returned_shift == minimum_shift
     assert len(reprojected_again) == 2
+
+
+def _rectangle_cell(*, focal=1000.0, principal_point=(200.0, 200.0), distance=10.0, period=1.0):
+    """A single (0, 0) cell under identity axes - the same well-resolved,
+    comfortably in-frame setup `test_g1_half_occluded_cell...` above already
+    uses (about 100px on a side at the defaults) - returning the transform
+    and its projected extent as axis-sorted (x0, x1, y0, y1) bounds (never
+    assuming a particular corner order or winding, matching how the
+    existing G1/S3 controls above build their own rectangles). Callers must
+    still use an image_size generous enough to hold the whole cell (the
+    y-axis is flipped relative to lateral v, so a `principal_point` picked
+    without accounting for that can leave half the cell projecting to
+    negative pixel coordinates and clipped by the image edge - a real, but
+    different, effect from the one these F4 controls test)."""
+    axes = np.eye(3)
+    transform = LatticeTransform(axis=2, side=1.0, distance=distance, axis_matrix=axes,
+                                 focal=focal, principal_point=principal_point,
+                                 lateral_origin=(0.0, 0.0), period=period)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    return transform, (min(xs), max(xs), min(ys), max(ys))
+
+
+def test_f4_the_reviews_exact_55_percent_case_never_certifies_visible():
+    """The lead follow-up review's own reproduction: identity-axis Z plane,
+    side/distance/period=1, focal=1, principal point (2.2, 3.2), cell (0,0) -
+    the projected cell is [2.2,3.2]x[2.2,3.2]. A VISIBLE rectangle starting
+    at its lower-left corner and covering only 55% of its width. The old
+    supersampled point estimate reported 0.6123046875 here and declared the
+    cell visible at the 0.6 threshold - a real decision error, not a
+    cosmetic one, since true coverage (55%) is genuinely below threshold.
+    `coverage_by_label` is now a certified lower bound, so it must never
+    read above the true 0.55 value (a bound that overshoots the truth is not
+    a bound at all) and must never clear 0.6 here.
+    """
+    transform, (x0, x1, y0, y1) = _rectangle_cell(focal=1.0, principal_point=(2.2, 3.2))
+    width = x1 - x0
+    region = RegionEvidence(VISIBLE, ((x0, y0), (x0 + 0.55 * width, y0),
+                                      (x0 + 0.55 * width, y1), (x0, y1)))
+    evidence = rasterize_cells(transform, [region], image_size=(12, 12),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] <= 0.55 + 1e-6
+    assert evidence.coverage_by_label[VISIBLE] < VISIBLE_COVERAGE_THRESHOLD
+    assert evidence.declared is None
+
+
+@pytest.mark.parametrize("pct,expect_declared", [
+    (55, False), (59, False), (60, None), (61, True), (100, True),
+])
+def test_f4_threshold_decisions_are_certified_not_estimated(pct, expect_declared):
+    """At a well-resolved cell size (50px, not the toy 1px reproduction
+    above), the certified lower bound should sit close enough to the true
+    coverage fraction to resolve every case except the one truly ambiguous
+    to an approximation: exactly at the threshold. 55%/59% must stay
+    undeclared (a real miss); 61%/100% must declare VISIBLE (a real,
+    guaranteed clear); exactly 60% - per the review's own "abstain if an
+    approximation cannot certify it" - must also stay undeclared, since a
+    conservative lower bound can never certify a coverage sitting exactly on
+    its own threshold.
+    """
+    transform, (x0, x1, y0, y1) = _rectangle_cell()
+    width = x1 - x0
+    fraction = pct / 100.0
+    region = RegionEvidence(VISIBLE, ((x0, y0), (x0 + fraction * width, y0),
+                                      (x0 + fraction * width, y1), (x0, y1)))
+    evidence = rasterize_cells(transform, [region], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(fraction, abs=0.02)
+    if expect_declared is None:
+        assert evidence.declared is None, (
+            "an approximation cannot certify a coverage sitting exactly on its own threshold")
+    elif expect_declared:
+        assert evidence.declared == VISIBLE
+    else:
+        assert evidence.declared is None
+
+
+def test_f4_upper_bound_never_undershoots_the_lower_bound():
+    """Basic soundness: whatever the true coverage, the certified upper
+    bound must never read below the certified lower bound for the same
+    label - if it did, the two would not bracket a real interval at all."""
+    transform, (x0, x1, y0, y1) = _rectangle_cell()
+    width = x1 - x0
+    for fraction in (0.1, 0.3, 0.55, 0.6, 0.61, 0.9, 1.0):
+        region = RegionEvidence(VISIBLE, ((x0, y0), (x0 + fraction * width, y0),
+                                          (x0 + fraction * width, y1), (x0, y1)))
+        evidence = rasterize_cells(transform, [region], image_size=(400, 400),
+                                   rows=range(1), columns=range(1))[0]
+        assert evidence.coverage_by_label[VISIBLE] <= evidence.coverage_upper_by_label[VISIBLE] + 1e-9, fraction
+        assert evidence.coverage_upper_by_label[VISIBLE] >= fraction - 0.02, fraction
+
+
+def test_f4_a_translated_fractional_cell_still_certifies_the_threshold_correctly():
+    """The same 59%/61% reject/accept check, but at a non-integer principal
+    point and a non-unit focal (both off the pixel grid throughout, not just
+    translated from one integer origin) - the review's own concern that a
+    fix must generalize, not just pass the one reported case."""
+    transform, (x0, x1, y0, y1) = _rectangle_cell(focal=983.7, principal_point=(207.7, 213.1))
+    width = x1 - x0
+    for fraction, expect_visible in ((0.59, False), (0.61, True)):
+        region = RegionEvidence(VISIBLE, ((x0, y0), (x0 + fraction * width, y0),
+                                          (x0 + fraction * width, y1), (x0, y1)))
+        evidence = rasterize_cells(transform, [region], image_size=(400, 400),
+                                   rows=range(1), columns=range(1))[0]
+        assert (evidence.declared == VISIBLE) == expect_visible, fraction
+
+
+def test_f4_mixed_labels_lower_and_upper_bounds_both_stay_within_the_cells_area():
+    """VISIBLE and OPENING each cover a disjoint half of one cell (the same
+    split `test_s3_mixed_labels_within_one_cell_never_sum_past_the_cells_own_area`
+    checks for the lower bound alone). The certified *upper* bounds may
+    legitimately overlap a little at the shared boundary - both labels'
+    boundary bands can cover the same ambiguous sub-pixels - but must still
+    stay within [0, 1] and not blow up past a small margin past the cell's
+    own area."""
+    axes = axis_directions(0.0, 0.0, 0.0)
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0, axis_matrix=axes,
+                                 focal=1000.0, principal_point=(200.0, 200.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    midpoint = (x0 + x1) / 2
+    visible = RegionEvidence(VISIBLE, ((x0, y0), (midpoint, y0), (midpoint, y1), (x0, y1)))
+    opening = RegionEvidence(OPENING, ((midpoint, y0), (x1, y0), (x1, y1), (midpoint, y1)))
+    evidence = rasterize_cells(transform, [visible, opening], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    for label in (VISIBLE, OPENING, FOREGROUND_OCCLUSION):
+        assert 0.0 <= evidence.coverage_by_label[label] <= 1.0
+        assert 0.0 <= evidence.coverage_upper_by_label[label] <= 1.0
+        assert evidence.coverage_by_label[label] <= evidence.coverage_upper_by_label[label] + 1e-9
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(0.5, abs=0.05)
+    assert evidence.coverage_by_label[OPENING] == pytest.approx(0.5, abs=0.05)
+
+
+def test_f4_a_crop_larger_than_the_supersample_budget_is_tiled_not_allocated_whole():
+    """A lead follow-up review named this gap directly: '"the current
+    factor>=1 fallback does not cap a crop already larger than four million
+    samples'". A cell whose own projected crop already exceeds
+    `MAX_SUPERSAMPLED_CELLS` before any subdivision at all (here, close to
+    the whole of a 3000x3000 frame - 9 million pixels) must still be
+    measured - in bounded row-bands (`_tile_row_bounds`), never as one
+    array sized to the crop - and complete quickly rather than attempting a
+    single oversized allocation.
+    """
+    import time
+
+    from mc_photogrammetry.reconstruction.footprint_adapter import MAX_SUPERSAMPLED_CELLS
+
+    axes = np.eye(3)
+    # A centred (not corner-anchored) lateral origin so the cell's own
+    # 3000x3000 projected extent lands squarely inside the 3000x3000 frame
+    # rather than being clipped by it - the property under test here is the
+    # tiling budget, not image clipping (already covered elsewhere).
+    transform = LatticeTransform(axis=2, side=1.0, distance=1.0, axis_matrix=axes,
+                                 focal=3000.0, principal_point=(1500.0, 1500.0),
+                                 lateral_origin=(-0.5, -0.5), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    xs = [c[0] for c in corners]
+    ys = [c[1] for c in corners]
+    crop_pixels = (max(xs) - min(xs)) * (max(ys) - min(ys))
+    assert crop_pixels > MAX_SUPERSAMPLED_CELLS, "test setup no longer exceeds the tiling threshold"
+
+    region = RegionEvidence(VISIBLE, tuple(corners))
+    started = time.perf_counter()
+    evidence = rasterize_cells(transform, [region], image_size=(3000, 3000),
+                               rows=range(1), columns=range(1))[0]
+    elapsed = time.perf_counter() - started
+    assert elapsed < 5.0, f"took {elapsed:.2f}s - looks like it allocated the whole crop"
+    assert evidence.coverage_by_label[VISIBLE] == pytest.approx(1.0, abs=0.01)
+    assert evidence.declared == VISIBLE
+
+
+def test_f4_a_crop_whose_width_alone_exceeds_the_budget_is_left_unresolved():
+    """The pathological edge `_tile_row_bounds` cannot itself absorb: a crop
+    so wide that even a single-row band would exceed the budget. Rather than
+    allocate past it, `rasterize_cells` must stop with an explicit
+    unresolved cell (`declared is None`, no coverage claimed either way).
+    Exercised by lowering the module's own budget rather than constructing
+    an implausibly many-million-pixel-wide real image."""
+    import mc_photogrammetry.reconstruction.footprint_adapter as footprint_adapter
+
+    axes = np.eye(3)
+    transform = LatticeTransform(axis=2, side=1.0, distance=1.0, axis_matrix=axes,
+                                 focal=200.0, principal_point=(100.0, 100.0),
+                                 lateral_origin=(0.0, 0.0), period=1.0)
+    region = RegionEvidence(VISIBLE, tuple(cell_corners_pixels(transform, (0, 0))))
+
+    original_budget = footprint_adapter.MAX_SUPERSAMPLED_CELLS
+    footprint_adapter.MAX_SUPERSAMPLED_CELLS = 50
+    try:
+        evidence = rasterize_cells(transform, [region], image_size=(200, 200),
+                                   rows=range(1), columns=range(1))[0]
+    finally:
+        footprint_adapter.MAX_SUPERSAMPLED_CELLS = original_budget
+    assert evidence.declared is None
+    assert evidence.coverage_by_label == {}
