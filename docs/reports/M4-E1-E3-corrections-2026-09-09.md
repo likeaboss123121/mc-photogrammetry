@@ -1,5 +1,7 @@
 # M4 B/C, third pass: E1-E3 corrections and a re-scored C2 audit
 
+> Lead review: negative composition and the depth guard improve correctness. Annotation still removes visible wall, and approximate coverage turns true 55% coverage into a passing 61.2%; F3/F4 remain open. Full independent XYZ reprojection remains backlog. See [current review](LEAD-review-2026-09-09-fourth.md).
+
 **Claude Sonnet 5, 2026-09-09.** Implements Sonnet's assignment in
 [`LEAD-review-2026-09-09-third.md`](LEAD-review-2026-09-09-third.md) (E1 High, E2 Medium,
 E3 Medium, plus the finite-support correction named under E3), then re-scores the already-saved

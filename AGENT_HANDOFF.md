@@ -2,28 +2,28 @@
 
 Updated: 2026-09-09 by GPT-6 Astra, project lead.
 Status: M1/M2 **OPEN — review fixes required**; M3 research delivered, production recovery **INCOMPLETE**.
-M4 **C2 delivered, E1-E3 repairs open**; M5 **L1 accepted, corrected diagnostic pending**; M6 **groundwork repairs accepted**; M7 **PLANNED**.
+M4 **mask/coverage F3-F4 open**; M5 **v2 delivered, cap/scheduling F1-F2 open**; M6 **groundwork repairs accepted**; M7 **PLANNED**.
 This file is the current working specification. Update its sections instead of appending a chronology.
 The lead reviews and plans; Claude Sonnet 5 and GPT-5.6 Luna perform implementation coding.
 This specification supersedes [the historical handoff](docs/archive/AGENT_HANDOFF-2026-09-07.md) and former `PLAN.md` (absent).
 
 ## 1. Purpose and binding user decisions
 
-- Recover Minecraft builds from ordinary vanilla screenshots and export a reviewable `.litematic`.
+- Recover Minecraft builds as reviewable `.litematic` files; immediate proof of concept uses vanilla screenshots.
 - Production must estimate cameras, FOV, relative block scale, and scene extent from image evidence.
   Supplied manifests, F3/debug values, coordinates, directions, bounds and references are refinement/evaluation aids only.
   Normal mode must neither require nor accept manual camera/geometry metadata, including F3 OCR or sidecar auto-loading.
   Gate such inputs behind explicit advanced/developer opt-in across UI, CLI and project loading; label those runs assisted.
 - Support buildings and rooms first, then irregular terrain and geodes. Keep single-view input useful.
-- Initial image scope is vanilla textures, including crops and HUD overlays. Resource packs, shaders,
-  photographs of monitors, and expansion of the video workflow are outside the first release.
+- Long-term scope includes shaders and arbitrary resource packs in screenshots/footage; vanilla crops/HUD are the immediate proof of concept.
+  Support known pack/JAR upload or uncertain closest-vanilla matching; see [planned scope/data pipeline](docs/planned-data-and-appearance-scope.md).
 - Use a best estimate with visible uncertainty, masks and block/state review; manual pose/alignment, length and plane constraints require advanced/developer mode.
 - Prioritize AMD RX 9070 XT acceleration; use CPU for correctness tests and PyCOLMAP, which cannot use this GPU through CUDA.
 - First production gate: **80% visible exact-state recovery and 90% visible geometry F1**,
   independently on Template 2, Template 6, and frozen small-view Template 3 subsets (section 5).
 - Preserve calibrated diagnostics and existing litematic/world ZIP exports; further world-export work is not a prerequisite.
 - Do not fill unsupported hidden volumes. Distinguish observed blocks from inferred completions.
-- References/palettes and reference-based appearance calibration remain evaluation-only, even with advanced mode enabled.
+- Reference-derived palettes/calibration stay evaluation-only; user pack/JAR appearance assets are normal inputs, not manual camera constraints.
 
 ### Superseded claims and their replacements
 
@@ -46,7 +46,7 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 
 - **345 tests passed** with `.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider` in lead review.
   The pre-milestone baseline had 238 passing tests; M1's recorded snapshot had 252.
-- Latest lead check at `3328970`: **489 passed in 166.11s**; independent area/mask/export controls and saved M5 volume/vocabulary audit.
+- Latest lead check at `f180ff3`: **499 passed in 233.62s**; independent cap/coverage controls and saved M5 v2 volume/hash audit.
 - M1 created local Git baseline `65d2a16`; fixture media, reference litematics, local assets,
   environments, generated output, and scratch artifacts are excluded. See [M1 baseline](docs/m1-baseline.md).
 - The maintained benchmark now requires explicit reference/camera/scene paths, labels its mode,
@@ -150,7 +150,7 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 - M4 may build useful supported planes in a local frame from image evidence and optional stated length;
   unresolved relative placement between views must remain explicit. M1 types/M2 rendering are dependencies.
 
-### M4. Supported surfaces replace shells — Sonnet; **C2 DELIVERED; E1-E3 CORRECTIONS OPEN**
+### M4. Supported surfaces replace shells — Sonnet; **C2 DELIVERED; MASK/COVERAGE CORRECTIONS OPEN**
 
 - Represent each plane by axis, integer position, supported cell footprint, observations, and uncertainty.
   Footprints support holes and disconnected patches; rectangular extent is not proof of occupancy.
@@ -170,11 +170,11 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 - [Lead recovery directive](docs/reports/M4-LEAD-direction-2026-09-08.md) supersedes the hold and impossibility
   claims in [the status report](docs/reports/M4-status-2026-09-08.md): weak seams do not prove holes;
   global compass orientation is a gauge choice, while relative quarter-turns may remain competing hypotheses.
-- [Latest review](docs/reports/LEAD-review-2026-09-09-third.md): off-centre/axis pairing improved; C2 reports 0/3, without promotion.
-  E1: full-wall annotation still excludes wall pixels and ignores explicit negatives; audit masks, then re-score saved C2 candidates.
-- E2: half-pixel rounding still yields coverage >1; use consistent area integration. E3: verify loaded XYZ faces without discarding depth.
-  Sonnet completes E1-E3 and finite support intervals; no new C3 proposal experiment assigned. Preserve all historical C/C2 artifacts.
-- No extra approval for these repairs. Keep top-1 separate from evaluator-only target matching and retain uncertainty.
+- [Latest review](docs/reports/LEAD-review-2026-09-09-fourth.md): negative composition, large support gaps and depth rejection improved.
+  F3: table annotation still removes visible wall; audit crop/resize-to-source mapping and every boundary before another experiment.
+- F4: true 55% coverage reports 61.2% and exports at threshold 60%; use consistent area or conservative error-bounded decisions.
+  Full saved-transform XYZ reprojection remains backlog beyond the accepted depth guard. No C3 assigned; preserve C/C2 artifacts.
+- No extra approval for F3/F4 controls. Keep all three frames in failure counts and top-1 separate from evaluator-only matching.
   >=90% region precision/>=50% recall on two targets remains local only; production gates and advanced-mode boundaries are unchanged.
 
 ### M5. Materials and partial blocks — Luna; **OPEN — integration corrections required**
@@ -189,8 +189,8 @@ The [`e8dcd65` review](docs/reports/LEAD-review-2026-09-08.md) established this 
 - Recompute occlusion after accepted edits. Use block-specific neighbour rules for derived state properties;
   properties such as `open` are not universally derived. Mark visually unknowable properties as uncertain.
 - Deliver increased visible exact matches and partial recall without hiding lost cells; depend on M4/M2, preserving isolated diagnostics.
-- [Latest M5 review](docs/reports/LEAD-review-2026-09-09-third.md): L1/RGB-order controls accepted; fix missing-metadata priority (D3).
-  T2 diagnostic used cube-only palette: 0/69 partial exact, phantoms 34->37. D1-D4: reproducible complete-palette run and per-cell budget accounting.
+- [Latest M5 review](docs/reports/LEAD-review-2026-09-09-fourth.md): metadata/quantile/harness fixes accepted; complete-palette v2 delivered.
+  One correct-shape spruce-for-oak stair, family 0->1/69, exact unchanged, phantoms 34->34. F1 cap drops scored shapes; F2 scheduling/profile next.
 
 ### M6. GPU acceleration and integration — Luna; Sonnet coordinates stages; **GROUNDWORK REPAIRS ACCEPTED; integration planned**
 
@@ -279,7 +279,7 @@ and `C` exported coordinates, after the allowed global evaluation alignment.
 
 - Require >=80% visible exact-state recovery and >=90% visible geometry F1 separately on Template 2,
   Template 6, and frozen small-view Template 3 subsets. Report automatic and user-assisted runs separately.
-- Add procedural holdouts to reduce fixture-specific tuning; freeze data and evaluation before tuning.
+- Plan community-build/world capture datasets after stable ingestion/evaluation: varied cameras, gamma, shaders/packs; split by build before variants.
 - Every promotion needs settings, before/after artifacts, overlays, error attribution, and relevant passing tests.
 - Re-evaluate baseline and candidate together after renderer or metric changes. Preserve calibrated-path
   regression reports under identical settings; investigate regressions rather than replacing their denominator.
@@ -290,11 +290,11 @@ and `C` exported coordinates, after the allowed global evaluation alignment.
 
 | Agent | Responsibility | Next directive — assigned; acknowledge in comms |
 |---|---|---|
-| GPT-6 Astra | Lead review, priorities, interfaces, acceptance; no implementation coding. | Review E1-E3 controls and corrected M5 diagnostic; retain M1/M2/M3 backlog. |
-| Claude Sonnet 5 | Cameras, lattice/surfaces, terrain; inherits Claude's work. | M4 E1-E3 mask/area/3D verification and support gaps; re-score saved C2 only. No C3 yet. |
-| GPT-5.6 Luna | M5 materials/partials and compute groundwork; inherits Terra's backlog. | M5 D1-D4: metadata ordering, vocabulary preflight, ordered reproducible complete-palette diagnostic. |
+| GPT-6 Astra | Lead review, priorities, interfaces, acceptance; no implementation coding. | Review submissions against docs/implementation-next.md; retain M1/M2/M3 backlog. |
+| Claude Sonnet 5 | Cameras, lattice/surfaces, terrain; inherits Claude's work. | READY: S-A annotation audit and S-B coverage controls in docs/implementation-next.md. No C3 yet. |
+| GPT-5.6 Luna | M5 materials/partials and compute groundwork; inherits Terra's backlog. | READY: L-A cap decisions, L-B fair/context-safe scheduling, L-C bounded profile in docs/implementation-next.md. |
 
-- [Current lead review](docs/reports/LEAD-review-2026-09-09-third.md) defines M4/M5 acceptance, reproductions and next assignments; M6 unchanged.
+- [Ready-to-start work packages](docs/implementation-next.md) define implementation order/checks; [review four](docs/reports/LEAD-review-2026-09-09-fourth.md) records evidence/acceptance.
   [B1-B7 review](docs/reports/LEAD-review-2026-09-08.md) remains the acceptance backlog; it does not interrupt Luna's M5.
 - Sonnet owns M4 modules/scripts; Luna owns M5 palette/renderer/shape-fitting integration. Propose shared
   type changes in comms before edits. GPU implementation awaits M2 acceptance; stage named paths, never `git add -A`.
