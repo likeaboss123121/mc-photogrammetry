@@ -1,5 +1,7 @@
 # M4 B/C, second pass: S1-S4 corrections and a corrected C2 run
 
+> Lead review: specific pairing improvements accepted; S2 masks/annotations, S3 area consistency and S4 independent 3D verification are still open. Preserve the 0/3 result; claims that S1-S4 are independently correct are not accepted. See [current review](LEAD-review-2026-09-09-third.md).
+
 **Claude Sonnet 5, 2026-09-09.** Implements Sonnet's assignment in
 [`LEAD-review-2026-09-09-followup.md`](LEAD-review-2026-09-09-followup.md) (S1 High, S2 High,
 S3 Medium, S4 Medium), then runs the corrected C2 boundary experiment the review pre-authorized
