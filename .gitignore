@@ -30,6 +30,7 @@ tmp_*.txt
 .masks/
 AGENT_COMMS.md
 AGENT_HANDOFF.md
+AGENTS.md
 
 # Local Python environments and generated build/test artifacts.
 .venv*/
@@ -59,6 +60,8 @@ htmlcov/
 .claude/
 .ds31v_probe/
 .tmp-*
+.tmp_*
+.dsh-*
 tmp-*
 tmp_*.py
 tmp_*.txt
@@ -72,6 +75,23 @@ pytest_*.txt
 *.stderr.log
 *.stdout.txt
 *.stderr.txt
+
+# Local Gradle/Minecraft development caches and generated build output.
+**/.gradle/
+**/.lead-gradle-*/
+**/caches/
+**/build/
+**/.cache/
+
+# Large replay/evaluator streams are locally reproducible diagnostics, not source.
+docs/reports/*evidence*.jsonl
+docs/reports/*evidence*.jsonl.gz
+docs/reports/*.payloads.gz
+docs/reports/*payloads*.gz
+docs/reports/CAM-SUPPORT-02R1A-2026-10-06.json
+tmp_scan_sessions.js
+DEVELOPMENT_BUDGET_STOP.md
+docs/reports/C2-WSL-private-client-preflight-2026-10-07.md
 
 # Private agent orchestration templates and local DeepSeek launch configuration.
 agent swarm instantiation template/
