@@ -1,8 +1,6 @@
 # Minecraft Photogrammetry
 
-A Windows-first desktop application for turning screenshots, image sets, and video of Minecraft Java builds into an editable, confidence-scored block model.
-
-The first implementation targets Minecraft 1.21.x and `.litematic` export. Reconstruction is intentionally explicit about uncertainty: visible geometry is observed, while inferred or hidden geometry is marked separately.
+This is a failed project that aims to ingest screenshots or videos of Minecraft builds and output downloadable .litematic or world.zip files. It currently aims for a Minecraft 1.21.5 build. I'm leaving the project up for others to possibly use this code or improve it in some fashion. There will be no official release nor will there be any support for its use. Read more about this project on my website at https://likea.moe/mc-photogrammetry/.
 
 ## Development
 
