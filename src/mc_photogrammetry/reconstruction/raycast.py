@@ -1,5 +1,44 @@
+"""Block-state recovery by calibrated projection, z-buffering and appearance scoring.
+
+``reconstruct_scene_surfaces`` can optionally write a *stage trace* into the
+caller-supplied ``stage_trace`` mapping. The trace records reference-agnostic
+facts about the pipeline - which canonical palette states existed, which states
+survived support pruning in each round (and, per coordinate, which of that
+cell's own ranked candidates did), where each coordinate's appearance evidence
+came from, what the top candidates and their raw pre-smoothing winner were, what
+adjacency smoothing settled on and what was finally placed. Membership is keyed
+by state, never by some current winner, so the evaluator can ask after the fact
+whether the reference state was still reachable. It is a pure observation of the
+run: nothing in it is read back into the decisions, and the traced run is
+byte-identical to the untraced one. Joining the trace to reference labels,
+visibility or masks is the evaluator's job, after reconstruction has finished.
+
+Trace ``schema`` 2 keeps every schema-1 key and meaning and adds three
+observation-level, output-neutral keys. ``observations`` records each retained
+raw observation in order with its sampler scalars and shape/dtype-bound SHA-256
+digests of the rectified patch, masks, colour, descriptor and pattern.
+``observation_costs`` records the run's final scored pass - never the
+intermediate calibration or pruning passes - with the palette order, the
+candidate cost vector, the absolute best cost and the applied weights.
+``aggregation`` records the exact ``_accumulate_costs`` totals and weights per
+coordinate before any candidate filter, so selection can be replayed. Nothing
+in them is read back, and no raw pixels are serialized.
+
+A separate, opt-in ``stage_sidecar`` mapping can carry the *actual* sampled
+pixels the trace deliberately omits: the final retained ``resolved_face``
+observations' raw sampler patch, scorer-facing ``observed_patch``, validity mask
+and coverage, as lossless base64/``dtype``/``shape`` records keyed to the trace's
+observation ordinals and digests. The raw sampler patch is what E1 stores and the
+observed patch is what the trace digests, so carrying both lets an evaluator
+establish exact raw-patch parity and still tie the observed digest to E2A. It is
+populated only when a caller passes both ``stage_trace`` and ``stage_sidecar``,
+is read back by nothing in production, and is refused rather than truncated past
+its record or byte bound.
+"""
 from __future__ import annotations
 
+import base64
+import hashlib
 from collections import Counter
 from collections.abc import Callable, Mapping
 from threading import Event
@@ -7,17 +46,42 @@ from threading import Event
 import numpy as np
 
 from mc_photogrammetry.domain.models import BlockCoordinate, BlockObservation, BlockState, BlockVolume
+from mc_photogrammetry.blocks.appearance import (
+    CHROMA_WEIGHT,
+    DEFAULT_PALETTE,
+    MINIMUM_LIGHT,
+    PaletteColor,
+    appearance_distance as _appearance_distance,
+    candidate_face_distance as _candidate_face_distance,
+    normalised_pattern as _normalised_pattern,
+    palette_candidates as _palette_candidates,
+    palette_face_colors as _palette_face_colors,
+    patch_descriptor as _patch_descriptor,
+    slot_coverage,
+    texture_pattern_distance as _texture_pattern_distance,
+)
 from mc_photogrammetry.blocks.model_atlas import FACE_SHADE, FACE_SLOTS
 from mc_photogrammetry.vision.gui_mask import create_gui_mask
+from .appearance_scoring import (
+    MINIMUM_LIGHT_FACTOR,
+    PaletteIndex,
+    observation_costs as _observation_costs,
+    palette_face_textures as _palette_face_textures,
+)
 from .camera import CameraModel, project_points
 from .face_sampling import (
     DEPTH_SCALE,
     MINIMUM_FACE_AREA,
     PATCH_SIZE,
+    PASS_SURFACE,
+    PASS_SURFACE_PROPOSED,
+    SamplingGeometryDecision,
+    exact_sampling_blocks,
     rectify_face,
+    resolve_sampling_geometry,
     sample_visible_faces,
+    validate_sampling_states,
 )
-from .facade import DEFAULT_PALETTE, PaletteColor
 from .lighting import (
     emission_of,
     estimate_light_levels,
@@ -29,20 +93,6 @@ from .texture_calibration import AppearanceCalibration, calibrate_appearance_fro
 
 OUTLIER_CEILING = 24.0
 """Cap on how much worse than its own best match a candidate may score in one view."""
-
-CHROMA_WEIGHT = 0.75
-"""Share of the appearance distance carried by hue rather than brightness.
-
-Block lighting scales a face's brightness far more than it moves its hue, and
-the texture term already carries the pattern, so hue is what colour is left to
-contribute. Anything from 0.8 to 1.0 measures within a point of the best on
-Template 2; the value is kept below 1.0 deliberately, because a scene built from
-greys - stone, concrete, wool - has no hue to separate and needs the brightness
-term that a weight of 1.0 throws away.
-"""
-
-MINIMUM_LIGHT = 1.0
-"""Darkest a face may be assumed lit, as a fraction of its full-bright colour."""
 
 OCCLUSION_STRENGTH = 1.0
 """How much of vanilla's ambient occlusion to undo before matching.
@@ -329,6 +379,44 @@ Zero treats every block's appearance evidence as equally trustworthy.
 Higher values let thinly observed blocks follow their surroundings.
 """
 
+STAGE_TRACE_CANDIDATE_LIMIT = 8
+"""How many of a coordinate's cheapest candidates the optional stage trace keeps.
+
+Diagnostic-only: the trace's per-coordinate candidate list is truncated to this
+many entries (best first), and the truncation is recorded in the trace header so
+a reader can tell a full list from a clipped one. A value below one is rejected.
+
+The same limit also bounds the trace-only ``ranked_candidates`` list: derived from
+the same per-cell mean costs through the same ``_top_candidates`` helper, it is
+recorded as deep as the limit reaches while production selection keeps reading
+its unchanged top-K map. A benchmark caller may raise it (for example to sweep
+candidate recall at K = 16 or 32) because it only widens a diagnostically
+derived copy of the cheapest-first order: the winner, the map smoothing and
+placement consume, and every later decision stay identical.
+"""
+
+STAGE_SIDECAR_SCHEMA = "mc-photogrammetry-texture-patch-sidecar-v1"
+"""Schema tag of the opt-in resolved-face payload sidecar.
+
+The sidecar is written beside the E2A stage trace, never inside it. It carries
+the production sampler's own raw patch, its scorer-facing ``observed_patch`` and
+its ``valid``/``coverage`` masks for every final retained ``resolved_face``
+observation, keyed by the trace observation ordinal and using the same
+shape/dtype-bound digest contract. The raw patch is the array E1 retains; the
+observed patch is the array the E2A trace digests.
+"""
+
+STAGE_SIDECAR_MAX_RECORDS = 10_000
+"""Hard cap on resolved-face payload records; above it the sidecar is refused.
+
+This is a refusal bound, not a truncation: a run whose sampler retains more
+resolved faces than this gets no sidecar at all, so a reader can never mistake a
+clipped payload for the complete sampled set.
+"""
+
+STAGE_SIDECAR_MAX_BYTES = 64 * 1024 * 1024
+"""Hard cap, in bytes, on the serialized sidecar; above it the sidecar is refused."""
+
 AREA_POWER = 0.5
 """Exponent on face area when weighting an observation.
 
@@ -389,13 +477,6 @@ Measured after a full pass rather than assumed, so nothing decides in
 advance what a scene may contain. Zero keeps every candidate.
 """
 
-MINIMUM_LIGHT_FACTOR = 0.15
-"""Darkest a face may be assumed lit when undoing lighting.
-
-Dividing by anything smaller turns sensor noise in a nearly black patch
-into a confident colour.
-"""
-
 MINIMUM_COLOUR_CAST = 0.04
 """How far a frame's white balance must sit from neutral before it is applied."""
 
@@ -447,6 +528,43 @@ DEFAULT_FAMILY_PRIORS = {
     "utility": 1.0,
     "other": 1.0,
 }
+
+
+def _pixel_authority(
+    frames: Mapping[str, np.ndarray],
+    usable_masks: Mapping[str, np.ndarray] | None,
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """Normalise the usable-pixel domain once for one reconstruction call.
+
+    Returns ``(usable, excluded)`` keyed by frame, both in source-image
+    coordinates. Every consumer in `reconstruct_scene_surfaces` - face sampling,
+    residual proposals and partial fitting - reads this one authority, so the
+    thin-block path can no longer sample under the GUI mask and then score
+    residuals over unmasked pixels.
+
+    ``usable_masks is None`` derives the authority from ``~create_gui_mask`` per
+    frame, which preserves the sampling domain the reconstruction already used.
+    A supplied mapping is authoritative instead: a frame it omits is unusable
+    (all false), and a mask whose shape does not match its frame raises before
+    anything is sampled or scored.
+    """
+    usable: dict[str, np.ndarray] = {}
+    excluded: dict[str, np.ndarray] = {}
+    for frame_id, image in frames.items():
+        height, width = image.shape[:2]
+        if usable_masks is None:
+            mask = ~create_gui_mask(height, width)
+        else:
+            supplied = usable_masks.get(frame_id)
+            if supplied is None:
+                mask = np.zeros((height, width), dtype=bool)
+            else:
+                mask = np.asarray(supplied, dtype=bool)
+                if mask.shape != (height, width):
+                    raise ValueError("usable mask must match the image dimensions")
+        usable[frame_id] = mask
+        excluded[frame_id] = ~mask
+    return usable, excluded
 
 
 def reconstruct_scene_surfaces(
@@ -542,10 +660,36 @@ def reconstruct_scene_surfaces(
     cancel_event: Event | None = None,
     diagnostics: dict[str, object] | None = None,
     usable_masks: Mapping[str, np.ndarray] | None = None,
+    sampling_states: Mapping[BlockCoordinate, BlockState] | None = None,
+    stage_trace: dict[str, object] | None = None,
+    stage_trace_candidate_limit: int = STAGE_TRACE_CANDIDATE_LIMIT,
+    stage_sidecar: dict[str, object] | None = None,
 ) -> BlockVolume:
-    """Recover visible scene-grid blocks by calibrated projection and z-buffering."""
+    """Recover visible scene-grid blocks by calibrated projection and z-buffering.
+
+    ``stage_trace``, when supplied, is filled with a JSON-safe, evaluator-only
+    record of the pipeline's own intermediate decisions. It never changes what
+    the pipeline decides: no traced value is read back into sampling, scoring,
+    pruning, smoothing or placement. ``stage_trace_candidate_limit`` only widens
+    the evaluator's copy of that cheapest-first order; the winner and the map
+    every later stage consumes are the unchanged production top-K map.
+
+    ``stage_sidecar``, when supplied, must accompany a ``stage_trace`` and is
+    filled with the actual resolved-face sampled payloads (the raw sampler patch,
+    the scorer-facing observed patch, the validity mask and the coverage) keyed to
+    the trace's observation ordinals. It is an evaluator-only artifact: nothing in
+    this module reads it back, and passing it changes no sampling, scoring,
+    pruning, smoothing, placement or diagnostic.
+    """
     if sample_radius < 0:
         raise ValueError("sample_radius cannot be negative")
+    if stage_trace_candidate_limit < 1:
+        raise ValueError("stage_trace_candidate_limit must be positive")
+    if stage_sidecar is not None and stage_trace is None:
+        raise ValueError(
+            "stage_sidecar requires stage_trace; the sidecar is keyed to the "
+            "schema-2 trace's observation ordinals and digests"
+        )
     if min_views <= 0:
         raise ValueError("min_views must be positive")
     if max_color_distance is not None and max_color_distance < 0:
@@ -564,8 +708,29 @@ def reconstruct_scene_surfaces(
         raise ValueError("columns and rows must be positive when provided")
     if family_priors is None:
         family_priors = DEFAULT_FAMILY_PRIORS
+    # An existing-hypothesis snapshot is validated once, up front. A bad mapping
+    # type, coordinate or value raises here, before anything is sampled or scored,
+    # and nothing below invents a state, admits a coordinate the reconstruction
+    # did not already see, or lets the snapshot reach the material scores.
+    sampling_states = validate_sampling_states(sampling_states)
+    # One usable-pixel authority for the whole call, normalised here so a
+    # wrong-shaped mask is rejected before any frame is sampled or scored.
+    usable_pixels, excluded_pixels = _pixel_authority(frames, usable_masks)
     palette_families = {item.state: item.family for item in palette}
     face_colors = _palette_face_colors(palette)
+    trace_enabled = stage_trace is not None
+    # Evaluation-only side tables. They are populated only when a trace was
+    # requested and are never read back into sampling, scoring, pruning or
+    # placement; ``trace_observations`` stays index-aligned with ``raw``.
+    trace_observations: list[dict[str, object]] = []
+    trace_best: list[float] = []
+    # Sidecar-only payload records. ``None`` - not an empty list - keeps the
+    # ordinary traced and untraced paths free of any payload container: with no
+    # opt-in there is nothing to allocate, copy, digest or encode, and the
+    # ``_sidecar_record`` helper is unreachable.
+    sidecar_records: list[dict[str, object]] | None = (
+        [] if stage_sidecar is not None else None
+    )
     merged: dict[BlockCoordinate, tuple[BlockState, float, set[str], list[BlockState], dict[BlockState, float]]] = {}
     total_frames = len(frames)
     coordinates = [
@@ -631,8 +796,7 @@ def reconstruct_scene_surfaces(
         proposed = proposed_cells(
             scene, cameras, frames,
             colour_gap=propose_colour_gap, agreement=propose_agreement,
-            gui_masks={name: create_gui_mask(image.shape[0], image.shape[1])
-                       for name, image in frames.items()},
+            gui_masks=excluded_pixels,
             minimum_area=minimum_face_area,
         )
         proposed = proposed - surface
@@ -670,6 +834,41 @@ def reconstruct_scene_surfaces(
 
     # Pass two: rectify each visible face and record what it looks like. Costs
     # wait until the per-frame colour cast has been estimated from these.
+    #
+    # Geometry is resolved once per call, not once per frame: the target set does
+    # not depend on the frame, and one call must be entirely exact-model or
+    # entirely cube so its single depth buffer can never mix the two. The snapshot
+    # is consulted only for the targets this call resolves; entries outside them
+    # are ignored and never become sampling targets themselves.
+    surface_decision = resolve_sampling_geometry(
+        surface, sampling_states, palette, PASS_SURFACE)
+    surface_blocks = exact_sampling_blocks(surface_decision, surface, sampling_states)
+    proposed_decision: SamplingGeometryDecision | None = None
+    proposed_blocks: dict[BlockCoordinate, BlockState] | None = None
+    if proposed:
+        proposed_targets = proposed | surface
+        proposed_decision = resolve_sampling_geometry(
+            proposed_targets, sampling_states, palette, PASS_SURFACE_PROPOSED)
+        proposed_blocks = exact_sampling_blocks(proposed_decision, proposed_targets, sampling_states)
+    if diagnostics is not None:
+        # Stored as JSON-safe records, not the live frozen decisions: diagnostics
+        # are serialized (and diffed) by callers, and the typed objects are not.
+        # Both executed passes are recorded in order, one entry when no proposal
+        # pass ran; a pass that did not run gets no synthetic record.
+        executed = (
+            (surface_decision,)
+            if proposed_decision is None
+            else (surface_decision, proposed_decision)
+        )
+        diagnostics["sampling_geometry"] = tuple(
+            decision.to_record() for decision in executed
+        )
+    # Only an exact decision carries blocks/palette into the sampler. A cube
+    # decision passes neither, so the legacy ownership buffer is untouched.
+    surface_geometry = {} if surface_blocks is None else {"blocks": surface_blocks, "palette": palette}
+    proposed_geometry = (
+        {} if proposed_blocks is None else {"blocks": proposed_blocks, "palette": palette}
+    )
     raw: list[tuple[str, BlockCoordinate, np.ndarray, tuple[float, ...], str, float, np.ndarray | None]] = []
     face_rejections: dict[str, int] = {}
     calibrations: dict[str, AppearanceCalibration | None] = {}
@@ -682,12 +881,13 @@ def reconstruct_scene_surfaces(
             if appearance_calibrations
             else appearance_calibration
         )
-        gui_mask = create_gui_mask(image.shape[0], image.shape[1])
+        gui_mask = excluded_pixels[frame_id]
         found = list(sample_visible_faces(
             surface, camera, scene, image, gui_mask=gui_mask,
             minimum_area=minimum_face_area, shrink=face_shrink,
             minimum_visible_fraction=minimum_visible_fraction,
             rejections=face_rejections, depth_scale=depth_scale,
+            **surface_geometry,
         ))
         if proposed:
             # A proposed cell is a sampling target, not an occluder. Letting the
@@ -702,6 +902,7 @@ def reconstruct_scene_surfaces(
                 minimum_area=minimum_face_area, shrink=face_shrink,
                 minimum_visible_fraction=minimum_visible_fraction,
                 depth_scale=depth_scale,
+                **proposed_geometry,
             ))
         seen_here: set[tuple[BlockCoordinate, str]] = set()
         for sample in found:
@@ -746,30 +947,95 @@ def reconstruct_scene_surfaces(
             if obliquity_power:
                 weight *= float(max(sample.facing, 0.0) ** obliquity_power)
             weight /= 1.0 + uniformity / max(uniformity_scale, 1e-6)
+            rgb = sample.rgb
+            descriptor = _patch_descriptor(observed_patch, sample.coverage)
+            pattern = _normalised_pattern(observed_patch, sample.coverage)
             raw.append((
-                frame_id, sample.coordinate, sample.rgb,
-                _patch_descriptor(observed_patch, sample.coverage), sample.slot, weight,
-                _normalised_pattern(observed_patch, sample.coverage), sample.area,
+                frame_id, sample.coordinate, rgb, descriptor, sample.slot, weight,
+                pattern, sample.area,
             ))
+            if trace_enabled:
+                trace_observations.append(_observation_record(
+                    ordinal=len(raw) - 1,
+                    frame_id=frame_id, coordinate=sample.coordinate,
+                    slot=sample.slot, source="resolved_face",
+                    area=float(sample.area), depth=float(sample.depth),
+                    visible=float(sample.visible), facing=float(sample.facing),
+                    weight=weight, observed_patch=observed_patch,
+                    valid=sample.valid, coverage=sample.coverage,
+                    rgb=rgb, descriptor=descriptor, pattern=pattern,
+                ))
+                if sidecar_records is not None:
+                    # The opt-in payload capture: the sampler's own arrays, read
+                    # once here (never mutated) into lossless array records. Both
+                    # the raw ``sample.patch`` and its scorer-facing
+                    # ``observed_patch`` are carried, so an evaluator can prove
+                    # exact E1 raw-patch parity and still tie the observed digest
+                    # to E2A. A centre-patch fallback has no rectified face and is
+                    # refused this branch entirely, so the sidecar carries
+                    # resolved faces only and its ordinals stay a subset of the
+                    # trace's.
+                    #
+                    # The fixed record bound is enforced *here*, before the extra
+                    # record's arrays are copied, digested or base64-encoded, so
+                    # an over-limit run is refused outright instead of
+                    # accumulating a payload the serializer would only reject
+                    # later. The serializer keeps its own bound check as a second
+                    # line of defence for direct callers.
+                    if len(sidecar_records) >= STAGE_SIDECAR_MAX_RECORDS:
+                        raise ValueError(
+                            "stage sidecar exceeds the "
+                            f"{STAGE_SIDECAR_MAX_RECORDS} resolved-face record "
+                            "bound; refusing rather than truncating"
+                        )
+                    sidecar_records.append(_sidecar_record(
+                        ordinal=len(raw) - 1,
+                        frame_id=frame_id, coordinate=sample.coordinate,
+                        slot=sample.slot, area=float(sample.area),
+                        depth=float(sample.depth), visible=float(sample.visible),
+                        facing=float(sample.facing), weight=weight,
+                        patch=sample.patch, observed_patch=observed_patch,
+                        valid=sample.valid, coverage=sample.coverage,
+                    ))
 
     # Pass three: blocks whose faces were all too small, clipped or hidden behind
     # the HUD still deserve an answer, so fall back to their centre patch.
     covered = {coordinate for _f, coordinate, _c, _d, _s, _w, _p, _a in raw}
     for frame_id, image in frames.items():
+        frame_usable = usable_pixels[frame_id]
         for coordinate, (depth, pixel) in per_frame_front[frame_id].items():
             if coordinate in covered:
                 continue
             x, y = pixel
+            # The whole centre patch is the evidence, so one unusable source
+            # pixel disqualifies the fallback. Otherwise excluded RGB would
+            # still reach the palette classifier, the descriptor and the volume
+            # through this pass - the authority would be a lie for exactly the
+            # blocks no rectified face could vouch for.
+            if not frame_usable[
+                y - sample_radius : y + sample_radius + 1,
+                x - sample_radius : x + sample_radius + 1,
+            ].all():
+                continue
             patch = image[y - sample_radius : y + sample_radius + 1, x - sample_radius : x + sample_radius + 1]
             pixels = patch.astype(np.float32).reshape(-1, 3)
             if pixels.size == 0 or float(pixels.std()) < min_surface_contrast:
                 continue
             # The centre patch is not a rectified face, so it carries no pattern.
-            raw.append((
-                frame_id, coordinate, np.median(pixels, axis=0), _patch_descriptor(patch),
-                _dominant_face_slot(coordinate, cameras[frame_id], scene),
-                fallback_weight / (1.0 + depth / 16.0), None, 0.0,
-            ))
+            rgb = np.median(pixels, axis=0)
+            descriptor = _patch_descriptor(patch)
+            slot = _dominant_face_slot(coordinate, cameras[frame_id], scene)
+            weight = fallback_weight / (1.0 + depth / 16.0)
+            raw.append((frame_id, coordinate, rgb, descriptor, slot, weight, None, 0.0))
+            if trace_enabled:
+                trace_observations.append(_observation_record(
+                    ordinal=len(raw) - 1,
+                    frame_id=frame_id, coordinate=coordinate, slot=slot,
+                    source="centre_patch_fallback",
+                    area=0.0, depth=float(depth), visible=None, facing=None,
+                    weight=weight, observed_patch=None, valid=None, coverage=None,
+                    rgb=rgb, descriptor=descriptor, pattern=None,
+                ))
 
     # How trustworthy each block's evidence is, by where it came from. Two kinds
     # of face lie about their block. One points upward, and carpets, slabs and
@@ -821,6 +1087,12 @@ def reconstruct_scene_surfaces(
         diagnostics["blocks_seen_only_from_above"] = sum(
             1 for value in upward_share.values() if value > 0.999
         )
+
+    if trace_enabled:
+        # Reference-agnostic provenance for every coordinate the pipeline has
+        # any appearance evidence about. Recorded before the light/cast and
+        # exposure passes below so it describes the sampled input itself.
+        stage_trace["coordinate_evidence"] = _evidence_records(raw)
 
     if correct_light_cast:
         # Undo the light before anything else looks at the faces. The gate is the
@@ -901,6 +1173,9 @@ def reconstruct_scene_surfaces(
 
     def score(field: LightField | None) -> list[tuple[str, BlockCoordinate, np.ndarray, float]]:
         scored = []
+        if trace_enabled:
+            # Only the run's final scored pass is kept; each call starts over.
+            trace_best.clear()
         for frame_id, coordinate, rgb, descriptor, slot, weight, pattern, area in raw:
             factor = field.face_factor(coordinate, slot) if field is not None else 1.0
             factor *= occlusion.get((coordinate, slot), 1.0)
@@ -921,6 +1196,8 @@ def reconstruct_scene_surfaces(
                 outlier_ceiling=outlier_ceiling, simplicity_weight=simplicity_weight,
                 shape_weight=shape_weight,
             )
+            if trace_enabled:
+                trace_best.append(float(best))
             if fit_tolerance > 0.0:
                 # How well the best candidate explains a face says whether the
                 # face is worth listening to. A patch that caught an occluder or
@@ -932,7 +1209,8 @@ def reconstruct_scene_surfaces(
         return scored
 
     observations = score(None)
-    for _round in range(palette_prune_rounds if palette_support > 0.0 else 0):
+    prune_rounds: list[dict[str, object]] = []
+    for round_index in range(palette_prune_rounds if palette_support > 0.0 else 0):
         # A build is made of a handful of materials, but the palette offers every
         # full cube in the game. Most of those never win anything except a few
         # stray faces they happen to sit closest to, and each one they steal is a
@@ -966,6 +1244,24 @@ def reconstruct_scene_surfaces(
             )
             if nearby:
                 keep = np.array(sorted(set(int(i) for i in keep) | nearby), dtype=np.intp)
+        if trace_enabled:
+            kept_indices = {int(position) for position in keep}
+            prune_rounds.append({
+                "round": round_index,
+                "candidates_before": int(index.count),
+                "candidates_after": len(kept_indices),
+                "states_before": [_state_record(state) for state in index.states],
+                "states_kept": [
+                    _state_record(state) for position, state in enumerate(index.states)
+                    if position in kept_indices
+                ],
+                "states_dropped": [
+                    _state_record(state) for position, state in enumerate(index.states)
+                    if position not in kept_indices
+                ],
+                "deciding_excluded_proposals": bool(stereo_cells),
+                "support_prior_applied": False,
+            })
         if keep.size < index.count:
             index = index.restricted(keep)
             observations = score(None)
@@ -976,6 +1272,8 @@ def reconstruct_scene_surfaces(
             # prior guess than one winning a hundredth.
             index = index.with_prior(_support_prior(observations, index, support_weight))
             observations = score(None)
+            if trace_enabled and prune_rounds:
+                prune_rounds[-1]["support_prior_applied"] = True
     if simulate_lighting:
         # Classify once unlit, let the blocks that came out say where the light
         # is, then classify again against colours dimmed the way that light would
@@ -1141,10 +1439,23 @@ def reconstruct_scene_surfaces(
 
     view_weights = _view_weights(observations, index, view_tolerance) if weight_views else {}
     totals, weights = _accumulate_costs(observations, view_weights)
+    cost_records: list[dict[str, object]] | None = None
+    aggregation_records: list[dict[str, object]] | None = None
+    if trace_enabled:
+        # Taken after the light/exposure/self-calibration/pruning passes, from the
+        # same observations and view weights `_accumulate_costs` just consumed, so
+        # the records describe the final scored pass and no earlier one.
+        cost_records = _observation_cost_records(
+            observations, index, view_weights, trace_observations, trace_best)
+        aggregation_records = _aggregation_records(totals, weights)
     observed_frames: dict[BlockCoordinate, set[str]] = {}
     for frame_id, coordinate, _costs, weight in observations:
         if weight * view_weights.get(frame_id, 1.0) > 0.0:
             observed_frames.setdefault(coordinate, set()).add(frame_id)
+    # Trace-only side table: the cheapest-first order kept as deep as the trace
+    # limit reaches. Empty when no trace was requested, and read by nothing below
+    # except the trace writer at the end of this function.
+    ranked_candidates: dict[BlockCoordinate, list[tuple[BlockState, float]]] = {}
 
     for coordinate, total in totals.items():
         mean = total / max(weights[coordinate], 1e-6)
@@ -1162,6 +1473,16 @@ def reconstruct_scene_surfaces(
         candidate_scores = _top_candidates(mean, index)
         if not candidate_scores:
             continue
+        # Trace-only: the same cheapest-first cost order, kept deeper than the
+        # production top-K map so an evaluator can read availability at K = 16/32
+        # as well as 8. Deriving it from the same ``mean`` costs and the same
+        # ``_top_candidates`` helper keeps the order identical to production; the
+        # winner and every later decision stay exactly the unchanged map's.
+        if trace_enabled:
+            ranked_candidates[coordinate] = sorted(
+                _top_candidates(mean, index, keep=stage_trace_candidate_limit).items(),
+                key=lambda item: (-item[1], item[0].name),
+            )
         state = max(candidate_scores, key=candidate_scores.get)
         merged[coordinate] = (
             state,
@@ -1170,6 +1491,37 @@ def reconstruct_scene_surfaces(
             [state],
             candidate_scores,
         )
+
+    raw_candidates: dict[BlockCoordinate, dict[str, object]] | None = None
+    if trace_enabled:
+        # The raw pre-smoothing ranking, taken before adjacency mutates the
+        # candidate maps. ``candidate_winner`` is the argmax the un-smoothed
+        # pipeline would have placed, in state-property form. ``top_candidates``
+        # is the production top-K map; ``ranked_candidates`` is the same
+        # cheapest-first order recorded as deep as the trace limit reaches.
+        raw_candidates = {}
+        for coordinate, values in merged.items():
+            candidate_scores = values[4]
+            if not candidate_scores:
+                continue
+            ranked = sorted(candidate_scores.items(), key=lambda item: (-item[1], item[0].name))
+            deep_ranked = ranked_candidates.get(coordinate) or ranked
+            raw_candidates[coordinate] = {
+                "raw_winner": _state_record(ranked[0][0]),
+                "top_candidates": [
+                    {"state": _state_record(state), "cost": -float(score)}
+                    for state, score in ranked
+                ],
+                "ranked_candidates": [
+                    {"state": _state_record(state), "cost": -float(score)}
+                    for state, score in deep_ranked
+                ],
+                "candidate_count": len(deep_ranked),
+                # ``>=`` because the writer cannot see past its own limit: a list
+                # that exactly fills the limit may or may not continue, so it is
+                # reported conservatively as possibly truncated.
+                "top_k_truncated": len(deep_ranked) >= stage_trace_candidate_limit,
+            }
 
     volume = BlockVolume()
     if adjacency_strength:
@@ -1240,10 +1592,11 @@ def reconstruct_scene_surfaces(
         settled = {c: entry.state for c, entry in volume.blocks.items()}
         fitting = shape_palette if shape_palette is not None else palette
         wanted = residual_proposals(
-            settled, scene, cameras, frames, fitting, limit=proposal_limit)
+            settled, scene, cameras, frames, fitting, limit=proposal_limit,
+            usable_masks=usable_pixels)
         fitted = fit_states(
             list(wanted), settled, scene, cameras, frames, fitting,
-            usable_masks=usable_masks,
+            usable_masks=usable_pixels,
             diagnostics=diagnostics,
             max_candidate_renders=partial_fit_max_renders,
         )
@@ -1260,7 +1613,426 @@ def reconstruct_scene_surfaces(
         if diagnostics is not None:
             diagnostics["residual_proposals"] = len(wanted)
             diagnostics["shapes_fitted"] = len(fitted)
+    if trace_enabled:
+        _emit_stage_trace(
+            stage_trace, palette=palette, index=index, raw=raw,
+            prune_rounds=prune_rounds, raw_candidates=raw_candidates, merged=merged,
+            volume=volume, candidate_limit=stage_trace_candidate_limit,
+            observation_records=trace_observations,
+            observation_cost_records=cost_records,
+            aggregation_records=aggregation_records,
+        )
+        if stage_sidecar is not None and sidecar_records is not None:
+            # The opt-in payload sidecar, filled from the same run's captured
+            # resolved-face arrays. It is written to its own destination by the
+            # caller; nothing here reads it back.
+            _emit_stage_sidecar(stage_sidecar, sidecar_records, trace_observations)
     return volume
+
+
+def _state_record(state: BlockState) -> dict[str, object]:
+    """One block state as a JSON-safe primitive record.
+
+    The properties tuple is stored as an ordered list of pairs so the exact
+    state (``dark_oak_log[axis=z]`` and its siblings) survives ``json.dumps``
+    without depending on :class:`BlockState` equality's default stripping.
+    """
+    return {"name": state.name, "properties": [list(pair) for pair in state.properties]}
+
+
+def _evidence_records(raw: list) -> list[dict[str, object]]:
+    """Per-coordinate appearance provenance, reference-agnostic.
+
+    For every coordinate any camera had evidence about, records where that
+    evidence came from: how many resolved-face samples and centre-patch fallback
+    samples it has, which world face slots and frames contributed, how many
+    carry a texture pattern, and the observable area/weight/colour totals. This
+    is the input to the classifier described purely in terms of the reconstruction's
+    own sampling, so an evaluator can later ask which stage lost a cell.
+    """
+    grouped: dict[BlockCoordinate, dict[str, object]] = {}
+    for frame_id, coordinate, rgb, _descriptor, slot, weight, pattern, area in raw:
+        entry = grouped.get(coordinate)
+        if entry is None:
+            entry = {
+                "coordinate": [int(value) for value in coordinate],
+                "observation_count": 0,
+                "resolved_samples": 0,
+                "fallback_samples": 0,
+                "pattern_samples": 0,
+                "slots": set(),
+                "frames": set(),
+                "slots_resolved": set(),
+                "slots_fallback": set(),
+                "resolved_area": 0.0,
+                "total_weight": 0.0,
+                "rgb_sum": [0.0, 0.0, 0.0],
+            }
+            grouped[coordinate] = entry
+        entry["observation_count"] = int(entry["observation_count"]) + 1  # type: ignore[arg-type]
+        entry["slots"].add(str(slot))  # type: ignore[union-attr]
+        entry["frames"].add(str(frame_id))  # type: ignore[union-attr]
+        if float(area) > 0.0:
+            entry["resolved_samples"] = int(entry["resolved_samples"]) + 1  # type: ignore[arg-type]
+            entry["slots_resolved"].add(str(slot))  # type: ignore[union-attr]
+            entry["resolved_area"] = float(entry["resolved_area"]) + float(area)  # type: ignore[arg-type]
+        else:
+            entry["fallback_samples"] = int(entry["fallback_samples"]) + 1  # type: ignore[arg-type]
+            entry["slots_fallback"].add(str(slot))  # type: ignore[union-attr]
+        if pattern is not None:
+            entry["pattern_samples"] = int(entry["pattern_samples"]) + 1  # type: ignore[arg-type]
+        entry["total_weight"] = float(entry["total_weight"]) + float(weight)  # type: ignore[arg-type]
+        totals = entry["rgb_sum"]  # type: ignore[assignment]
+        for channel in range(3):
+            totals[channel] += float(np.asarray(rgb, dtype=float)[channel])  # type: ignore[index]
+    records: list[dict[str, object]] = []
+    for coordinate in sorted(grouped):
+        entry = grouped[coordinate]
+        observations = max(int(entry["observation_count"]), 1)  # type: ignore[arg-type]
+        records.append({
+            "coordinate": entry["coordinate"],
+            "observation_count": entry["observation_count"],
+            "resolved_samples": entry["resolved_samples"],
+            "fallback_samples": entry["fallback_samples"],
+            "pattern_samples": entry["pattern_samples"],
+            "has_resolved_face": int(entry["resolved_samples"]) > 0,  # type: ignore[arg-type]
+            "slots": sorted(entry["slots"]),  # type: ignore[arg-type]
+            "frames": sorted(entry["frames"]),  # type: ignore[arg-type]
+            "slots_resolved": sorted(entry["slots_resolved"]),  # type: ignore[arg-type]
+            "slots_fallback": sorted(entry["slots_fallback"]),  # type: ignore[arg-type]
+            "resolved_area": round(float(entry["resolved_area"]), 3),  # type: ignore[arg-type]
+            "total_weight": round(float(entry["total_weight"]), 3),  # type: ignore[arg-type]
+            "mean_rgb": [
+                round(float(channel) / observations, 3)
+                for channel in entry["rgb_sum"]  # type: ignore[union-attr]
+            ],
+        })
+    return records
+
+
+def _array_digest(value: object) -> str | None:
+    """SHA-256 over an array-like's shape, dtype and raw bytes.
+
+    ``None`` stays ``None`` so a centre-patch fallback - which has no rectified
+    patch, validity mask or coverage - records an explicit null rather than a
+    digest of nothing. Only a non-contiguous input is copied, and only to read
+    its bytes, so the caller's array is never mutated.
+    """
+    if value is None:
+        return None
+    array = np.ascontiguousarray(np.asarray(value))
+    digest = hashlib.sha256()
+    digest.update(f"{array.shape}|{array.dtype.str}|".encode("ascii"))
+    digest.update(array.tobytes())
+    return digest.hexdigest()
+
+
+def _array_payload(value: np.ndarray) -> dict[str, object]:
+    """One array as an exact, self-describing JSON-safe payload record.
+
+    ``dtype``/``shape`` freeze the array's domain and ``base64`` is its exact
+    C-order bytes in that dtype, so a reader can restore the float32/bool array
+    losslessly (and re-derive the same shape/dtype-bound digest). Only a
+    non-contiguous input is copied, and only to read its bytes, so the caller's
+    array is never mutated.
+    """
+    array = np.ascontiguousarray(np.asarray(value))
+    return {
+        "dtype": array.dtype.str,
+        "shape": [int(size) for size in array.shape],
+        "base64": base64.b64encode(array.tobytes(order="C")).decode("ascii"),
+    }
+
+
+def _observation_record(
+    *,
+    ordinal: int,
+    frame_id: str,
+    coordinate: BlockCoordinate,
+    slot: str,
+    source: str,
+    area: float,
+    depth: float,
+    visible: float | None,
+    facing: float | None,
+    weight: float,
+    observed_patch: np.ndarray | None,
+    valid: np.ndarray | None,
+    coverage: np.ndarray | None,
+    rgb: np.ndarray,
+    descriptor: object,
+    pattern: np.ndarray | None,
+) -> dict[str, object]:
+    """One retained raw observation as a JSON-safe diagnostic record.
+
+    ``weight`` is the pre-correction weight the sampler produced; ``rgb``,
+    ``descriptor`` and ``pattern`` are the pre-correction values that entered
+    ``raw``. The digests are shape/dtype-bound, so a replay can prove it
+    reconstructed the same inputs without the trace carrying any pixels.
+    """
+    return {
+        "ordinal": int(ordinal),
+        "frame_id": str(frame_id),
+        "coordinate": [int(value) for value in coordinate],
+        "slot": str(slot),
+        "source": str(source),
+        "area": float(area),
+        "depth": float(depth),
+        "visible": None if visible is None else float(visible),
+        "facing": None if facing is None else float(facing),
+        "weight": float(weight),
+        "observed_patch": _array_digest(observed_patch),
+        "valid": _array_digest(valid),
+        "coverage": _array_digest(coverage),
+        "rgb": _array_digest(rgb),
+        "descriptor": _array_digest(descriptor),
+        "pattern": _array_digest(pattern),
+    }
+
+
+def _sidecar_record(
+    *,
+    ordinal: int,
+    frame_id: str,
+    coordinate: BlockCoordinate,
+    slot: str,
+    area: float,
+    depth: float,
+    visible: float,
+    facing: float,
+    weight: float,
+    patch: np.ndarray,
+    observed_patch: np.ndarray,
+    valid: np.ndarray,
+    coverage: np.ndarray,
+) -> dict[str, object]:
+    """One retained resolved-face observation's actual sampled payload.
+
+    Two pixel arrays are carried because they are not the same array. ``patch``
+    is the production sampler's raw rectified patch - the array E1 retains and
+    the authority for exact raw-patch parity. ``observed_patch`` is the
+    scorer-facing array the E2A trace digests, with invalid pixels replaced by the
+    coverage-weighted ``rgb``; its payload and digest stay tied to that trace
+    observation. ``valid`` and ``coverage`` are the sampler's own masks, and the
+    ``digests`` block uses the same shape/dtype-bound SHA-256 as the E2A trace, so
+    a record's identity and its observed-patch/mask digests can be checked against
+    the trace observation at the same ordinal. The raw-patch digest has no trace
+    counterpart by design. No reference label, evaluator truth or reconstruction
+    result is read or recorded here, and no array is mutated.
+    """
+    return {
+        "ordinal": int(ordinal),
+        "frame_id": str(frame_id),
+        "coordinate": [int(value) for value in coordinate],
+        "slot": str(slot),
+        "source": "resolved_face",
+        "area": float(area),
+        "depth": float(depth),
+        "visible": float(visible),
+        "facing": float(facing),
+        "weight": float(weight),
+        "raw_patch": _array_payload(patch),
+        "observed_patch": _array_payload(observed_patch),
+        "valid": _array_payload(valid),
+        "coverage": _array_payload(coverage),
+        "digests": {
+            "raw_patch": _array_digest(patch),
+            "observed_patch": _array_digest(observed_patch),
+            "valid": _array_digest(valid),
+            "coverage": _array_digest(coverage),
+        },
+    }
+
+
+def _emit_stage_sidecar(
+    stage_sidecar: dict[str, object],
+    records: list[dict[str, object]],
+    observation_records: list[dict[str, object]],
+) -> None:
+    """Fill a caller-supplied mapping with the resolved-face payload sidecar.
+
+    Kept separate from the E2A trace: it carries the sampled pixel bytes the trace
+    deliberately omits - both the raw sampler patch and the scorer-facing observed
+    patch - for its own opt-in path. A centre-patch fallback has no rectified face
+    and therefore no payload, so it is excluded from ``records`` and counted
+    explicitly; the header also records the full observation count so a reader can
+    reconcile the sidecar against the trace. Written once, at the end, and read
+    back by nothing in this module.
+    """
+    fallbacks = sum(
+        1 for record in observation_records
+        if str(record.get("source")) == "centre_patch_fallback"
+    )
+    stage_sidecar["schema"] = STAGE_SIDECAR_SCHEMA
+    stage_sidecar["trace_schema"] = 2
+    stage_sidecar["observation_count"] = len(observation_records)
+    stage_sidecar["resolved_face_records"] = len(records)
+    stage_sidecar["excluded_fallback_observations"] = fallbacks
+    stage_sidecar["records"] = records
+
+
+def _observation_cost_records(
+    observations: list[tuple[str, BlockCoordinate, np.ndarray, float]],
+    index: PaletteIndex,
+    view_weights: Mapping[str, float],
+    observation_records: list[dict[str, object]],
+    best_costs: list[float],
+) -> list[dict[str, object]]:
+    """One record per observation from the run's final scored pass.
+
+    ``palette_order`` is the final ``index``'s state order, so the cost vector
+    is interpretable on its own. ``weight`` is the post-fit weight the scorer
+    produced, ``view_weight`` is the per-frame trust, and ``effective_weight``
+    is their product - exactly the quantity ``_accumulate_costs`` sums with.
+    """
+    palette_order = [_state_record(state) for state in index.states]
+    records: list[dict[str, object]] = []
+    for ordinal, (frame_id, coordinate, costs, weight) in enumerate(observations):
+        base = observation_records[ordinal]
+        view_weight = float(view_weights.get(frame_id, 1.0))
+        records.append({
+            "ordinal": int(ordinal),
+            "frame_id": str(frame_id),
+            "coordinate": [int(value) for value in coordinate],
+            "slot": base["slot"],
+            "source": base["source"],
+            "palette_order": palette_order,
+            "costs": [float(value) for value in costs],
+            "best_cost": float(best_costs[ordinal]),
+            "weight": float(weight),
+            "view_weight": view_weight,
+            "effective_weight": float(weight) * view_weight,
+        })
+    return records
+
+
+def _aggregation_records(
+    totals: dict[BlockCoordinate, np.ndarray],
+    weights: dict[BlockCoordinate, float],
+) -> list[dict[str, object]]:
+    """Exact ``_accumulate_costs`` totals and weights in sorted coordinate order."""
+    return [
+        {
+            "coordinate": [int(value) for value in coordinate],
+            "total": [float(value) for value in totals[coordinate]],
+            "weight": float(weights[coordinate]),
+        }
+        for coordinate in sorted(totals)
+    ]
+
+
+def _emit_stage_trace(
+    stage_trace: dict[str, object],
+    *,
+    palette: tuple[PaletteColor, ...],
+    index: PaletteIndex,
+    raw: list,
+    prune_rounds: list[dict[str, object]],
+    raw_candidates: dict[BlockCoordinate, dict[str, object]] | None,
+    merged: dict,
+    volume: BlockVolume,
+    candidate_limit: int,
+    observation_records: list[dict[str, object]] | None = None,
+    observation_cost_records: list[dict[str, object]] | None = None,
+    aggregation_records: list[dict[str, object]] | None = None,
+) -> None:
+    """Fill a caller-supplied mapping with the run's stagewise, reference-free facts.
+
+    Written once, at the end, and read back by nothing in this module. The two
+    coordinate-keyed tables are emitted as sorted JSON-safe lists, and every
+    value is a primitive so the whole trace survives ``json.dumps`` as-is.
+    """
+    round_states: list[dict[str, set[str]]] = []
+    for record in prune_rounds:
+        round_states.append({
+            "kept": {str(state.get("name")) for state in record["states_kept"]},  # type: ignore[union-attr]
+            "dropped": {str(state.get("name")) for state in record["states_dropped"]},  # type: ignore[union-attr]
+        })
+
+    coordinate_traces: list[dict[str, object]] = []
+    coordinates = sorted(set(raw_candidates or {}) | {c for c in merged} | set(volume.blocks))
+    for coordinate in coordinates:
+        entry: dict[str, object] = {"coordinate": [int(value) for value in coordinate]}
+        candidates = (raw_candidates or {}).get(coordinate)
+        if candidates is not None:
+            entry.update(candidates)
+        values = merged.get(coordinate)
+        if values is not None:
+            chosen = _choose_state_with_local_family_support(
+                coordinate, values[4], merged, {item.state: item.family for item in palette}
+            )
+            settled = max(values[4], key=values[4].get) if values[4] else None
+            entry["post_smoothing_label"] = (
+                _state_record(settled) if settled is not None else None
+            )
+            entry["selected_state"] = _state_record(chosen) if chosen is not None else None
+        placed = volume.blocks.get(coordinate)
+        entry["final_state"] = (
+            _state_record(placed.state) if placed is not None else None
+        )
+        if round_states and candidates is not None:
+            # Per-coordinate provenance for the *global* pruning rounds: which of
+            # this cell's own ranked candidates each round kept, and which it
+            # dropped. The reference state is not known here, so the trace never
+            # privileges one winner - the evaluator tests the transformed
+            # reference state against the per-round membership in
+            # ``support_rounds``/``final_palette`` after reconstruction finishes,
+            # and reads these markers only as per-cell richness.
+            ranked_names = [
+                str(candidate["state"]["name"])
+                for candidate in candidates.get("top_candidates", [])
+                if isinstance(candidate, dict) and isinstance(candidate.get("state"), dict)
+            ]
+            entry["support"] = [
+                {
+                    "round": int(record["round"]),
+                    "candidates_before": int(record["candidates_before"]),
+                    "candidates_after": int(record["candidates_after"]),
+                    "candidate_states_kept": [
+                        name for name in ranked_names
+                        if name in round_states[position]["kept"]
+                    ],
+                    "candidate_states_dropped": [
+                        name for name in ranked_names
+                        if name not in round_states[position]["kept"]
+                    ],
+                }
+                for position, record in enumerate(prune_rounds)
+            ]
+        coordinate_traces.append(entry)
+
+    stage_trace["schema"] = 2
+    stage_trace["candidate_limit"] = int(candidate_limit)
+    stage_trace["palette"] = {
+        "size": len(palette),
+        "states": [_state_record(item.state) for item in palette],
+        "families": {
+            item.state.name: item.family for item in palette
+        },
+    }
+    stage_trace["support_rounds"] = [
+        {
+            "round": int(record["round"]),
+            "candidates_before": int(record["candidates_before"]),
+            "candidates_after": int(record["candidates_after"]),
+            "states_before": record["states_before"],
+            "states_kept": record["states_kept"],
+            "states_dropped": record["states_dropped"],
+            "deciding_excluded_proposals": bool(record["deciding_excluded_proposals"]),
+            "support_prior_applied": bool(record["support_prior_applied"]),
+        }
+        for record in prune_rounds
+    ]
+    stage_trace["final_palette"] = {
+        "size": int(index.count),
+        "states": [_state_record(state) for state in index.states],
+    }
+    stage_trace["coordinates"] = coordinate_traces
+    # Schema-2 additions, diagnostic only. Every schema-1 key above keeps its
+    # exact meaning; these three are read back by nothing in production.
+    stage_trace["observations"] = observation_records or []
+    stage_trace["observation_costs"] = observation_cost_records or []
+    stage_trace["aggregation"] = aggregation_records or []
 
 
 def _surface_of(coordinates: set[BlockCoordinate]) -> set[BlockCoordinate]:
@@ -1395,366 +2167,6 @@ def _self_calibrate(
                 tuple(float(value) for value in scale), (0.0, 0.0, 0.0)
             )
     return calibrations
-
-
-def _palette_face_textures(
-    palette: tuple[PaletteColor, ...],
-) -> dict[str, tuple[list[BlockState], np.ndarray]]:
-    """Per face slot, the candidate states and their normalised texture patterns.
-
-    Each texture is reduced to zero-mean, unit-norm luminance, so a dot product
-    against a patch prepared the same way is the correlation between them. That
-    is invariant to how brightly the face happened to be lit, which is the one
-    thing block lighting changes most and material identity changes least.
-    """
-    import base64
-    from io import BytesIO
-
-    per_slot: dict[str, tuple[list[BlockState], list[np.ndarray]]] = {}
-    for item in palette:
-        for slot, encoded in item.face_thumbnails:
-            try:
-                from PIL import Image
-
-                pixels = np.asarray(
-                    Image.open(BytesIO(base64.b64decode(encoded))), dtype=np.float32
-                )
-            except (ValueError, OSError, TypeError, ImportError):
-                continue
-            if pixels.ndim != 3 or pixels.shape[:2] != (PATCH_SIZE, PATCH_SIZE):
-                continue
-            vector = _normalised_pattern(pixels)
-            if vector is None:
-                continue
-            states, vectors = per_slot.setdefault(slot, ([], []))
-            states.append(item.state)
-            vectors.append(vector)
-    return {
-        slot: (states, np.stack(vectors)) for slot, (states, vectors) in per_slot.items() if vectors
-    }
-
-
-def _normalised_pattern(patch: np.ndarray, coverage: np.ndarray | None = None) -> np.ndarray | None:
-    """Zero-mean, unit-norm luminance of a face patch, or ``None`` if it is flat."""
-    luminance = patch.mean(axis=2).reshape(-1)
-    weights = None if coverage is None else coverage.reshape(-1)
-    mean = float(np.average(luminance, weights=weights)) if weights is not None and float(weights.sum()) > 1e-6 else float(luminance.mean())
-    centred = luminance - mean
-    if weights is not None:
-        centred = centred * np.sqrt(np.clip(weights, 0.0, 1.0))
-    norm = float(np.linalg.norm(centred))
-    if norm < 1e-3:
-        return None
-    return (centred / norm).astype(np.float32)
-
-
-AXIS_OF_SLOT = {"east": 0, "west": 0, "up": 1, "down": 1, "south": 2, "north": 2}
-
-
-def slot_coverage(item: PaletteColor, slot: str, tolerance: float = 1e-3) -> float:
-    """How much of a cell face this block's shape hides, seen through that face.
-
-    The quantity is the shape's **projected footprint** along the face's axis - the
-    union of its boxes' cross sections - not whether it touches the cell wall.
-    Wall contact was the first attempt and it is wrong in the case that matters: a
-    carpet's top surface sits at y=0.0625, so it never touches the ceiling of its
-    cell and scored zero on `up`, the very face a camera sees it through. With the
-    maximum shape penalty on its only visible face, a carpet could never win a cell,
-    and residual proposals that should have become carpets came back as
-    `birch_planks`.
-
-    By footprint a carpet seen from above covers all of it (1.0) and from the side a
-    sixteenth; a bottom slab covers all of it from above and half from the side; a
-    fence post a sixteenth from above and a quarter from the side. Direction does
-    not matter, only the axis: a shape occludes the same cross section whichever
-    way you look along it.
-
-    This deliberately no longer separates a bottom slab from a full block seen from
-    directly overhead - they really do hide the same area - so that call is left to
-    the side faces and to depth, which is where the evidence actually is.
-    """
-    if item.full_cube or not item.shape_boxes:
-        return 1.0
-    axis = AXIS_OF_SLOT.get(slot)
-    if axis is None:
-        return 1.0
-    others = [index for index in range(3) if index != axis]
-    rectangles = [
-        ((low[others[0]], low[others[1]]), (high[others[0]], high[others[1]]))
-        for low, high in item.shape_boxes
-    ]
-    rectangles = [r for r in rectangles
-                  if r[1][0] - r[0][0] > tolerance and r[1][1] - r[0][1] > tolerance]
-    if not rectangles:
-        return 0.0
-    # Small boxes per model, so the union is cheapest over the grid their edges
-    # induce rather than by a sweep.
-    edges_u = sorted({v for r in rectangles for v in (r[0][0], r[1][0])})
-    edges_v = sorted({v for r in rectangles for v in (r[0][1], r[1][1])})
-    area = 0.0
-    for u0, u1 in zip(edges_u, edges_u[1:]):
-        for v0, v1 in zip(edges_v, edges_v[1:]):
-            midpoint = ((u0 + u1) / 2.0, (v0 + v1) / 2.0)
-            if any(r[0][0] <= midpoint[0] <= r[1][0] and r[0][1] <= midpoint[1] <= r[1][1]
-                   for r in rectangles):
-                area += (u1 - u0) * (v1 - v0)
-    return min(1.0, max(0.0, area))
-
-
-class PaletteIndex:
-    """Palette laid out as arrays so one observation is scored in a few array ops.
-
-    Scoring walked every candidate in Python, which at several thousand faces and
-    several hundred candidates was tens of millions of three-element numpy calls
-    and most of a reconstruction's runtime. Everything a candidate contributes -
-    its colour per face slot, its texture descriptors, its family prior, its
-    texture pattern - is stacked here once, so a face costs a handful of whole
-    array operations instead.
-    """
-
-    def __init__(
-        self,
-        palette: tuple[PaletteColor, ...],
-        face_colors: dict[BlockState, dict[str, np.ndarray]],
-        family_priors: dict[str, float] | None,
-        texture_weight: float = 0.0,
-    ) -> None:
-        self.states: list[BlockState] = [item.state for item in palette]
-        self.count = len(self.states)
-        self.colours = {
-            slot: np.stack([face_colors[item.state][slot] for item in palette]).astype(np.float64)
-            for slot in FACE_SLOTS
-        }
-        rows: list[tuple[float, ...]] = []
-        owners: list[int] = []
-        for index, item in enumerate(palette):
-            for descriptor in item.descriptors:
-                rows.append(descriptor)
-                owners.append(index)
-        self.descriptors = np.asarray(rows, dtype=np.float64) if rows else None
-        self.descriptor_owner = np.asarray(owners, dtype=np.intp) if rows else None
-        self.priors = (
-            np.asarray([max(0.1, family_priors.get(item.family, 1.0)) for item in palette])
-            if family_priors
-            else None
-        )
-        # Among candidates that explain a face equally well, prefer the one whose
-        # appearance is simplest: the number of distinct faces it wears. Plain
-        # planks show one texture, a log two, a workstation three or more. A wall
-        # seen only side-on cannot tell dark oak planks from a cartography table,
-        # which carries the same wood on its sides and a map on top, and the
-        # planks are the simpler explanation of what was actually seen.
-        # Plain building material wears one face (planks, stone) or two (a log's
-        # bark and end, a blackstone's top and side). Three or more distinct
-        # faces means a fixture - a workstation, a furnace, an observer - whose
-        # sides borrow an ordinary material. A wall seen only side-on cannot tell
-        # dark oak planks from a cartography table wearing the same wood, and the
-        # planks are the simpler explanation of what was actually seen. Counting
-        # only faces beyond the second leaves the log-versus-planks call, which
-        # real texture evidence settles, untouched.
-        distinct = np.asarray(
-            [len({tuple(colour) for _slot, colour in item.face_map}) or 1 for item in palette],
-            dtype=np.float64,
-        )
-        self.simplicity = np.maximum(distinct - 2.0, 0.0)
-        # How much of each cell face every candidate's shape actually fills, so a
-        # partial block is not asked to explain a face it only partly occupies.
-        self.coverage = {
-            slot: np.array([slot_coverage(item, slot) for item in palette], dtype=np.float64)
-            for slot in FACE_SLOTS
-        }
-        self.prior: np.ndarray | None = None
-        self.textures: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-        if texture_weight > 0.0:
-            position = {state: index for index, state in enumerate(self.states)}
-            for slot, (states, matrix) in _palette_face_textures(palette).items():
-                mask = np.zeros(self.count, dtype=bool)
-                aligned = np.zeros((self.count, matrix.shape[1]), dtype=np.float32)
-                for row, state in enumerate(states):
-                    index = position.get(state)
-                    if index is not None:
-                        aligned[index] = matrix[row]
-                        mask[index] = True
-                self.textures[slot] = (aligned, mask)
-
-    def with_prior(self, prior: np.ndarray) -> "PaletteIndex":
-        """A view of this index carrying an additive per-candidate cost."""
-        clone = object.__new__(PaletteIndex)
-        clone.__dict__.update(getattr(self, "__dict__", {}))
-        for name in ("states", "count", "colours", "descriptors", "descriptor_owner",
-                     "priors", "textures", "simplicity", "prior"):
-            setattr(clone, name, getattr(self, name, None))
-        clone.prior = np.asarray(prior, dtype=np.float64)
-        return clone
-
-    def restricted(self, keep: np.ndarray) -> "PaletteIndex":
-        """A view of this index holding only the given candidate indices."""
-        clone = object.__new__(PaletteIndex)
-        clone.states = [self.states[int(i)] for i in keep]
-        clone.count = len(clone.states)
-        clone.colours = {slot: value[keep] for slot, value in self.colours.items()}
-        if self.descriptors is not None:
-            position = {int(old): new for new, old in enumerate(keep)}
-            rows, owners = [], []
-            for row, owner in enumerate(self.descriptor_owner):
-                moved = position.get(int(owner))
-                if moved is not None:
-                    rows.append(self.descriptors[row])
-                    owners.append(moved)
-            clone.descriptors = np.asarray(rows) if rows else None
-            clone.descriptor_owner = np.asarray(owners, dtype=np.intp) if rows else None
-        else:
-            clone.descriptors = None
-            clone.descriptor_owner = None
-        clone.priors = None if self.priors is None else self.priors[keep]
-        clone.simplicity = self.simplicity[keep]
-        clone.coverage = {slot: values[keep] for slot, values in self.coverage.items()}
-        clone.textures = {
-            slot: (aligned[keep], mask[keep]) for slot, (aligned, mask) in self.textures.items()
-        }
-        return clone
-
-    def costs(
-        self,
-        rgb: np.ndarray,
-        descriptor: tuple[float, ...],
-        slot: str,
-        *,
-        calibration: AppearanceCalibration | None = None,
-        light: float = 1.0,
-        pattern: np.ndarray | None = None,
-        texture_weight: float = 0.0,
-        outlier_ceiling: float = 24.0,
-        simplicity_weight: float = 0.0,
-        shape_weight: float = 0.0,
-    ) -> tuple[np.ndarray, float]:
-        """Relative, capped cost of every candidate for one observed face."""
-        # Undo the lighting rather than dim every candidate to match it. Dividing
-        # the observation back up to how the block would look at full brightness
-        # keeps every face on the same footing as the jar's own textures: a face
-        # in shadow then has the same room to be wrong as a lit one, where
-        # dimming the expectation squeezes the candidates together and makes a
-        # dark face weak evidence for anything.
-        if light < 1.0:
-            rgb = rgb / max(light, MINIMUM_LIGHT_FACTOR)
-        rgb = np.asarray(rgb, dtype=np.float64)
-        expected = self.colours[slot]
-        if calibration is not None:
-            expected = expected * np.asarray(calibration.scale) + np.asarray(calibration.offset)
-        difference = rgb - expected
-        straight = np.sqrt(np.einsum("ij,ij->i", difference, difference))
-        observed_total = max(float(rgb.sum()), 1e-6)
-        expected_total = np.maximum(expected.sum(axis=1, keepdims=True), 1e-6)
-        chroma = rgb / observed_total - expected / expected_total
-        chroma = np.sqrt(np.einsum("ij,ij->i", chroma, chroma)) * 441.67
-        distance = (1.0 - CHROMA_WEIGHT) * straight + CHROMA_WEIGHT * chroma
-        if self.descriptors is not None and descriptor:
-            gap = self.descriptors - np.asarray(descriptor, dtype=np.float64)
-            gap = np.sqrt(np.einsum("ij,ij->i", gap, gap))
-            closest = np.full(self.count, np.inf)
-            np.minimum.at(closest, self.descriptor_owner, gap)
-            distance = distance + 80.0 * np.where(np.isfinite(closest), closest, 0.0)
-        if self.priors is not None:
-            distance = distance / self.priors
-        if pattern is not None and texture_weight > 0.0:
-            entry = self.textures.get(slot)
-            if entry is not None:
-                aligned, mask = entry
-                correlation = aligned[mask] @ pattern
-                if correlation.size:
-                    # Score each candidate against how well a typical candidate
-                    # explains this patch, not against a perfect match. Real
-                    # screenshots are far blurrier than the 16-pixel source
-                    # textures, so every correlation is small and an absolute
-                    # penalty charges nearly the full weight to everyone -
-                    # including, through the fixed fallback, the candidates with
-                    # no pattern for this slot, which were meant to be neutral.
-                    # Centring makes the term zero-sum: it only ever expresses
-                    # which candidate matches better than the rest, and a patch
-                    # too blurred to separate them contributes nothing.
-                    neutral = float(correlation.mean())
-                    penalty = np.zeros(self.count)
-                    penalty[mask] = texture_weight * (neutral - correlation)
-                    distance = distance + penalty
-        if simplicity_weight > 0.0:
-            distance = distance + simplicity_weight * self.simplicity
-        if shape_weight > 0.0:
-            covered = self.coverage.get(slot)
-            if covered is not None:
-                distance = distance + shape_weight * (1.0 - covered)
-        prior = getattr(self, "prior", None)
-        if prior is not None:
-            distance = distance + prior
-        best = float(distance.min())
-        return np.minimum(distance - best, outlier_ceiling), best
-
-
-def _observation_costs(
-    rgb: np.ndarray,
-    descriptor: tuple[float, ...],
-    slot: str,
-    palette: tuple[PaletteColor, ...],
-    face_colors: dict[BlockState, dict[str, np.ndarray]],
-    calibration: AppearanceCalibration | None,
-    family_priors: dict[str, float] | None,
-    slot_matching: bool,
-    outlier_ceiling: float,
-    light: float = 1.0,
-    pattern: np.ndarray | None = None,
-    face_textures: dict[str, tuple[list[BlockState], np.ndarray]] | None = None,
-    texture_weight: float = 0.0,
-) -> tuple[dict[BlockState, float], float]:
-    """Score one observation against every palette entry.
-
-    Costs are returned relative to the observation's own best match and capped.
-    A sample that landed on the wrong block - because a camera pose is slightly
-    off, or something outside the reconstruction occludes it - fits nothing well,
-    so every candidate hits the ceiling and the observation abstains instead of
-    voting confidently for the wrong answer. The absolute best cost comes back
-    too, because it says how much this observation should be trusted at all.
-    """
-    # Undo the lighting rather than dim every candidate to match it. Dividing the
-    # observation back up to how the block would look at full brightness keeps
-    # every face on the same footing as the jar's own textures: a face in shadow
-    # then has the same room to be wrong as a lit one, where dimming the
-    # expectation instead squeezes all the candidates together and makes a dark
-    # face weak evidence for anything.
-    if light < 1.0:
-        rgb = rgb / max(light, MINIMUM_LIGHT_FACTOR)
-    texture_cost: dict[BlockState, float] = {}
-    if pattern is not None and face_textures and texture_weight > 0.0:
-        entry = face_textures.get(slot)
-        if entry is not None:
-            states, matrix = entry
-            correlation = matrix @ pattern
-            texture_cost = {
-                state: texture_weight * (1.0 - float(value))
-                for state, value in zip(states, correlation)
-            }
-    distances: dict[BlockState, float] = {}
-    for item in palette:
-        faces = face_colors[item.state]
-        candidates = (faces[slot],) if slot_matching and slot in faces else tuple(faces.values())
-        if not candidates:
-            continue
-        distance = min(
-            _appearance_distance(rgb, calibration.apply(expected) if calibration else expected)
-            for expected in candidates
-        )
-        if item.descriptors:
-            distance += 80.0 * min(
-                float(np.linalg.norm(np.asarray(descriptor) - np.asarray(candidate)))
-                for candidate in item.descriptors
-            )
-        if family_priors:
-            distance /= max(0.1, family_priors.get(item.family, 1.0))
-        # A flat candidate has no pattern to match, so it neither gains nor loses.
-        distance += texture_cost.get(item.state, texture_weight)
-        distances[item.state] = distance
-    if not distances:
-        return {}, float("inf")
-    best = min(distances.values())
-    return {state: min(distance - best, outlier_ceiling) for state, distance in distances.items()}, best
 
 
 def _support_prior(
@@ -1994,27 +2406,6 @@ def _view_weights(
         frame_id: float(max(0.05, (value / best) ** strength))
         for frame_id, value in scores.items()
     }
-
-
-def _palette_face_colors(
-    palette: tuple[PaletteColor, ...],
-) -> dict[BlockState, dict[str, np.ndarray]]:
-    """Expected screen colour of each world face slot, per palette entry."""
-    colors: dict[BlockState, dict[str, np.ndarray]] = {}
-    for item in palette:
-        mapping = {slot: np.asarray(color, dtype=np.float32) for slot, color in item.face_map}
-        if not mapping:
-            fallback = np.asarray(item.face_rgbs[0] if item.face_rgbs else item.rgb, dtype=np.float32)
-            mapping = {slot: fallback for slot in FACE_SLOTS}
-        default = next(iter(mapping.values()))
-        for slot in FACE_SLOTS:
-            mapping.setdefault(slot, default)
-        # Vanilla darkens a face by its direction before any block light applies,
-        # so an unshaded texture colour never matches what the screenshot shows.
-        colors[item.state] = {
-            slot: color * FACE_SHADE.get(slot, 1.0) for slot, color in mapping.items()
-        }
-    return colors
 
 
 DIRECTIONS = ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))
@@ -2600,140 +2991,6 @@ def _nearest_palette(
     index = distances.index(ordered[0])
     margin = ordered[1] - ordered[0] if len(ordered) > 1 else ordered[0]
     return palette[index].state, ordered[0], margin
-
-
-def _appearance_distance(
-    observed: np.ndarray, expected: np.ndarray, *, minimum_light: float | None = None
-) -> float:
-    """Compare colour allowing for how dark Minecraft's block lighting can make a face.
-
-    A texture is only ever darkened by lighting, never brightened past its own
-    colour, so the expected colour may be scaled by a gain in
-    ``[minimum_light, 1]`` before the comparison. Without that, bright blocks are
-    punished for standing in shadow far more than dark ones: a birch floor in a
-    dim corner is further from birch, in plain RGB, than dark oak is. Chroma is
-    already gain free and carries the hue.
-    """
-    if minimum_light is None:
-        minimum_light = MINIMUM_LIGHT
-    expected_energy = float(expected @ expected)
-    if expected_energy > 1e-6 and minimum_light < 1.0:
-        gain = float(np.clip(float(observed @ expected) / expected_energy, minimum_light, 1.0))
-    else:
-        gain = 1.0
-    rgb_distance = float(np.linalg.norm(observed - gain * expected))
-    observed_total = float(observed.sum())
-    expected_total = float(expected.sum())
-    if observed_total <= 1e-6 or expected_total <= 1e-6:
-        return rgb_distance
-    observed_chroma = observed / observed_total
-    expected_chroma = expected / expected_total
-    chroma_distance = float(np.linalg.norm(observed_chroma - expected_chroma)) * 441.67
-    return (1.0 - CHROMA_WEIGHT) * rgb_distance + CHROMA_WEIGHT * chroma_distance
-
-
-def _candidate_face_distance(
-    rgb: np.ndarray,
-    item: PaletteColor,
-    appearance_calibration: AppearanceCalibration | None = None,
-    state_appearance_profiles: dict[BlockState, tuple[tuple[int, int, int], ...]] | None = None,
-    observed_texture: np.ndarray | None = None,
-) -> float:
-    profiles = state_appearance_profiles.get(item.state, ()) if state_appearance_profiles else ()
-    colors = profiles or tuple(color for _, color in item.face_map) or item.face_rgbs or (item.rgb,)
-    if not colors:
-        return float("inf")
-    color_distance = min(
-        _appearance_distance(
-            rgb,
-            appearance_calibration.apply(np.asarray(color, dtype=np.float32))
-            if appearance_calibration and not profiles
-            else np.asarray(color, dtype=np.float32),
-        )
-        for color in colors
-    )
-    if observed_texture is None or not item.face_thumbnails:
-        return color_distance
-    texture_distance = min(
-        _texture_pattern_distance(observed_texture, encoded)
-        for _, encoded in item.face_thumbnails
-    )
-    return color_distance + texture_distance * 120.0
-
-
-def _palette_candidates(
-    rgb: np.ndarray,
-    palette: tuple[PaletteColor, ...],
-    appearance_calibration: AppearanceCalibration | None = None,
-    state_appearance_profiles: dict[BlockState, tuple[tuple[int, int, int], ...]] | None = None,
-    family_priors: dict[str, float] | None = None,
-    descriptor: tuple[float, ...] | None = None,
-    *,
-    limit: int,
-    observed_texture: np.ndarray | None = None,
-) -> list[tuple[BlockState, float, float]]:
-    distances = []
-    for item in palette:
-        distance = _candidate_face_distance(
-            rgb,
-            item,
-            appearance_calibration=appearance_calibration,
-            state_appearance_profiles=state_appearance_profiles,
-            observed_texture=observed_texture,
-        )
-        if descriptor and item.descriptors:
-            descriptor_distance = min(
-                float(np.linalg.norm(np.asarray(descriptor) - np.asarray(candidate)))
-                for candidate in item.descriptors
-            )
-            distance += descriptor_distance * 80.0
-        if family_priors:
-            distance /= max(0.1, family_priors.get(item.family, 1.0))
-        distances.append(distance)
-    order = sorted(range(len(distances)), key=distances.__getitem__)[:limit]
-    return [
-        (
-            palette[index].state,
-            distances[index],
-            distances[order[1]] - distances[index] if len(order) > 1 else distances[index],
-        )
-        for index in order
-    ]
-
-
-def _texture_pattern_distance(observed: np.ndarray, encoded: str) -> float:
-    try:
-        import base64
-        from io import BytesIO
-        from PIL import Image
-
-        expected = np.asarray(Image.open(BytesIO(base64.b64decode(encoded))), dtype=np.float32).reshape(-1, 3)
-    except (ValueError, OSError, TypeError):
-        return float("inf")
-    actual = observed.astype(np.float32).reshape(-1, 3)
-    if actual.shape != expected.shape:
-        return float("inf")
-    actual_centered = actual - actual.mean(axis=0)
-    expected_centered = expected - expected.mean(axis=0)
-    actual_scale = np.maximum(actual_centered.std(axis=0), 1.0)
-    expected_scale = np.maximum(expected_centered.std(axis=0), 1.0)
-    return float(np.linalg.norm(actual_centered / actual_scale - expected_centered / expected_scale) / np.sqrt(actual.size))
-
-
-def _patch_descriptor(patch: np.ndarray, coverage: np.ndarray | None = None) -> tuple[float, ...]:
-    pixels = patch.astype(np.float32).reshape(-1, 3)
-    weights = None if coverage is None else coverage.reshape(-1)
-    normalized = pixels / np.maximum(pixels.sum(axis=1, keepdims=True), 1.0)
-    histogram = np.histogram(normalized[:, 0], bins=4, range=(0.0, 1.0), weights=weights, density=True)[0]
-    luminance = pixels.mean(axis=1)
-    average = float(np.average(luminance, weights=weights)) if weights is not None and float(weights.sum()) > 1e-6 else float(luminance.mean())
-    variance = (float(np.average((luminance - average) ** 2, weights=weights))
-                if weights is not None and float(weights.sum()) > 1e-6 else float(luminance.var()))
-    if patch.ndim == 2:
-        gradients = np.abs(np.diff(luminance)).mean() if len(luminance) > 1 else 0.0
-    else:
-        gradients = np.abs(np.diff(patch.astype(np.float32).mean(axis=2), axis=0)).mean()
-    return tuple(float(value) for value in (*histogram, average / 255.0, np.sqrt(variance) / 255.0, gradients / 255.0))
 
 
 def _rectify_projected_face(

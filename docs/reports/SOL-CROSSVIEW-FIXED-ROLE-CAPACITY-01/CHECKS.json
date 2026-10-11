@@ -1,0 +1,37 @@
+{
+  "task_id": "SOL-CROSSVIEW-FIXED-ROLE-CAPACITY-01",
+  "task_sha256": "5f209048c4fe1f77ed3bb0021fa6b6f521deabfbd21f35c504bc2f5f108e8e96",
+  "source_sha256": "d302f24b9f3ae7751df08920a2612f7042de5254af4d40887d824b16cb333d74",
+  "test_sha256": "89619e5d2babe2a0fe2066f9e6ba304e7a209510c49edc6d8c097ed9d37fffb7",
+  "config_sha256": "4b19e93038790e215a1cab49936a6af3aa0c0d7817ab2eef5d8fe721581b111d",
+  "sealed_dev_source_sha256": "aa410761b433a3026261d10ae302184613a1b3152d3e5b8ccb892f2c30892f6b",
+  "evaluator_source_sha256": "8d0136b27b2fc0603d5efdeab31c2b3562165502d74cce3c65577f10892efda6",
+  "geometry_source_sha256": "f1b6b28d7df7bb8c4122fbe5d7cc1749bb0cba33cf2f7230c6ce11f7fd26c836",
+  "baseline_extract_sha256": "f6e324a7a0144d7d64d259b248b5c5e9c3d440024fbd033fd8fee359ad9d2ade",
+  "roster": [
+    ["dev-weak-contrast-96111", "viewpoint"],
+    ["dev-mixed-scale-pixel-96131", "viewpoint"],
+    ["dev-sparse-corners-96141", "viewpoint"],
+    ["dev-mixed-scale-pixel-96131", "physical-corner"]
+  ],
+  "frozen_strict_mnn_quota_pair_slots": 12,
+  "logical_caps": {
+    "designated_pair_slots": 12,
+    "designated_attempts": 36,
+    "designated_ransac_iteration_upper_bound": 18000,
+    "all_arm_attempts": 144,
+    "all_arm_ransac_iteration_upper_bound": 72000,
+    "shared_descriptor_comparisons": 11760000,
+    "retained_annotation_bytes": 8388608,
+    "final_annotation_bytes": 4194304
+  },
+  "retained_annotation_cap_semantics": "sum of canonical bytes of four case rows, enforced in construction and replay",
+  "focused_tests": "14 passed",
+  "combined_focused_historical_tests": "241 passed",
+  "compile": "passed",
+  "trailing_whitespace": "none",
+  "new_case_inference_invocations": 0,
+  "new_calibration_invocations": 0,
+  "annotation_output_exists": false,
+  "annotation_result_sha256": null
+}

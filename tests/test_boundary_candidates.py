@@ -14,13 +14,20 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import time
+from unittest.mock import patch
+from pathlib import Path
+import ast
 
 cv2 = pytest.importorskip("cv2")
 
 from mc_photogrammetry.reconstruction.boundary_candidates import (
-    Chain, find_chains, propose_boundary_candidates,
+    Chain, PlaneProposalResult, find_chains, propose_boundary_candidates,
+    propose_image_planes,
 )
-from mc_photogrammetry.reconstruction.calibration import vanishing_points
+from mc_photogrammetry.reconstruction.calibration import (
+    CalibrationResult, vanishing_points,
+)
 
 WIDTH, HEIGHT = 640, 480
 FOCAL, YAW, PITCH, ROLL = 500.0, 25.0, 0.0, 0.0
@@ -376,3 +383,218 @@ def test_two_separate_planes_both_produce_candidates():
 
     for rectangle in rectangles:
         assert any(matches(candidate, rectangle) for candidate in candidates), rectangle
+
+
+# ---------------------------------------------------------------------------
+# M4-C3 image-only plane proposals. These controls use synthetic pixels and
+# image-derived calibration records; the orthogonal-wall case supplies exact
+# synthetic segments to isolate region/closure association from LSD variance.
+# ---------------------------------------------------------------------------
+
+def _synthetic_calibration(width=WIDTH, height=HEIGHT, yaw=0.0, pitch=0.0):
+    return CalibrationResult(
+        focal_pixels=500.0, yaw_degrees=yaw, pitch_degrees=pitch,
+        width=width, height=height, inliers=40, segments=60,
+        median_residual=0.5,
+    )
+
+
+def _render_front_wall(*, truncated=False, furniture=False, line_delta=40):
+    image = np.full((HEIGHT, WIDTH, 3), 70, dtype=np.uint8)
+    x0 = -60 if truncated else 50
+    x1 = 540 if truncated else 590
+    y0, y1 = 55, 425
+    wall = (112, 112, 112)
+    seam = (min(255, 112 + line_delta),) * 3
+    cv2.rectangle(image, (x0, y0), (x1, y1), wall, -1)
+    first_x = max(5, x0 + 5)
+    for x in range(first_x, x1 - 5, 55):
+        cv2.line(image, (x, y0 + 5), (x, y1 - 5), seam, 2)
+    for y in range(y0 + 5, y1 - 5, 45):
+        cv2.line(image, (max(5, x0 + 5), y), (x1 - 5, y), seam, 2)
+    if furniture:
+        # A distinct, foreground rectangle occludes the repeating wall grid.
+        cv2.rectangle(image, (265, 210), (385, 420), (40, 40, 40), -1)
+        cv2.rectangle(image, (265, 210), (385, 420), (220, 220, 220), 3)
+    return image
+
+
+def _image_proposals(image, *, calibration=None, usable=None, cap=32):
+    height, width = image.shape[:2]
+    if usable is None:
+        usable = np.ones((height, width), dtype=bool)
+    if calibration is None:
+        calibration = _synthetic_calibration(width, height)
+    return propose_image_planes(image, usable, calibration, max_candidates=cap)
+
+
+def test_image_proposer_recovers_truncated_wall_from_usable_image_evidence():
+    image = _render_front_wall(truncated=True)
+    result = _image_proposals(image)
+
+    assert isinstance(result, PlaneProposalResult)
+    assert result.status == "ok"
+    wall = [proposal for proposal in result.proposals if proposal.axis == 2]
+    assert wall
+    assert any(np.any(proposal.mask[:, :4]) for proposal in wall)
+    region_scales = {source for proposal in wall for source in proposal.sources
+                     if source.startswith("region_tile_")}
+    assert "region_tile_48" in region_scales
+    assert "region_tile_96" in region_scales
+    assert all(not proposal.mask.flags.writeable for proposal in result.proposals)
+    assert result.stats["chains"] <= 36
+
+
+def test_image_proposer_keeps_wall_regions_separate_around_occluding_furniture():
+    image = _render_front_wall(furniture=True)
+    usable = np.ones((HEIGHT, WIDTH), dtype=bool)
+    usable[:30, :80] = False
+    result = _image_proposals(image, usable=usable)
+
+    furniture = np.zeros((HEIGHT, WIDTH), dtype=bool)
+    furniture[210:421, 265:386] = True
+    region_proposals = [proposal for proposal in result.proposals
+                        if proposal.axis == 2
+                        and any(source.startswith("region_tile_")
+                                for source in proposal.sources)]
+    assert region_proposals
+    assert any(np.count_nonzero(proposal.mask & furniture) / max(
+        int(proposal.mask.sum()), 1) < 0.10 for proposal in region_proposals)
+    assert all(not np.any(proposal.mask & ~usable) for proposal in result.proposals)
+
+
+def test_image_proposer_detects_low_contrast_plane_from_line_closures():
+    image = _render_front_wall(line_delta=18)
+    result = _image_proposals(image)
+
+    assert result.status == "ok"
+    assert result.stats["detected_segments"] > 0
+    assert any(proposal.axis == 2 and "axis_chain_closure" in proposal.sources
+               for proposal in result.proposals)
+
+
+def test_image_proposer_passes_image_derived_roll_to_multiscale_votes():
+    from mc_photogrammetry.reconstruction import surfaces
+
+    image = _render_front_wall(line_delta=40)
+    calibration = _synthetic_calibration(yaw=25.0)
+    calibration = CalibrationResult(
+        focal_pixels=calibration.focal_pixels,
+        yaw_degrees=calibration.yaw_degrees,
+        pitch_degrees=calibration.pitch_degrees,
+        width=calibration.width, height=calibration.height,
+        inliers=calibration.inliers, segments=calibration.segments,
+        median_residual=calibration.median_residual, roll_degrees=7.0,
+    )
+
+    with patch("mc_photogrammetry.reconstruction.surfaces.planar_regions",
+               wraps=surfaces.planar_regions) as region_votes:
+        _image_proposals(image, calibration=calibration)
+
+    assert region_votes.call_count == 3
+    assert {call.kwargs["roll_degrees"] for call in region_votes.call_args_list} == {7.0}
+
+
+def test_image_proposer_separates_same_texture_orthogonal_walls_without_union():
+    image = np.full((HEIGHT, WIDTH, 3), 80, dtype=np.uint8)
+    cv2.rectangle(image, (45, 45), (600, 435), (130, 130, 130), -1)
+    segments = []
+
+    def draw(a, b):
+        cv2.line(image, tuple(map(int, a)), tuple(map(int, b)), (220, 220, 220), 2)
+        segments.append((*a, *b))
+
+    # Same wall appearance on both sides of the corner. The left/front plane
+    # contains axes 0+1 (normal 2); the right plane contains axes 1+2 (normal 0).
+    for y in range(60, 431, 30):
+        draw((50, y), (320, y))
+    for x in range(60, 321, 40):
+        draw((x, 50), (x, 430))
+    for x in range(340, 601, 40):
+        draw((x, 50), (x, 430))
+    for y in range(60, 431, 30):
+        draw((320, 240), (600, y))
+
+    with patch(
+        "mc_photogrammetry.reconstruction.boundary_candidates.detect_segments",
+        return_value=np.asarray(segments, dtype=float),
+    ):
+        result = _image_proposals(image, calibration=_synthetic_calibration(yaw=0.0))
+
+    left = [proposal for proposal in result.proposals if proposal.axis == 2]
+    right = [proposal for proposal in result.proposals if proposal.axis == 0]
+    assert left and right
+    assert any(proposal.mask[:, :320].sum() > proposal.mask[:, 320:].sum() * 4
+               for proposal in left)
+    assert any(proposal.mask[:, 320:].sum() > proposal.mask[:, :320].sum() * 4
+               for proposal in right)
+    assert all(not (proposal.mask[:, :320].sum() > proposal.mask.sum() * 0.35
+                    and proposal.mask[:, 320:].sum() > proposal.mask.sum() * 0.35)
+               for proposal in result.proposals)
+
+
+def test_image_proposer_order_is_deterministic_and_hard_cap_is_bounded():
+    first = _render_front_wall(line_delta=80)
+    second = _render_front_wall(truncated=True, line_delta=18)
+    images = {"first": first, "second": second}
+
+    def summaries(order):
+        found = {}
+        for name in order:
+            result = _image_proposals(images[name], cap=80)
+            found[name] = tuple(
+                (proposal.axis, proposal.side, proposal.sources, proposal.polygon,
+                 proposal.mask.tobytes()) for proposal in result.proposals
+            )
+            assert len(result.proposals) <= 32
+            assert result.stats["chains"] <= 36
+        return found
+
+    started = time.perf_counter()
+    forward = summaries(("first", "second"))
+    reverse = summaries(("second", "first"))
+    elapsed = time.perf_counter() - started
+
+    assert forward == reverse
+    assert elapsed < 10.0
+
+
+def test_image_proposer_returns_typed_abstentions_for_missing_evidence():
+    image = _render_front_wall()
+    valid = _synthetic_calibration()
+    unusable = np.zeros((HEIGHT, WIDTH), dtype=bool)
+
+    missing = propose_image_planes(image, np.ones((HEIGHT, WIDTH), bool), None)
+    insufficient = propose_image_planes(image, unusable, valid)
+    invalid = propose_image_planes(image, np.ones((HEIGHT, WIDTH), bool), {})
+    mismatched = propose_image_planes(image, np.ones((HEIGHT, WIDTH), bool),
+                                      _synthetic_calibration(width=WIDTH - 1))
+    weak_calibration = CalibrationResult(500, 0, 0, WIDTH, HEIGHT, 2, 60, 0.5)
+    weak = propose_image_planes(image, np.ones((HEIGHT, WIDTH), bool), weak_calibration)
+
+    assert (missing.status == insufficient.status == invalid.status
+            == mismatched.status == weak.status == "abstain")
+    assert missing.reason == "missing_calibration"
+    assert insufficient.reason == "insufficient_usable_coverage"
+    assert invalid.reason == "invalid_or_mismatched_calibration"
+    assert mismatched.reason == "invalid_or_mismatched_calibration"
+    assert weak.reason == "insufficient_calibration_inliers"
+    assert not missing.proposals and not insufficient.proposals
+
+
+def test_production_plane_proposer_contains_no_evaluation_artifact_access():
+    source = Path(__file__).parents[1] / "src" / "mc_photogrammetry" / "reconstruction" / "boundary_candidates.py"
+    text = source.read_text(encoding="utf-8")
+    tree = ast.parse(text)
+    imports = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            imports.append(node.module or "")
+
+    assert not any("json" in item or "manifest" in item.lower()
+                   or "litematic" in item.lower() for item in imports)
+    assert "M4-C2-boundary-targets" not in text
+    assert "reference.litematic" not in text
+    assert "cameras.json" not in text

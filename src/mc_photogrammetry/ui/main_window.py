@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 from queue import Empty, Queue
 from threading import Event
@@ -17,6 +18,55 @@ from mc_photogrammetry.reconstruction.scene import load_scene_transform
 from mc_photogrammetry.vision.gui_mask import create_gui_mask
 
 
+@dataclass(frozen=True, slots=True)
+class _DesktopResult:
+    status: str
+    output: Path | None
+    project: Path | None
+    reason: str = ""
+    block_count: int | None = None
+    diagnostic_confirmed: bool = False
+    camera_admission: dict | None = None
+
+
+def _camera_admission_text(summary: dict | None) -> str:
+    if summary is None:
+        return ""
+    lines = [f"Screenshots: {summary['original']} original, {summary['admitted']} admitted, {summary['excluded']} excluded"]
+    lines.extend(f"Excluded {item['frame_id']}: {item['stage']}: {item['reason']}"
+                 for item in summary["exclusions"])
+    return "\n".join(lines) + "\n"
+
+
+def _format_desktop_result(result: _DesktopResult) -> str:
+    admission = _camera_admission_text(result.camera_admission)
+    if result.status == "delivered" and result.output is not None:
+        count = (f"{result.block_count} visible scene blocks\n"
+                 if result.block_count is not None else "")
+        diagnostic = (
+            f"Diagnostic: {result.project}\n"
+            if result.project is not None and result.diagnostic_confirmed
+            else ""
+        )
+        return (
+            f"{admission}Created {result.output.name}\n{count}{diagnostic}"
+            "Review low-confidence/background candidates before building."
+        )
+    if result.project is None:
+        diagnostic = "No schema-3 diagnostic path is available."
+    elif result.diagnostic_confirmed:
+        diagnostic = f"Schema-3 diagnostic: {result.project}"
+    else:
+        diagnostic = (
+            f"Schema-3 diagnostic target (not confirmed for this run): "
+            f"{result.project}"
+        )
+    return (
+        f"{admission}Reconstruction {result.status}: {result.reason or 'no exact export'}\n"
+        f"{diagnostic}"
+    )
+
+
 def _reconstruct_source(
     source: Path,
     output_root: Path,
@@ -24,8 +74,14 @@ def _reconstruct_source(
     cancel_event: Event,
     *,
     developer_mode: bool = False,
-) -> tuple[str, int, Path, Path]:
+    destination: Path | None = None,
+) -> _DesktopResult:
     image_frames = list(discover_media([source]).image_frames)
+    if destination is not None and len(image_frames) < 2:
+        return _DesktopResult(
+            "refused", None, destination.with_suffix(".mcscan"),
+            "insufficient_images_for_multiview",
+        )
     if not image_frames:
         raise ValueError("No supported screenshots found.")
     cameras_path = source / "cameras.json"
@@ -69,6 +125,48 @@ def _reconstruct_source(
         )
         name = source.name
         source_paths = [frame.source_path for frame in image_frames]
+    elif len(image_frames) >= 2:
+        if destination is None:
+            raise ValueError("Choose a .litematic destination for this screenshot set.")
+        from mc_photogrammetry.pipeline.image_derived_production_delivery import (
+            derive_and_deliver_image_output,
+        )
+        from mc_photogrammetry.pipeline.image_derived_production import (
+            ImageDerivedProductionResult,
+        )
+
+        image_paths = [Path(frame.source_path) for frame in image_frames]
+        project_file = destination.with_suffix(".mcscan")
+        progress.put((f"Reconstructing {len(image_paths)} screenshots", 5))
+        result = derive_and_deliver_image_output(
+            image_paths,
+            destination=destination,
+            name=destination.stem,
+            description="Image-derived visible scene; hidden geometry omitted",
+            project_path=project_file,
+        )
+        production = getattr(result, "production", result)
+        entry = getattr(production, "entry", None)
+        admission = getattr(getattr(entry, "session", None), "admission_summary", None)
+        if admission is not None:
+            progress.put((_camera_admission_text(admission).rstrip(), 95))
+        diagnostic = Path(entry.project_path) if entry is not None else project_file
+        diagnostic_confirmed = isinstance(production, ImageDerivedProductionResult)
+        status = getattr(result, "status", "refused")
+        reason = getattr(result, "reason", "")
+        if status == "delivered":
+            progress.put(("Complete", 100))
+            return _DesktopResult(
+                status, destination, diagnostic, reason,
+                diagnostic_confirmed=diagnostic_confirmed,
+                camera_admission=admission,
+            )
+        progress.put((f"Reconstruction {status}: {reason or 'no exact export'}", 100))
+        return _DesktopResult(
+            status, None, diagnostic, reason,
+            diagnostic_confirmed=diagnostic_confirmed,
+            camera_admission=admission,
+        )
     else:
         selected = Path(image_frames[0].source_path)
         progress.put(("Loading screenshot", 10))
@@ -85,7 +183,8 @@ def _reconstruct_source(
     save_project(ScanProject(name=name, source_paths=source_paths, volume=volume), project_file)
     LitematicExporter().export(volume, output, name=name, description="Calibrated visible scene surfaces; hidden geometry omitted")
     progress.put(("Complete", 100))
-    return output.name, len(volume.blocks), output, project_file
+    return _DesktopResult("delivered", output, project_file,
+                          block_count=len(volume.blocks))
 
 
 def run_desktop(project_path: Path | None = None, *, developer_mode: bool = False) -> int:
@@ -112,7 +211,7 @@ def run_desktop(project_path: Path | None = None, *, developer_mode: bool = Fals
     status.setWordWrap(True)
     selected_source: Path | None = None
     executor = ThreadPoolExecutor(max_workers=1)
-    future: Future[tuple[str, int, Path, Path]] | None = None
+    future: Future[_DesktopResult] | None = None
     cancel_event = Event()
     messages: Queue[tuple[str, int]] = Queue()
     choose_button = QPushButton("Choose screenshot folder")
@@ -137,14 +236,34 @@ def run_desktop(project_path: Path | None = None, *, developer_mode: bool = Fals
             return
         if future is not None and not future.done():
             return
+        destination: Path | None = None
+        frames = discover_media([selected_source]).image_frames
+        has_developer_sidecars = (
+            developer_mode and len(frames) >= 2
+            and (selected_source / "cameras.json").exists()
+            and (selected_source / "scene.json").exists()
+        )
+        if len(frames) >= 2 and not has_developer_sidecars:
+            default_output = selected_source.parent / f"{selected_source.name}.litematic"
+            filename, _ = QFileDialog.getSaveFileName(
+                window, "Save reconstructed litematic", str(default_output),
+                "Litematic files (*.litematic)",
+            )
+            if not filename:
+                return
+            destination = Path(filename)
+            if destination.suffix.casefold() != ".litematic":
+                destination = destination.with_suffix(".litematic")
         cancel_event.clear()
         progress_bar.setValue(0)
         choose_button.setEnabled(False)
         reconstruct_button.setEnabled(False)
-        cancel_button.setEnabled(True)
+        # The image-derived production API has no cancellation hook. Keep the
+        # existing cancel control for legacy/developer reconstruction only.
+        cancel_button.setEnabled(destination is None)
         future = executor.submit(
             _reconstruct_source, selected_source, Path.cwd() / "exports", messages,
-            cancel_event, developer_mode=developer_mode,
+            cancel_event, developer_mode=developer_mode, destination=destination,
         )
 
     def cancel_reconstruction() -> None:
@@ -162,8 +281,7 @@ def run_desktop(project_path: Path | None = None, *, developer_mode: bool = Fals
             pass
         if future is not None and future.done():
             try:
-                filename, block_count, _, project_file = future.result()
-                status.setText(f"Created {filename}\n{block_count} visible scene blocks\nReview low-confidence/background candidates before building.\nSaved {project_file.name}")
+                status.setText(_format_desktop_result(future.result()))
             except Exception as error:
                 status.setText(f"Reconstruction failed: {error}")
             finally:

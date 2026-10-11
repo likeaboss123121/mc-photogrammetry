@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 
+from mc_photogrammetry.blocks.appearance import DEFAULT_PALETTE, PaletteColor
 from mc_photogrammetry.domain.models import (
     BlockObservation,
     BlockState,
@@ -13,47 +12,7 @@ from mc_photogrammetry.domain.models import (
 from .camera import CameraModel, unproject_pixel
 from .scene import SceneTransform
 
-
-@dataclass(frozen=True, slots=True)
-class PaletteColor:
-    state: BlockState
-    rgb: tuple[int, int, int]
-    face_rgbs: tuple[tuple[int, int, int], ...] = ()
-    family: str = "other"
-    descriptors: tuple[tuple[float, ...], ...] = ()
-    face_map: tuple[tuple[str, tuple[int, int, int]], ...] = ()
-    face_thumbnails: tuple[tuple[str, str], ...] = ()
-    face_corners: tuple[tuple[str, tuple[tuple[float, float, float], ...]], ...] = ()
-    model_faces: tuple[tuple, ...] = ()
-    """Exact baked polygons: slot, corners, normal, cullface, optional alpha PNG."""
-    full_cube: bool = True
-    """Whether the block fills its cell. False for stairs, slabs, carpets, fences."""
-    shape_boxes: tuple[tuple[tuple[float, float, float], tuple[float, float, float]], ...] = ()
-    """The model's boxes in cell coordinates, so a partial block keeps its shape."""
-    covered_slots: tuple[str, ...] = ()
-    """Which faces the shape actually fills, and so can hide what is behind them."""
-
-    @property
-    def occupies(self) -> float:
-        """Share of the cell the shape fills; one for a full cube."""
-        if self.full_cube or not self.shape_boxes:
-            return 1.0
-        return sum(
-            max(0.0, high[0] - low[0]) * max(0.0, high[1] - low[1]) * max(0.0, high[2] - low[2])
-            for low, high in self.shape_boxes
-        )
-
-
-DEFAULT_PALETTE = (
-    PaletteColor(BlockState("minecraft:stone"), (125, 125, 125)),
-    PaletteColor(BlockState("minecraft:dirt"), (134, 96, 67)),
-    PaletteColor(BlockState("minecraft:oak_planks"), (162, 130, 79)),
-    PaletteColor(BlockState("minecraft:grass_block"), (105, 150, 56)),
-    PaletteColor(BlockState("minecraft:bricks"), (150, 75, 65)),
-    PaletteColor(BlockState("minecraft:glass"), (170, 210, 220)),
-    PaletteColor(BlockState("minecraft:white_concrete"), (207, 213, 214)),
-    PaletteColor(BlockState("minecraft:black_concrete"), (8, 10, 15)),
-)
+__all__ = ["DEFAULT_PALETTE", "PaletteColor", "estimate_horizon", "reconstruct_facade"]
 
 
 def reconstruct_facade(

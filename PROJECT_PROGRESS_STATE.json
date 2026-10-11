@@ -1,0 +1,57 @@
+{
+    "schema":  "mc-photogrammetry-progress-v1",
+    "last_updated_local":  "2026-10-11 07:21:14 -05:00",
+    "project_status":  "Astra approved refreshed source-closure successor for disabled readiness only. 198/198 source pins verify. Hours remain unresolved; launch flags false. No evaluation, image-derived geometry, .litematic, or score gain (0 pp).",
+    "what_happened":  "Refreshed the stale packet-task pin; verifier passed all 198 source files and Astra approved disabled readiness. No image/truth payload or evaluator was accessed.",
+    "what_next":  "Reconcile current tracked hours. If below 240, refresh/review remaining runtime and input seals and make a separate lead launch decision; otherwise stop per cutoff.",
+    "expected_gain_next_update_pp":  0,
+    "expected_gain_basis":  "No image-scored result exists. The one-shot camera evaluation remains disabled and cannot establish geometry or exact-state delivery.",
+    "metrics":  [
+                    {
+                        "key":  "T2_assisted",
+                        "label":  "Template 2 supplied-camera",
+                        "exact":  480,
+                        "visible":  667,
+                        "candidate_ceiling":  561,
+                        "basis":  "2026-10-03 stagewise diagnostic; supplied cameras/reference-assisted geometry"
+                    },
+                    {
+                        "key":  "T6_default",
+                        "label":  "Template 6 supplied-camera default",
+                        "exact":  350,
+                        "visible":  2007,
+                        "candidate_ceiling":  393,
+                        "basis":  "2026-10-03 stagewise diagnostic; supplied cameras/reference-assisted geometry"
+                    },
+                    {
+                        "key":  "T6_no_prune",
+                        "label":  "Template 6 supplied-camera no-pruning ablation",
+                        "exact":  511,
+                        "visible":  2007,
+                        "candidate_ceiling":  788,
+                        "basis":  "2026-10-03 diagnostic ablation; acceptance-ineligible"
+                    },
+                    {
+                        "key":  "T3",
+                        "label":  "Template 3 frozen subset",
+                        "exact":  null,
+                        "visible":  null,
+                        "candidate_ceiling":  null,
+                        "basis":  "No comparable end-to-end exact-state/candidate-ceiling record"
+                    },
+                    {
+                        "key":  "T4_T5",
+                        "label":  "Templates 4-5 terrain",
+                        "exact":  null,
+                        "visible":  null,
+                        "candidate_ceiling":  null,
+                        "basis":  "Outside current buildings/rooms release gates; no comparable score"
+                    }
+                ],
+    "image_only_status":  "Production image-only path: GUI-mask zero-fill fix implemented; 17 focused tests pass. No post-change image camera evaluation, geometry F1, exact-state score, or .litematic. Prior production run still budget-refused before geometry. Camera-basin attempt01 failed pre-freeze and cannot be retried.",
+    "last_reported_exact":  {
+                                "T2_assisted":  480,
+                                "T6_default":  350,
+                                "T6_no_prune":  511
+                            }
+}

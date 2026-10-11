@@ -679,7 +679,8 @@ def test_e3_a_persisted_minimum_shift_is_sufficient_without_recomputing(tmp_path
     assert len(reprojected_again) == 2
 
 
-def _rectangle_cell(*, focal=1000.0, principal_point=(200.0, 200.0), distance=10.0, period=1.0):
+def _rectangle_cell(*, focal=1000.0, principal_point=(200.0, 200.0), distance=10.0, period=1.0,
+                    lateral_origin=(0.0, 0.0)):
     """A single (0, 0) cell under identity axes - the same well-resolved,
     comfortably in-frame setup `test_g1_half_occluded_cell...` above already
     uses (about 100px on a side at the defaults) - returning the transform
@@ -690,11 +691,16 @@ def _rectangle_cell(*, focal=1000.0, principal_point=(200.0, 200.0), distance=10
     y-axis is flipped relative to lateral v, so a `principal_point` picked
     without accounting for that can leave half the cell projecting to
     negative pixel coordinates and clipped by the image edge - a real, but
-    different, effect from the one these F4 controls test)."""
+    different, effect from the one these F4 controls test). ``distance`` and
+    ``period`` together fix the projected side length, ``period * focal /
+    distance``; pass both explicitly whenever a control's truth depends on
+    the cell's own size (the review's exact reproduction needs distance=1
+    and period=1 for a true 1px cell, not the 0.1px this default gives).
+    ``lateral_origin`` moves the lattice phase independently of that size."""
     axes = np.eye(3)
     transform = LatticeTransform(axis=2, side=1.0, distance=distance, axis_matrix=axes,
                                  focal=focal, principal_point=principal_point,
-                                 lateral_origin=(0.0, 0.0), period=period)
+                                 lateral_origin=lateral_origin, period=period)
     corners = cell_corners_pixels(transform, (0, 0))
     xs = [c[0] for c in corners]
     ys = [c[1] for c in corners]
@@ -702,25 +708,186 @@ def _rectangle_cell(*, focal=1000.0, principal_point=(200.0, 200.0), distance=10
 
 
 def test_f4_the_reviews_exact_55_percent_case_never_certifies_visible():
-    """The lead follow-up review's own reproduction: identity-axis Z plane,
-    side/distance/period=1, focal=1, principal point (2.2, 3.2), cell (0,0) -
-    the projected cell is [2.2,3.2]x[2.2,3.2]. A VISIBLE rectangle starting
-    at its lower-left corner and covering only 55% of its width. The old
+    """The lead follow-up review's own reproduction, at the cell size the
+    review actually specifies: identity-axis Z plane, distance=1, period=1,
+    focal=1, principal point (2.2, 3.2), cell (0,0) - the projected cell is
+    exactly [2.2,3.2]x[2.2,3.2], one true pixel on a side. ``distance`` and
+    ``period`` are passed explicitly: this test used to inherit
+    `_rectangle_cell`'s distance=10 default and so measured a 0.1px cell
+    while its docstring claimed 1px - the mismatch the lead review named
+    (S-D's "current helper defaults yield a 0.1px cell while the docstring
+    claims 1px"). The 0.1px size is kept as its own separately named control
+    immediately below, so the two can never silently stand in for each
+    other again. A VISIBLE rectangle covering only 55% of its width: the old
     supersampled point estimate reported 0.6123046875 here and declared the
     cell visible at the 0.6 threshold - a real decision error, not a
     cosmetic one, since true coverage (55%) is genuinely below threshold.
-    `coverage_by_label` is now a certified lower bound, so it must never
-    read above the true 0.55 value (a bound that overshoots the truth is not
-    a bound at all) and must never clear 0.6 here.
+    `coverage_by_label` is now a certified lower bound and
+    `coverage_upper_by_label` a certified upper bound, so the full
+    bracketing contract is asserted, not just the lower half: the exact
+    analytic truth (0.55 of a 1px square, from rectangle geometry alone)
+    must lie between them, and the bound the decision is made from must stay
+    below 0.6.
     """
-    transform, (x0, x1, y0, y1) = _rectangle_cell(focal=1.0, principal_point=(2.2, 3.2))
+    transform, (x0, x1, y0, y1) = _rectangle_cell(
+        focal=1.0, principal_point=(2.2, 3.2), distance=1.0, period=1.0)
+    assert (x1 - x0) == pytest.approx(1.0) and (y1 - y0) == pytest.approx(1.0), (
+        "setup no longer reproduces the review's exact 1px cell")
     width = x1 - x0
     region = RegionEvidence(VISIBLE, ((x0, y0), (x0 + 0.55 * width, y0),
                                       (x0 + 0.55 * width, y1), (x0, y1)))
     evidence = rasterize_cells(transform, [region], image_size=(12, 12),
                                rows=range(1), columns=range(1))[0]
-    assert evidence.coverage_by_label[VISIBLE] <= 0.55 + 1e-6
-    assert evidence.coverage_by_label[VISIBLE] < VISIBLE_COVERAGE_THRESHOLD
+    lower = evidence.coverage_by_label[VISIBLE]
+    upper = evidence.coverage_upper_by_label[VISIBLE]
+    assert lower <= 0.55 + 1e-9, "a lower bound may not exceed the true coverage"
+    assert upper >= 0.55 - 1e-9, "an upper bound may not undershoot the true coverage"
+    # The lead review's own recorded reproduction values for this exact case.
+    assert lower == pytest.approx(0.5379726573, abs=1e-9)
+    assert upper == pytest.approx(0.5612121130, abs=1e-9)
+    assert lower < VISIBLE_COVERAGE_THRESHOLD
+    assert evidence.declared is None
+
+
+def test_f4_the_same_55_percent_case_at_the_older_0_1px_default_stays_undeclared():
+    """The 0.1px cell size the exact-55% test above used to measure by
+    accident, preserved as a separately labelled control rather than
+    discarded: `_rectangle_cell`'s distance=10 default shrinks the review's
+    identity 1px cell to 0.1px on a side. At that size the fixed boundary
+    band is a large share of the cell's own area, so the certified interval
+    is legitimately wider and its upper bound does exceed the 0.6 threshold -
+    which is exactly why `declared` is decided from the certified *lower*
+    bound alone: the cell still abstains rather than being declared visible
+    from a wide upper bound. The exact 0.55 truth still lies between the
+    bounds even here.
+    """
+    transform, (x0, x1, y0, y1) = _rectangle_cell(
+        focal=1.0, principal_point=(2.2, 3.2), distance=10.0, period=1.0)
+    assert (x1 - x0) < 1.0 and (y1 - y0) < 1.0, (
+        "setup no longer reproduces the 0.1px cell this control preserves")
+    width = x1 - x0
+    region = RegionEvidence(VISIBLE, ((x0, y0), (x0 + 0.55 * width, y0),
+                                      (x0 + 0.55 * width, y1), (x0, y1)))
+    evidence = rasterize_cells(transform, [region], image_size=(12, 12),
+                               rows=range(1), columns=range(1))[0]
+    lower = evidence.coverage_by_label[VISIBLE]
+    upper = evidence.coverage_upper_by_label[VISIBLE]
+    assert lower <= 0.55 + 1e-9, "a lower bound may not exceed the true coverage"
+    assert upper >= 0.55 - 1e-9, "an upper bound may not undershoot the true coverage"
+    assert lower < VISIBLE_COVERAGE_THRESHOLD
+    assert upper > VISIBLE_COVERAGE_THRESHOLD, (
+        "the wide 0.1px upper bound is exactly why the decision must come from"
+        " the certified lower bound, not the upper one")
+    assert evidence.declared is None
+
+
+def test_sd_a_translated_fractional_cell_brackets_an_exact_quarter_rectangle():
+    """S-D analytic control: the expected coverage is exact simple rectangle
+    geometry, never the adapter measuring itself. At a fractional principal
+    point and a fractional lattice phase (every corner off the pixel grid in
+    both axes) the identity-axis cell projects to an axis-aligned rectangle
+    of width and height ``period * focal / distance``. A VISIBLE rectangle
+    covering exactly half of that width and half of that height therefore
+    covers exactly 1/4 of the cell's true area. Both certified bounds must
+    contain that exact 0.25 (lower <= 0.25 <= upper), and since 0.25 is well
+    below the 0.6 threshold the cell must abstain.
+    """
+    transform, (x0, x1, y0, y1) = _rectangle_cell(
+        focal=983.7, principal_point=(207.7, 213.1), distance=10.0, period=1.0,
+        lateral_origin=(0.3123, -0.887))
+    width, height = x1 - x0, y1 - y0
+    # The translated cell is still a true square of the projected side.
+    assert width == pytest.approx(983.7 / 10.0) and height == pytest.approx(983.7 / 10.0)
+    quarter = RegionEvidence(VISIBLE, (
+        (x0, y0), (x0 + 0.5 * width, y0),
+        (x0 + 0.5 * width, y0 + 0.5 * height), (x0, y0 + 0.5 * height)))
+    evidence = rasterize_cells(transform, [quarter], image_size=(400, 400),
+                               rows=range(1), columns=range(1))[0]
+    lower = evidence.coverage_by_label[VISIBLE]
+    upper = evidence.coverage_upper_by_label[VISIBLE]
+    assert lower <= 0.25 + 1e-9, "a lower bound may not exceed the exact 0.25 truth"
+    assert upper >= 0.25 - 1e-9, "an upper bound may not undershoot the exact 0.25 truth"
+    assert evidence.declared is None
+
+
+@pytest.mark.parametrize("angle_degrees", [15.0, 30.0, 70.0])
+def test_sd_an_oblique_rotated_cell_brackets_an_exact_half_triangle(angle_degrees):
+    """S-D analytic control with genuinely oblique projected edges: the
+    lattice basis is rotated in-plane about the plane normal, so the cell
+    projects to a square rotated by ``angle_degrees`` in the image - every
+    edge oblique to the pixel grid - while the normal stays fronto-parallel,
+    making the lateral-to-pixel map a similarity. A diagonal splits a square
+    into two exactly equal-area triangles, so a VISIBLE region drawn from any
+    three of the projected corners covers exactly 1/2 of the cell's true
+    area: exact triangle/square geometry, computed independently of the
+    adapter. Both certified bounds must contain 0.5, and 0.5 is below the
+    0.6 threshold, so the cell must also abstain.
+    """
+    angle = np.deg2rad(angle_degrees)
+    rotated_basis = np.array([
+        [np.cos(angle), np.sin(angle), 0.0],
+        [-np.sin(angle), np.cos(angle), 0.0],
+        [0.0, 0.0, 1.0],
+    ])
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0,
+                                 axis_matrix=rotated_basis, focal=1000.0,
+                                 principal_point=(400.0, 400.0),
+                                 lateral_origin=(0.3123, -0.887), period=1.0)
+    corners = cell_corners_pixels(transform, (0, 0))
+    # Independent setup check, not the adapter's own area helper: the
+    # fronto-parallel rotated cell is a square of side focal*period/distance,
+    # so this test's own shoelace on the projected corners must return that
+    # square's exact area.
+    def _shoelace(points):
+        total = 0.0
+        for index, (px, py) in enumerate(points):
+            qx, qy = points[(index + 1) % len(points)]
+            total += px * qy - qx * py
+        return abs(total) / 2.0
+
+    assert _shoelace(corners) == pytest.approx((1000.0 / 10.0) ** 2, rel=1e-9)
+    triangle = RegionEvidence(VISIBLE, tuple(corners[:3]))
+    evidence = rasterize_cells(transform, [triangle], image_size=(800, 800),
+                               rows=range(1), columns=range(1))[0]
+    lower = evidence.coverage_by_label[VISIBLE]
+    upper = evidence.coverage_upper_by_label[VISIBLE]
+    assert lower <= 0.5 + 1e-9, "a lower bound may not exceed the exact 0.5 truth"
+    assert upper >= 0.5 - 1e-9, "an upper bound may not undershoot the exact 0.5 truth"
+    assert evidence.declared is None
+
+
+def test_sd_an_oblique_translated_half_rectangle_brackets_its_exact_half():
+    """S-D analytic control for a translated *and* oblique intersection: a
+    VISIBLE rectangle drawn in absolute plane-lateral coordinates covering
+    exactly the cell's lower half-width by its full height (u from the
+    lattice origin through half a period, v across the full period) under
+    the same in-plane rotation as the triangle control. The lateral-to-pixel
+    map is a similarity for this fronto-parallel plane, which preserves area
+    ratios, so the region covers exactly 1/2 of the cell's true area by the
+    same rectangle geometry - independent of how the adapter rasterizes it.
+    Both certified bounds must contain 0.5.
+    """
+    angle = np.deg2rad(40.0)
+    rotated_basis = np.array([
+        [np.cos(angle), np.sin(angle), 0.0],
+        [-np.sin(angle), np.cos(angle), 0.0],
+        [0.0, 0.0, 1.0],
+    ])
+    transform = LatticeTransform(axis=2, side=1.0, distance=10.0,
+                                 axis_matrix=rotated_basis, focal=1000.0,
+                                 principal_point=(400.0, 400.0),
+                                 lateral_origin=(0.3123, -0.887), period=1.0)
+    region_pixels = [lateral_to_pixel(transform, (u, v))
+                     for u, v in ((0.3123, -0.887), (0.8123, -0.887),
+                                  (0.8123, 0.113), (0.3123, 0.113))]
+    assert all(pixel is not None for pixel in region_pixels)
+    region = RegionEvidence(VISIBLE, tuple(region_pixels))
+    evidence = rasterize_cells(transform, [region], image_size=(800, 800),
+                               rows=range(1), columns=range(1))[0]
+    lower = evidence.coverage_by_label[VISIBLE]
+    upper = evidence.coverage_upper_by_label[VISIBLE]
+    assert lower <= 0.5 + 1e-9, "a lower bound may not exceed the exact 0.5 truth"
+    assert upper >= 0.5 - 1e-9, "an upper bound may not undershoot the exact 0.5 truth"
     assert evidence.declared is None
 
 

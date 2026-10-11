@@ -29,6 +29,7 @@ from mc_photogrammetry.reconstruction.supported import (
     phase_at_period,
     support_cells,
 )
+from mc_photogrammetry.reconstruction import lattice_planes, supported as supported_module
 
 
 def _gridded(size, period, phase=0.0, noise=0.0, seed=1):
@@ -129,6 +130,34 @@ def test_a_period_too_small_to_divide_is_refused():
     assert support_cells(patch, np.ones_like(patch), 1.0, (0.0, 0.0)) == []
 
 
+def test_minimum_block_pixel_gate_uses_endpoint_inclusive_spacing(monkeypatch):
+    from mc_photogrammetry.reconstruction import lattice, supported
+
+    span, samples = 1.0, 64
+    old_step = 2.0 * span / samples
+    # Under the old denominator this landed exactly on the accepted 2px edge;
+    # the actual endpoint-inclusive grid is slightly coarser and must abstain.
+    distance = 1.0 / (2.0 * old_step)
+    assert (1.0 / distance) / old_step == pytest.approx(2.0)
+    exact_step = lattice.rectified_pixel_step(span, samples)
+    assert (1.0 / distance) / exact_step < 2.0
+
+    monkeypatch.setattr(
+        lattice, "measure_plane", lambda *_args, **_kwargs: (None, samples, span))
+    monkeypatch.setattr(
+        lattice, "rectify_plane",
+        lambda _image, _axis, _matrix, _focal, *, samples, **_kwargs:
+            np.ones((samples, samples), dtype=np.float32))
+    monkeypatch.setattr(
+        supported, "support_cells",
+        lambda *_args, **_kwargs: pytest.fail("sub-2px lattice reached cell scoring"))
+
+    result = supported.plane_from_evidence(
+        np.ones((8, 8), dtype=np.float32), 2, np.eye(3), 100.0, (8, 8),
+        distance=distance, extent=span)
+    assert result is None
+
+
 def test_coverage_is_reported_per_cell():
     patch = _gridded(128, 32.0)
     coverage = np.ones_like(patch)
@@ -147,6 +176,24 @@ def test_phase_at_period_finds_where_the_seams_are():
     # Phase is circular, so 11 and 11 +/- period are the same answer.
     error = abs((found - 11.0 + period / 2) % period - period / 2)
     assert error <= 2.0, f"read the phase as {found}, not 11"
+
+
+def test_periodic_phase_callers_share_the_raw_complex_resultant():
+    profile = np.zeros(13, dtype=np.float64)
+    profile[[1, 5, 9]] = (1.0, 2.0, 3.0)
+    offsets = np.arange(profile.size, dtype=float)
+    period = 4.0
+    angle = 2.0 * np.pi * offsets / period
+    expected = np.sum(profile * np.exp(-1j * angle))
+    raw = supported_module._periodic_energy_resultant(profile, offsets, period)
+    assert raw == expected
+
+    legacy_phase = phase_at_period(profile, offsets, period)
+    evidence_axis = lattice_planes._periodic_energy_axis(profile, period)
+    assert evidence_axis[0] == pytest.approx(legacy_phase, abs=1e-12)
+    assert evidence_axis[1] == pytest.approx(abs(raw), rel=1e-14)
+    assert evidence_axis[2] == pytest.approx(float(profile.sum()))
+    assert evidence_axis[3] == pytest.approx(abs(raw) / float(profile.sum()))
 
 
 def test_fitting_the_phase_does_not_let_noise_clear_the_threshold():

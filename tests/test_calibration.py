@@ -58,6 +58,91 @@ def _lattice_segments(camera, width=WIDTH, height=HEIGHT, reach=9):
     return np.asarray(rows, dtype=float)
 
 
+def _optics_anchor_fixture(kind):
+    """Reuse the independent projected-line generator; no pixels or fitted truth."""
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "anchor_independent_fixture", Path(__file__).with_name("test_calibration_independent.py"))
+    fixture = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixture)
+    yaw, pitch, roll = (5., 16., 0.) if kind == "near_frontal" else (23., -14., 3. if kind == "rolled" else 0.)
+    segments = fixture._segments((.5, .5, .5), yaw, pitch, roll, 70., WIDTH, HEIGHT)
+    cut_x, cut_y = (200, 100) if kind == "cropped" else (0, 0)
+    if cut_x or cut_y:
+        segments = segments - [cut_x, cut_y, cut_x, cut_y]
+        segments = segments[(segments[:, [0, 2]] >= 0).all(axis=1)
+                            & (segments[:, [1, 3]] >= 0).all(axis=1)]
+    lengths = np.linalg.norm(segments[:, 2:] - segments[:, :2], axis=1)
+    return segments, lengths, WIDTH - cut_x, HEIGHT - cut_y, (_focal(70.) * 1.15, yaw, pitch)
+
+
+@pytest.mark.parametrize("kind", ["near_frontal", "rolled", "cropped"])
+def test_optics_anchor_real_geometry_candidate_order_is_stable(kind, monkeypatch):
+    import mc_photogrammetry.reconstruction.calibration as module
+
+    segments, lengths, width, height, initial = _optics_anchor_fixture(kind)
+    real_numpy = module.np
+
+    class OrderedGrid:
+        def __init__(self, order):
+            self.order = order
+
+        def __getattr__(self, name):
+            return getattr(real_numpy, name)
+
+        def arange(self, *args, **kwargs):
+            values = real_numpy.arange(*args, **kwargs)
+            reverse = self.order == "reverse_all" or (
+                self.order == "reverse_scales" and abs(float(args[0]) - .80) < 1e-10)
+            return values[::-1] if reverse else values
+
+        def linspace(self, *args, **kwargs):
+            values = real_numpy.linspace(*args, **kwargs)
+            return values[::-1] if self.order in ("reverse_all", "reverse_point") else values
+
+    answers = []
+    for order in ("forward", "reverse_all", "reverse_scales", "reverse_point"):
+        monkeypatch.setattr(module, "np", OrderedGrid(order))
+        answers.append(module.refine_optics(segments, lengths, *initial, width, height, module.INLIER_PIXELS))
+    expected = answers[0]
+    assert expected[4], "control must exercise accepted optical refinement"
+    for found in answers[1:]:
+        assert found[4] == expected[4]
+        assert found[0] == pytest.approx(expected[0], abs=1e-10)
+        assert found[1] == pytest.approx(expected[1], abs=1e-10) if expected[1] is not None else found[1] is None
+        assert found[2:] == pytest.approx(expected[2:], abs=1e-10)
+
+
+def test_optics_anchor_each_sweep_keeps_its_declared_grid(monkeypatch):
+    import mc_photogrammetry.reconstruction.calibration as module
+
+    segments, lengths, width, height, initial = _optics_anchor_fixture("rolled")
+    original = module._score
+    calls = []
+
+    def observe(*args, **kwargs):
+        calls.append(tuple(float(value) for value in args[2:5]))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, "_score", observe)
+    found = module.refine_optics(segments, lengths, *initial, width, height, module.INLIER_PIXELS)
+    assert found[4]
+    assert len(calls) == 1 + 2 * (17 * 19 + 49 * 19) + 9 * 9 + 13 * 13
+    offset = 1
+    for count in (17 * 19, 49 * 19, 17 * 19, 49 * 19):
+        focals = np.unique([row[0] for row in calls[offset:offset + count]])
+        assert len(focals) == 19
+        assert focals / focals[0] == pytest.approx(np.arange(.80, 1.2501, .025) / .80, abs=1e-12)
+        offset += count
+    for count, grid_size in ((9 * 9, 9), (13 * 13, 13)):
+        grid = np.asarray(calls[offset:offset + count])
+        assert len(np.unique(grid[:, 1])) == grid_size
+        assert len(np.unique(grid[:, 2])) == grid_size
+        offset += count
+
+
 def test_the_vertical_axis_points_straight_up_in_camera_space():
     # World +Y must have no sideways component whatever the yaw, or the zero-roll
     # assumption the whole estimator rests on is wrong.

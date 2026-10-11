@@ -1,0 +1,11 @@
+﻿{
+    "command":  "venv python -B -c calibrate_synthetic_dev(); persist_calibration(development.json)",
+    "invocation_count":  1,
+    "started_utc":  "2026-10-08T22:03:40.7524126Z",
+    "ended_utc":  "2026-10-08T22:03:44.8399370Z",
+    "elapsed_seconds":  4.0846700999999994,
+    "exit_code":  1,
+    "stdout_path":  "docs\\reports\\SOL-MULTIVIEW-QUOTA-PARTITION-V1-2026-10-08\\calibration.stdout.txt",
+    "stderr_path":  "docs\\reports\\SOL-MULTIVIEW-QUOTA-PARTITION-V1-2026-10-08\\calibration.stderr.txt",
+    "output_exists":  false
+}

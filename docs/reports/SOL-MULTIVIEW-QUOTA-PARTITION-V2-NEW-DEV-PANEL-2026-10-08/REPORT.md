@@ -1,0 +1,7 @@
+# SOL-MULTIVIEW-QUOTA-PARTITION-V2-NEW-DEV-PANEL
+
+The new evaluator is prepared under a distinct v2 schema and config hash. It pins the repaired quota geometry and immutable V1 evaluator, then schedules only four fresh development seeds: 96111, 96121, 96131, and 96141. Each uses the same nine approved generated case kinds, including the physical corner and the explicitly unidentifiable equal-motion control. The v4 and quota arms share each case's generated RGB arrays, extracted features, nearest-neighbor witness, and reciprocal proposals. No held-out seed is declared or generated.
+
+The new source and tests preserve the 700-feature refusal, descriptor/work limits, output cap, geometry gates, exact ordered seed-family-kind and oracle-kind roster replay, source-bound report publication, and resealed mutation rejection. The four new seed identities were absent from prior MNN seed rosters and development artifacts. V1 source, test, task, and RUN/CHECKS/RESULT/REPORT hashes remain unchanged; its single development attempt remains a failed no-output result.
+
+The scoped v2 suite passed 16/16 and the combined new plus historical geometry/MNN suites passed 227/227. Compilation, exact pin checks, and trailing-whitespace checks passed. `CHECKS.json` records the source/test/config hashes; `RUN.json` records test commands. **No V2 calibration was invoked**, no development input or result hashes exist, and this source-only preparation makes no accuracy claim. Stop for Astra and lead review before any separately authorized one-shot development run.

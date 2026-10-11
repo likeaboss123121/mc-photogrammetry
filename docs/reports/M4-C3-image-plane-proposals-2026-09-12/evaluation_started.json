@@ -1,0 +1,9 @@
+{
+  "target_sha256": "f4a0f86938561b3fc81b096fc614d1ae404c1372e65c925811c1368ce56a0da5",
+  "frames": [
+    "2026-09-02_13.22.14.png",
+    "2026-09-02_13.24.24.png",
+    "2026-09-02_13.24.33.png"
+  ],
+  "mode": "single_frozen_evaluation"
+}

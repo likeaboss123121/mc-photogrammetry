@@ -1,0 +1,246 @@
+{
+  "task": "DS-IMG-T2-V2-REAL-STAGE-MEASUREMENT",
+  "implementation_task": "DS-IMG-PHASEA-OWNERSHIP-20261005",
+  "revision": "sol-ownership-partial-1",
+  "date": "2026-10-05",
+  "owner": "Sol",
+  "schema": "mc-photogrammetry-template-match-progress-report-v2",
+  "status": "planned_not_run",
+  "controls_status": "HOLD_PARTIAL_IMPLEMENTATION",
+  "real_inference_release_enabled": false,
+  "real_measurement_available": false,
+  "real_child_inference_executed": false,
+  "no_accuracy_claim": true,
+  "summary": "Native owned-file birth identity now survives capped store publication, typed entry-result handoff and Route B; handle-bound no-replace publication/disposition and retained immutable freeze-file snapshots have deterministic native barrier coverage. Directory handles block rename of held objects but permit WRITE and child-name creation: namespace/birth/reparse/empty-directory cleanup remain HOLD. No reconstruction release or real measurement is enabled.",
+  "proved_by_native_tests": [
+    "Real CreateProcessW CREATE_SUSPENDED, Job assignment before ResumeThread, restricted inherited-handle allowlist, explicit child membership/configured-limit failure exits safe under optimized Python; no security-relevant assert.",
+    "Correct membership succeeds under -O and PYTHONOPTIMIZE=1/2. Wrong existing specific Job exits 22 and missing specific Job exits 21 with zero stream bytes/work markers. Injected assignment failure terminates/reaps the suspended child before output.",
+    "External wall timeout and Job teardown; root-process allocation refusal under queried process/job committed-memory limits.",
+    "Both alternating-stream orders cross aggregate cap+1 immediately before exit: stdout including JOB_OK is 32 bytes, stderr 33 bytes, combined 65 at cap 64. Each individual stream stays below cap; at most cap bytes are retained plus one crossing byte detected. No stream disk file.",
+    "Root retains 60% of 128MiB while a descendant under the SAME specifically verified Job requests 60%. Each root actual/descendant projected process commit is below the per-process limit; their sum exceeds the Job limit. Allocation refuses, native completion-port Job memory-limit notification 10 is observed and process memory-limit notification 9 is absent.",
+    "Full-Job termination after primary exit closes explicitly inherited descendant pipe handles; observed descendant PID is no longer active. Fixed descendants use CREATE_NO_WINDOW and explicit standard-handle inheritance."
+  ],
+  "proved_by_synthetic_tests": [
+    "Configured cap is forwarded harness -> route entry -> entry persistence -> actual store writer. Exact encoded-byte premeasurement, platform CRLF/escaping parity, legacy uncapped branch and every bounded short-write request remain covered.",
+    "Journal/artifact JSON prescans and output reservations precede serialization/publication; replacement peak uses actual old size plus new temporary.",
+    "Freeze requires caller root, exact observed inventory including seal/no extra/partial, trusted local caps and typed malformed JSON refusal. Windows all-artifact bytes and hashes/semantic joins use retained snapshots rather than independent pathname reloads.",
+    "Record-derived scorecard recomputation, selective project session/ingress/source paths, same-pass entry/stage/hash checkpoints and refusal terminals remain checked. Resealed altered scorecard is rejected. Full typed frozen project/session replay is a remaining gate.",
+    "Producer full typed replay uses bounded bytes from the SAME live project writer lease. Actual synthetic entry construction retains that lease outside canonical payload/digest; absent, released, wrong-path and wrong-cap leases refuse before lattice work.",
+    "Parent requires demonstrated assignment, normal exit and load_freeze; bounded producer persistence errors retain their typed refusal/checkpoint. Fresh-root external abort remains tested, populated-root finalization remains a gate.",
+    "Missing/refused/sentinel witness dependencies remain UNKNOWN; union_total and union_pairs deduplicate cross-channel (frame,pixel) pairs. Phase B and source-screenshot footprint metrics remain unavailable/null.",
+    "Ordinary legacy/non-Windows cleanup remains a sequential identity-check contract, explicitly outside the native capture ownership proof."
+  ],
+  "remaining_release_blockers": [
+    "HARD HOLD: directory handles allow WRITE and child-name creation. Reparse checks and inventory observations are not atomic namespace exclusion; a hostile writer may introduce transient names. Root/staging creation before acquisition is not a proved directory birth contract, and empty-directory pathname cleanup remains race-sensitive. Held-object rename exclusion and file identity guarantees do not seal the namespace.",
+    "Native journal uses no-replace backup/new-file publication. A racing foreign final name and prior checkpoint are preserved, but the backup/gap sequence is not crash-atomic replacement; partial failure may leave the saved checkpoint name.",
+    "Full typed canonical frozen project/session replay from the retained snapshot is not implemented. The producer itself has full typed replay via the project lease, while freeze joins remain selective.",
+    "External abort on an already populated child root does not guarantee safe finalized resource-terminal freeze. Fresh-root typed abort remains covered.",
+    "Fixed harmless native Job/pipe controls are not integrated with a reconstruction worker. Public/default/CLI/direct --worker real inference remains disabled; private synthetic markers are test conventions, not an authentication boundary.",
+    "Native process/aggregate Job configuration and allocation-refusal notifications do not prove a hard observed committed-memory peak or aggregate RSS/working-set ceiling. The preserved development PeakJobMemoryUsed observation exceeded the configured limit. Production numeric caps are unchanged.",
+    "The stronger native capture contract is conditional on retained birth handles and leases. Ordinary legacy/non-Windows runner cleanup is outside it; full-path publisher/root-acquisition operations remain within the directory namespace HOLD."
+  ],
+  "resource_limits": {
+    "wall_seconds": 900.0,
+    "process_tree_bytes": 8589934592,
+    "total_output_bytes": 134217728,
+    "record_bytes": 33554432,
+    "project_bytes": 4194304,
+    "diagnostics_bytes": 2097152,
+    "stream_bytes": 4194304,
+    "native_control_test_memory_bytes": [
+      100663296,
+      134217728
+    ],
+    "native_memory_metric": "committed_bytes",
+    "real_run_limits_proven": false
+  },
+  "phase_b": {
+    "state": "unavailable",
+    "reason": "phase_b_alignment_unavailable"
+  },
+  "source_screenshot_footprint": {
+    "state": "unavailable",
+    "metrics": null
+  },
+  "downstream": {
+    "geometry": null,
+    "placement": null,
+    "ownership": null,
+    "correspondence": null,
+    "exact_state": null
+  },
+  "validation": {
+    "environment": "PYTHONDONTWRITEBYTECODE=1; PYTHONPATH=src; python -B; addopts disabled; cacheprovider disabled",
+    "focused_command": ".venv\\Scripts\\python.exe -B -m pytest tests/test_evaluation_template_match_progress.py tests/test_route_b_diagnostic_runner.py tests/test_project_store.py tests/test_image_derived_entry.py tests/test_signature_sampling_persistence.py tests/test_candidate_support_provenance.py tests/test_candidate_support_provenance_v2_preflight.py tests/test_signature_sampling_witness.py tests/test_candidate_support_ownership_harness.py -o addopts= -p no:cacheprovider -q --tb=short",
+    "focused_result": "466 passed in 61.23s (0:01:01); exit 0",
+    "focused_result_applies_to_current_source_test_pins": true,
+    "ownership_added_cases": 18,
+    "ownership_final_subset_command": ".venv\\Scripts\\python.exe -B -m pytest tests/test_evaluation_template_match_progress.py tests/test_route_b_diagnostic_runner.py tests/test_project_store.py tests/test_image_derived_entry.py -o addopts= -p no:cacheprovider -q -k \"native_owned or native_no_replace or native_journal or native_freeze or native_project_lease or native_store_temp or native_root_anchor or synthetic_entry_result_keeps or harness_passes_limit\" --tb=short",
+    "ownership_final_subset_result": "13 passed, 236 deselected in 2.36s; exit 0 (before final comment-only clarification; superseded by the complete current-pin suite)",
+    "native_control_test_cases": 10,
+    "native_control_test_names": [
+      "test_native_harmless_job_assignment_membership_and_failure",
+      "test_native_harmless_job_timeout_and_root_memory_limit",
+      "test_native_harmless_job_membership_failure_under_optimization",
+      "test_native_harmless_job_isolated_combined_stream_overflow",
+      "test_native_harmless_job_descendant_aggregate_committed_memory_limit",
+      "test_native_harmless_job_kills_descendant_after_primary_exit"
+    ],
+    "native_controls_covered_by_current_focused_suite": true,
+    "previous_controls_revision_result": "231 passed in 48.14s",
+    "previous_controls_native_result": "10 passed, 71 deselected in 2.20s",
+    "previous_controls_results_are_historical": true,
+    "previous_revision_adjacent_result": "441 passed in 55.49s; sol-controls-partial-1 only, not rerun for current changed harness/test pins",
+    "previous_revision_adjacent_result_applies_to_current_pins": false,
+    "py_compile": "not invoked; modules tested with bytecode/cache disabled",
+    "real_inference_or_evaluator_run": false
+  },
+  "owned_source_test_pins": [
+    {
+      "path": "src/mc_photogrammetry/evaluation_template_match_progress.py",
+      "bytes": 54527,
+      "sha256": "2759f15245ac651122acd8e0204a9be170ad667ca0f06d93197567d27dc86c4f"
+    },
+    {
+      "path": "scripts/evaluation/run_template_match_progress.py",
+      "bytes": 89909,
+      "sha256": "6523a8e94a940697f3e648a199170962e61208f30565f2191c92bc0550d04032"
+    },
+    {
+      "path": "scripts/evaluation/run_route_b_diagnostic.py",
+      "bytes": 88979,
+      "sha256": "59ae30b79e028fe3d3aa0d93c79d4a8a59e274fe582b9d91b8ea8c0f6e6246d7"
+    },
+    {
+      "path": "src/mc_photogrammetry/pipeline/image_derived_entry.py",
+      "bytes": 48434,
+      "sha256": "9926312ae58d862ad95ef8754d0c49e1ff8d2e86e45a51674a84046208f5cd02"
+    },
+    {
+      "path": "src/mc_photogrammetry/project/store.py",
+      "bytes": 30318,
+      "sha256": "bd984ac51079c4b01144814db35f38e14efe6d2f64787e9c03b6177f3d559559"
+    },
+    {
+      "path": "tests/test_evaluation_template_match_progress.py",
+      "bytes": 80588,
+      "sha256": "081ccdda85725a2637bcc552a5f9e2eb1a9cdbdf4e33d31aa1ce858c2bbb69fe"
+    },
+    {
+      "path": "tests/test_route_b_diagnostic_runner.py",
+      "bytes": 82915,
+      "sha256": "bf061384f99b6a5d976bab46ad06533195238319e05cfea375cd53f3ae66aeca"
+    },
+    {
+      "path": "tests/test_image_derived_entry.py",
+      "bytes": 41006,
+      "sha256": "b6e1e6fcda88f55c5f0defd6a3eb5f69f4c9dbe4bcc8016ce87b8719d49f3ac9"
+    },
+    {
+      "path": "tests/test_project_store.py",
+      "bytes": 23959,
+      "sha256": "f3d0d8dfcb4bbbde652a28751526b2d0e1d7166bc5e37d65f58c8fbb88f00d32"
+    }
+  ],
+  "unchanged_matching_support_source_pins": [
+    {
+      "path": "src/mc_photogrammetry/pipeline/candidate_support_provenance_v2.py",
+      "bytes": 122069,
+      "sha256": "f5cee3cfe9d0247069637992fb29d1f9a8533abc9383af841cfc9a726313ccd2"
+    },
+    {
+      "path": "src/mc_photogrammetry/pipeline/image_derived_graph.py",
+      "bytes": 269254,
+      "sha256": "32747546c934f8c218e43646cc995f310ff383e522c8a10f878e691f54954188"
+    },
+    {
+      "path": "src/mc_photogrammetry/pipeline/image_derived_signatures.py",
+      "bytes": 25043,
+      "sha256": "8f7d24c018395a32a1d2a3cda616e2e7a7eed1873dcefc74fe3d673911cf7555"
+    },
+    {
+      "path": "src/mc_photogrammetry/pipeline/image_derived_graph_attribution.py",
+      "bytes": 23594,
+      "sha256": "8441e91cf158d5403676d249fe6ebdebeeb723bd4a9967fdeb8371beb1c9cb81"
+    }
+  ],
+  "historical_r4": "Not reread, migrated, rerun or modified. Historical record v1 cannot recover persisted sampling tables from hashes; a later genuine source pass remains required.",
+  "limits": "Only authorized source/test/report changes and append-only comms. No ad-hoc probe/script/log or durable scratch artifacts. Event/thread barriers and fixture data use pytest tmp_path; native children run fixed harmless inline code only. No real image inference/evaluator/client/JAR/world/reference/network access. Stop for Luna/Astra independent review; no self-acceptance.",
+  "native_memory_observation": {
+    "metric": "Windows configured committed-memory limit and allocation-refusal disposition",
+    "job_memory_limit_message": 10,
+    "process_memory_limit_message": 9,
+    "aggregate_case_configured_bytes": 134217728,
+    "development_run_peak_job_bytes": 184000512,
+    "observed_peak_ceiling_proven": false,
+    "rss_ceiling_proven": false,
+    "qualification": "Windows PeakJobMemoryUsed telemetry exceeded the configured limit in a development regression despite aggregate-limit notification/refusal. Preserve telemetry; do not interpret configuration/refusal as a hard observed peak or RSS ceiling."
+  },
+  "proved_by_native_ownership_tests": [
+    "Native file identity is obtained from retained handles using FILE_ID_INFO. Store CREATE_NEW birth file is bounded-written/flushed, no-replace-renamed and retained across typed ProjectWriteLease -> ImageDerivedEntryResult -> Route B; no pathname adoption/reopen establishes ownership.",
+    "Lease downgrade duplicates the SAME file object without WRITE rights before closing the original handle. Direct WriteFile on the retained sealed handle fails with access denied and zero bytes.",
+    "Deterministic Event barriers race same-size/same-byte file rename/replacement/write against partial cleanup, rollback, store-temp failure, project handoff and journal checkpoint update. Retained file sharing blocks mutation; cleanup uses disposition on the SAME birth handle, preserving unrelated proposals.",
+    "No-replace publication refuses a racing foreign destination and preserves its bytes. Journal backup/new-file handle renames preserve a racing foreign final name and saved previous checkpoint; journal publication is not crash-atomic.",
+    "Freeze retains all terminal-file/seal exclusion handles across bounded reads, hashes and semantic joins, borrowing invocation birth handles when supplied. Barrier replacement/write of held files and rename of held root objects fail.",
+    "An EMPTY held root cannot be renamed. Directory GENERIC_WRITE opening and child creation DO succeed; namespace_exclusive is explicitly false. Observed extra child names refuse freeze validation and survive. No reparse creation was used or reparse exclusion proven."
+  ],
+  "ownership_contract": {
+    "native_file_identity": "FILE_ID_INFO on retained birth/snapshot handles",
+    "project_handoff": "runtime-only typed ProjectWriteLease; one ownership transfer; close releases, discard disposes the owned handle",
+    "sealed_file_writable": false,
+    "file_publication": "SetFileInformationByHandle no-replace rename",
+    "file_cleanup": "SetFileInformationByHandle disposition on retained birth handle; no native path-unlink fallback",
+    "snapshot": "bounded immutable held-file byte snapshots across hash and semantic checks; exact caller root plus observed inventories",
+    "directory_rename_exclusion": true,
+    "directory_write_exclusion": false,
+    "child_name_exclusion": false,
+    "atomic_reparse_exclusion": false,
+    "namespace_exclusive": false,
+    "directory_birth_contract_proven": false,
+    "empty_directory_cleanup_race_safe": false,
+    "journal_crash_atomic": false,
+    "legacy_cleanup_within_native_contract": false,
+    "reconstruction_authorized": false
+  },
+  "ownership_requirement_to_test_mapping": [
+    {
+      "requirement": "partial cleanup, rollback and no-clobber publication",
+      "tests": [
+        "test_native_owned_partial_cleanup_blocks_equal_byte_replacement",
+        "test_native_owned_rollback_blocks_equal_byte_replacement",
+        "test_native_no_replace_publication_preserves_racing_foreign_target"
+      ]
+    },
+    {
+      "requirement": "journal mutation and foreign-name/previous-checkpoint preservation",
+      "tests": [
+        "test_native_journal_checkpoint_update_blocks_equal_byte_replacement",
+        "test_native_journal_gap_refuses_and_preserves_foreign_and_saved_checkpoint"
+      ]
+    },
+    {
+      "requirement": "retained freeze files/root, observed extras refusal and explicit namespace limit",
+      "tests": [
+        "test_native_freeze_retains_file_and_root_identity_but_namespace_remains_hold",
+        "test_native_root_anchor_blocks_empty_root_rename_but_namespace_and_write_remain_hold"
+      ]
+    },
+    {
+      "requirement": "born capped project handle, same live lease transfer, read-only sealing and cleanup",
+      "tests": [
+        "test_native_project_lease_retains_birth_handle_and_blocks_replacement",
+        "test_native_store_temp_cleanup_uses_birth_handle_under_replacement_race",
+        "test_native_project_lease_kernel_handle_has_no_write_rights",
+        "test_persist_session_hands_off_same_live_writer_lease_without_path_reload",
+        "test_persist_session_replay_failure_discards_only_its_writer_handle",
+        "test_synthetic_entry_result_keeps_live_birth_lease_outside_canonical_payload"
+      ]
+    },
+    {
+      "requirement": "missing/released/wrong-path/wrong-cap birth lease refuses before lattice",
+      "tests": [
+        "test_native_capture_refuses_absent_or_invalid_birth_lease_before_lattice"
+      ]
+    }
+  ]
+}

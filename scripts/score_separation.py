@@ -1,5 +1,17 @@
 """Does a per-cell occupancy cue separate real cells from not? Measured broadly.
 
+**Diagnostic-only domain.** This script's ground truth is every reference cell
+the *raw, all-decoded-pixel* visibility pass reaches at a one-pixel threshold,
+with no frozen evaluator mask applied. That is deliberately **not** the frozen
+usable-pixel acceptance domain of AGENT_HANDOFF section 5 (`V`, one usable pixel
+inside the reviewed masks), and this script therefore uses the derived GUI-mask
+domain only for nothing at all: it neither applies the production
+``~create_gui_mask`` domain nor a frozen mask. The AUC below is a local
+cue-separation diagnostic. It must never be quoted as a promotion metric, and it
+must not be compared numerically against a visible exact-state or geometry-F1
+number computed on the frozen domain. Aligning it would require replaying the
+cue over the frozen masks and is left to a separately scoped task.
+
 The earlier prototype (`supported_plane.py`) found a promising score in one
 hand-picked window. That is a selected example, not a sample, and this script
 is the correction: for every cell the cue actually renders a judgment on
@@ -48,6 +60,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
+
+JUDGED_VERDICTS = ("supported", "contradicted", "foreground_occlusion")
+"""Verdicts that render a judgment; `weak_evidence`/`outside_image` decline to."""
+
+DIAGNOSTIC_DOMAIN = (
+    "diagnostic-only: raw all-decoded-pixel visibility at a one-pixel threshold; "
+    "no frozen usable mask is applied, so these AUCs are not the acceptance domain "
+    "of AGENT_HANDOFF section 5 and are never promotion evidence"
+)
+
+
+def _partition_judged(cells, judged_verdicts=JUDGED_VERDICTS):
+    """Split cue cells into every verdict and the subset carrying a score.
+
+    ``verdict_by_cell`` keeps every cell (so the verdict census still shows the
+    declining verdicts); ``cue_score`` excludes them, because a cue that
+    declined to guess must not be scored as a negative.
+    """
+    verdict_by_cell = {cell.cell: cell.verdict for cell in cells}
+    cue_score = {
+        cell.cell: cell.score for cell in cells if cell.verdict in judged_verdicts
+    }
+    return verdict_by_cell, cue_score
 
 
 def _average_ranks(values):
@@ -106,13 +141,21 @@ def main(argv=None) -> int:
     from mc_photogrammetry.export.visibility import visible_cells
     from mc_photogrammetry.reconstruction.lattice import (
         measure_plane, rectify_plane, scale_from_known_length,
-        rectified_pixel_to_plane_coordinates, plane_coordinates_to_camera_point)
+        rectified_pixel_step, rectified_pixel_to_plane_coordinates,
+        plane_coordinates_to_camera_point)
     from mc_photogrammetry.reconstruction.supported import (
         support_cells, _edge_profiles, phase_at_period,
         SUPPORTED, CONTRADICTED, FOREGROUND_OCCLUSION)
     from supported_plane import simulate_annotation
 
-    JUDGED_VERDICTS = {SUPPORTED, CONTRADICTED, FOREGROUND_OCCLUSION}
+    JUDGED_FROM_SOURCE = {SUPPORTED, CONTRADICTED, FOREGROUND_OCCLUSION}
+    if JUDGED_FROM_SOURCE != set(JUDGED_VERDICTS):
+        raise SystemExit(
+            "score_separation verdict contract drifted from supported.py: "
+            f"{sorted(JUDGED_FROM_SOURCE)} != {sorted(JUDGED_VERDICTS)}"
+        )
+
+    print(f"domain: {DIAGNOSTIC_DOMAIN}")
 
     folder = ROOT / args.fixture
     calibration = json.loads(args.calibration.read_text(encoding="utf-8"))
@@ -166,7 +209,7 @@ def main(argv=None) -> int:
                                extent=span, samples=samples, side=side)
         coverage = np.asarray(inside, float)
 
-        per_pixel = 2.0 * span / samples
+        per_pixel = rectified_pixel_step(span, samples)
         block_px = (1.0 / distance) / per_pixel
         if block_px < 2.0:
             print(f"{frame_id}: block period too small, skipped")
@@ -182,8 +225,7 @@ def main(argv=None) -> int:
                 phase_at_period(down.mean(axis=1), np.arange(down.shape[0]), block_px))
             cells = support_cells(patch, coverage, block_px, global_phase,
                                   local_window_periods=args.local_window_periods)
-            verdict_by_cell = {c.cell: c.verdict for c in cells}
-            cue_score = {c.cell: c.score for c in cells if c.verdict in JUDGED_VERDICTS}
+            verdict_by_cell, cue_score = _partition_judged(cells)
         else:
             # Photometric alternative: a cell's mean brightness against the
             # median of its immediate neighbours. A depth discontinuity - a
@@ -272,6 +314,7 @@ def main(argv=None) -> int:
     print(f"  negative: mean={neg.mean():.3f} p50={np.percentile(neg,50):.3f}")
     auc = _auc_with_ties(pos, neg)
     print(f"  AUC (0.5 = no separation, 1.0 = perfect): {auc:.3f}")
+    print(f"  domain: {DIAGNOSTIC_DOMAIN}")
     return 0
 
 

@@ -213,6 +213,53 @@ def estimate_session(
     return refined
 
 
+def estimate_image_calibrations(
+    frames_rgb: "dict[str, np.ndarray]",
+) -> "dict[str, CalibrationResult | None]":
+    """Estimate each frame independently from RGB pixels and the default GUI mask.
+
+    This is the public image-only seam for callers that must not provide a
+    camera manifest or a hand-authored mask. It deliberately does not call
+    :func:`estimate_session`: equal-sized frames may have different FOVs, so
+    pooling their focal lengths would add an unsupported shared-setting
+    assumption. Pixels excluded by the default GUI mask are zero-filled before
+    line detection, matching the existing vision convention. The resulting
+    boundary segments from that fill are accepted by the current calibration
+    model; excluded source pixel values themselves cannot affect the fit.
+
+    Invalid or unmeasurable frames are retained in the result map with ``None``
+    so a multi-frame caller can record a typed per-frame abstention and continue.
+    """
+    if not isinstance(frames_rgb, dict):
+        raise TypeError("frames_rgb must be a mapping of frame ids to RGB arrays")
+    if any(not isinstance(frame_id, str) or not frame_id for frame_id in frames_rgb):
+        raise TypeError("frame ids must be non-empty strings")
+    import cv2
+    from mc_photogrammetry.vision.gui_mask import create_gui_mask
+
+    results: dict[str, CalibrationResult | None] = {}
+    for frame_id in sorted(frames_rgb):
+        image = frames_rgb[frame_id]
+        if (not isinstance(frame_id, str) or not frame_id
+                or not isinstance(image, np.ndarray) or image.ndim != 3
+                or image.shape[2] != 3 or image.shape[0] <= 0 or image.shape[1] <= 0
+                or image.dtype != np.uint8
+                or not np.isfinite(image).all()):
+            results[frame_id] = None
+            continue
+        try:
+            rgb = np.asarray(image, dtype=np.uint8)
+            grey = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+            usable = ~create_gui_mask(grey.shape[0], grey.shape[1])
+            grey = grey.copy()
+            grey[~usable] = 0
+            results[frame_id] = estimate_camera(grey)
+        except (cv2.error, TypeError, ValueError, IndexError, FloatingPointError,
+                OverflowError):
+            results[frame_id] = None
+    return results
+
+
 def to_camera_solution(results: "dict[str, CalibrationResult]"):
     """Express these estimates in the shared `CameraSolution` contract.
 
@@ -542,21 +589,26 @@ def refine_optics(
 
     value, roll, point = base, 0.0, centred
     for _round in range(2):
+        # Each candidate grid belongs to the sweep's starting camera. Updating
+        # its anchor after a better candidate makes the neighborhood depend on
+        # enumeration order and permits compounded focal steps within one grid.
+        roll_focal_anchor = focal
         for candidate_roll in np.arange(-roll_limit, roll_limit + 1e-9, 0.5):
             for scale in scales:
-                found = _score(segments, lengths, focal * scale, yaw, pitch,
+                found = _score(segments, lengths, roll_focal_anchor * scale, yaw, pitch,
                                width, height, threshold, candidate_roll, point)
                 if found > value:
-                    value, roll, focal = found, float(candidate_roll), focal * scale
+                    value, roll, focal = found, float(candidate_roll), roll_focal_anchor * scale
 
+        point_focal_anchor = focal
         for dx in np.linspace(-span_x, span_x, 7):
             for dy in np.linspace(-span_y, span_y, 7):
                 candidate = (width / 2.0 + dx, height / 2.0 + dy)
                 for scale in scales:
-                    found = _score(segments, lengths, focal * scale, yaw, pitch,
+                    found = _score(segments, lengths, point_focal_anchor * scale, yaw, pitch,
                                    width, height, threshold, roll, candidate)
                     if found > value:
-                        value, point, focal = found, candidate, focal * scale
+                        value, point, focal = found, candidate, point_focal_anchor * scale
 
     if value <= base * (1.0 + margin):
         return 0.0, None, yaw, pitch, False, focal
@@ -564,8 +616,9 @@ def refine_optics(
     # Moving the optical centre moves where the vanishing points belong, so the
     # orientation is worth re-polishing against the new optics.
     for span, step in ((1.0, 0.25), (0.3, 0.05)):
-        for candidate_yaw in np.arange(yaw - span, yaw + span + 1e-9, step):
-            for candidate_pitch in np.arange(pitch - span, pitch + span + 1e-9, step):
+        yaw_anchor, pitch_anchor = yaw, pitch
+        for candidate_yaw in np.arange(yaw_anchor - span, yaw_anchor + span + 1e-9, step):
+            for candidate_pitch in np.arange(pitch_anchor - span, pitch_anchor + span + 1e-9, step):
                 found = _score(segments, lengths, focal, candidate_yaw,
                                candidate_pitch, width, height, threshold,
                                roll, point)

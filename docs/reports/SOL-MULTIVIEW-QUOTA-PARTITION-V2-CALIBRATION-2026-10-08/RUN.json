@@ -1,0 +1,12 @@
+﻿{
+    "command":  ".\\.venv\\Scripts\\python.exe -B -c \"from pathlib import Path; from scripts.evaluation import diagnose_multiview_mnn_quota_v2 as m; result=m.calibrate_synthetic_dev(); m.persist_calibration(Path('docs/reports/SOL-MULTIVIEW-QUOTA-PARTITION-V2-CALIBRATION-2026-10-08/development.json'),result); print('cases',len(result['cases']),'decision',result['decision'],'work',result['actual_shared_descriptor_comparisons'])\"",
+    "process_count":  1,
+    "calibration_invocation_count":  1,
+    "started_utc":  "2026-10-08T22:15:49.4510442Z",
+    "ended_utc":  "2026-10-08T22:15:56.5502497Z",
+    "elapsed_seconds":  7.0965944,
+    "exit_code":  0,
+    "stdout_path":  "docs\\reports\\SOL-MULTIVIEW-QUOTA-PARTITION-V2-CALIBRATION-2026-10-08\\calibration.stdout.txt",
+    "stderr_path":  "docs\\reports\\SOL-MULTIVIEW-QUOTA-PARTITION-V2-CALIBRATION-2026-10-08\\calibration.stderr.txt",
+    "output_exists":  true
+}

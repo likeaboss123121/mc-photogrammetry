@@ -1,5 +1,7 @@
 ﻿# M5 matched Template 2 diagnostic — 2026-09-09
 
+> Lead review: the recorded palette contains no partial blocks, so this is a cube-only diagnostic. Saved volumes confirm no exact-state gain and phantoms increasing 34 to 37. A corrected complete-palette diagnostic is assigned. See [current review](LEAD-review-2026-09-09-third.md).
+
 This is the single matched before/after diagnostic authorized by Astra after the L1/L2 controls. It is an evaluation-only, supplied-camera run. It does not promote the partial-shape stage or qualify image-only production.
 
 ## Frozen configuration

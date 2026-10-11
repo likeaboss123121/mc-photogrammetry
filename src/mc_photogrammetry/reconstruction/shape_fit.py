@@ -510,6 +510,8 @@ def _fit_states_sequential(
         "candidate_renders": 0,
     }
     capped = False
+    completed_hypotheses = 0
+    budget_unvisited_cells = 0
     considered_shapes: list[str] = []
     representative_fallbacks: list[str] = []
     material_refinements: list[str] = []
@@ -522,8 +524,71 @@ def _fit_states_sequential(
         "texture": 0.0,
     }
 
+    if max_candidate_renders == 0:
+        # A zero cap can never pay for one complete usable-view hypothesis, so
+        # discover nothing.  Report every cell as explicitly budget-unvisited
+        # without palette setup, background/context/probe rendering or
+        # per-cell work; the counters stay at their zero defaults.
+        if diagnostics is not None:
+            diagnostics.update({
+                f"shape_fit_{name}": value for name, value in render_counts.items()
+            })
+            diagnostics["shape_fit_candidate_render_cap"] = 0
+            diagnostics["shape_fit_candidate_render_cap_reached"] = True
+            diagnostics["shape_fit_render_work"] = 0
+            diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
+            diagnostics["shape_fit_considered_shapes"] = []
+            diagnostics["shape_fit_representative_fallbacks"] = []
+            diagnostics["shape_fit_material_refinements"] = []
+            diagnostics["shape_fit_unresolved_budget_exits"] = []
+            diagnostics["shape_fit_completed_hypotheses"] = 0
+            diagnostics["shape_fit_budget_unvisited_cells"] = len(cells)
+            diagnostics["shape_fit_cell_results"] = [
+                {
+                    "coordinate": list(coordinate),
+                    "current_state": (
+                        state.name if (state := blocks.get(coordinate)) else None
+                    ),
+                    "status": "budget_unvisited",
+                    "usable_views": 0,
+                    "candidate_renders": 0,
+                }
+                for coordinate in cells
+            ]
+            diagnostics["shape_fit_supporting_frames"] = {}
+            diagnostics["shape_fit_stage_seconds"] = {
+                "render": 0.0,
+                "ownership": 0.0,
+                "rectification": 0.0,
+                "texture": 0.0,
+                "setup": round(time.perf_counter() - started, 6),
+            }
+        return FitStateResult()
+
     def count(name: str) -> None:
         render_counts[name] += 1
+
+    def remaining_candidate_renders() -> int | None:
+        if max_candidate_renders is None:
+            return None
+        return max(0, max_candidate_renders - render_counts["candidate_renders"])
+
+    def reserve_usable_views(view_count: int) -> bool:
+        """Whether a complete ``view_count``-hypothesis still fits the cap.
+
+        A hypothesis is only started when every one of its usable views can be
+        rendered, so a partial-view score never enters the comparison and a
+        scarce budget is not dribbled out one render per cell.
+        """
+        if max_candidate_renders is None:
+            return True
+        return render_counts["candidate_renders"] + view_count <= max_candidate_renders
+
+    def budget_exhausted() -> bool:
+        return (
+            max_candidate_renders is not None
+            and render_counts["candidate_renders"] >= max_candidate_renders
+        )
 
     def timed_stage(name: str, function, *stage_args, **stage_kwargs):
         started_stage = time.perf_counter()
@@ -540,11 +605,14 @@ def _fit_states_sequential(
     occluding_slots = face_occluding_slots(palette)
     index, positions = None, {}
     if texture_weight > 0.0:
+        from mc_photogrammetry.blocks.appearance import palette_face_colors as _palette_face_colors
+        from mc_photogrammetry.reconstruction.appearance_scoring import (
+            normalised_pattern as _normalised_pattern,
+        )
+
         from mc_photogrammetry.reconstruction.raycast import (
             DEFAULT_FAMILY_PRIORS,
             PaletteIndex,
-            _normalised_pattern,
-            _palette_face_colors,
         )
 
         wanted = {state for group in materials.values() for state in group}
@@ -602,35 +670,30 @@ def _fit_states_sequential(
     working_blocks = dict(blocks)
     for coordinate in cells:
         candidate_renders_before = render_counts["candidate_renders"]
+        current_state = working_blocks.get(coordinate)
         cell_result: dict[str, object] = {
             "coordinate": list(coordinate),
-            "current_state": current_state.name if (current_state := working_blocks.get(coordinate)) else None,
+            "current_state": current_state.name if current_state else None,
             "status": "not_reached",
             "usable_views": 0,
             "candidate_renders": 0,
         }
         cell_results.append(cell_result)
+        if budget_exhausted():
+            # A later cell pays nothing once the shared cap is already spent.
+            cell_result["status"] = "budget_unvisited"
+            budget_unvisited_cells += 1
+            capped = True
+            continue
         context_blocks = {
             cell: state for cell, state in working_blocks.items() if cell != coordinate
         }
-        context_backgrounds: dict[str, np.ndarray] = {}
-        for frame_id, camera in cameras.items():
-            if frame_id not in backgrounds:
-                continue
-            height, width = frames[frame_id].shape[:2]
-            context_backgrounds[frame_id], _owner, _index, _depth = timed_stage(
-                "render", render_volume, context_blocks, scene, camera, width, height,
-                colours, block_shapes, scale, ambient=True,
-                occluding_slots=occluding_slots, model_faces=model_faces,
-            )
-            # Air/current/candidates must use the same exposure convention.
-            context_backgrounds[frame_id] *= gains[frame_id]
-            count("context_renders")
-        # Render this cell as a full cube once to determine the scoring region.
-        # It is deliberately independent of every hypothesis. Pixels where the
-        # cube is hidden by the surrounding scene cannot be evidence for any
-        # candidate; pixels where a carpet leaves the cube empty remain in the
-        # region and compare the background render with the photograph.
+        # Discover this cell's usable-view set before any context preparation.
+        # The probe render is deliberately independent of every hypothesis:
+        # pixels where a full cube is hidden by the surrounding scene cannot be
+        # evidence for any candidate, while pixels a carpet leaves empty remain
+        # in the region and compare the background render with the photograph.
+        # Its render is counted as discovery, never as free candidate work.
         probe = BlockState("minecraft:shape_fit_scoring_probe")
         views = []
         for frame_id, camera in cameras.items():
@@ -655,7 +718,37 @@ def _fit_states_sequential(
             cell_result["status"] = "no_usable_views"
             continue
         cell_result["usable_views"] = len(views)
+        # Atomic reservation: require the whole usable-view set before any
+        # candidate *or* context work for this cell.  A cell that cannot fit a
+        # complete hypothesis is left explicitly unvisited so its share can go
+        # to a cheaper eligible cell instead of being spent on a prefix.
+        if not reserve_usable_views(len(views)):
+            cell_result["status"] = "budget_unvisited"
+            budget_unvisited_cells += 1
+            capped = True
+            unresolved_budget_exits.append({
+                "coordinate": coordinate,
+                "phase": "reserve_usable_view_set",
+                "usable_views": len(views),
+                "remaining_candidate_renders": remaining_candidate_renders(),
+            })
+            continue
         cell_result["status"] = "reached"
+
+        # Only a reserved cell pays for its context renders.
+        context_backgrounds: dict[str, np.ndarray] = {}
+        for frame_id, camera in cameras.items():
+            if frame_id not in backgrounds:
+                continue
+            height, width = frames[frame_id].shape[:2]
+            context_backgrounds[frame_id], _owner, _index, _depth = timed_stage(
+                "render", render_volume, context_blocks, scene, camera, width, height,
+                colours, block_shapes, scale, ambient=True,
+                occluding_slots=occluding_slots, model_faces=model_faces,
+            )
+            # Air/current/candidates must use the same exposure convention.
+            context_backgrounds[frame_id] *= gains[frame_id]
+            count("context_renders")
 
         # Every material in one cell/view compares against the same robust
         # silhouette statistic. Compute it once per view so palette size does
@@ -729,7 +822,20 @@ def _fit_states_sequential(
         )
         representative_scores: dict[tuple, float] = {}
         representative_states: dict[tuple, BlockState] = {}
+        representative_phase_capped = False
         for key in shape_keys:
+            if not reserve_usable_views(len(views)):
+                # Whole-view reservation failed, so no later geometry can fit
+                # either.  Stop before spending a partial view set.
+                capped = True
+                representative_phase_capped = True
+                unresolved_budget_exits.append({
+                    "coordinate": coordinate,
+                    "phase": "shape_representative",
+                    "usable_views": len(views),
+                    "remaining_candidate_renders": remaining_candidate_renders(),
+                })
+                break
             representative = _representative_material(
                 materials[key], colours, photos, views,
                 observed_quantiles, prior_cache,
@@ -739,19 +845,7 @@ def _fit_states_sequential(
             considered_shapes.append(representative.name)
             total, counted = 0.0, 0
             candidate_blocks = {**context_blocks, coordinate: representative}
-            complete = True
             for frame_id, camera, usable in views:
-                if (
-                    max_candidate_renders is not None
-                    and render_counts["candidate_renders"] >= max_candidate_renders
-                ):
-                    capped = True
-                    complete = False
-                    unresolved_budget_exits.append({
-                        "coordinate": coordinate,
-                        "phase": "shape_representative",
-                    })
-                    break
                 height, width = frames[frame_id].shape[:2]
                 rendered, _face_index = timed_stage(
                     "render", render_result, candidate_blocks, scene, camera,
@@ -759,11 +853,6 @@ def _fit_states_sequential(
                     occluding_slots=occluding_slots, model_faces=model_faces,
                 )
                 count("candidate_renders")
-                if (
-                    max_candidate_renders is not None
-                    and render_counts["candidate_renders"] >= max_candidate_renders
-                ):
-                    capped = True
                 painted = rendered.colour * gains[frame_id]
                 score = _score_image(
                     painted, photos[frame_id], usable, edge_weight, edges[frame_id],
@@ -771,14 +860,18 @@ def _fit_states_sequential(
                 if score is not None:
                     total += score
                     counted += 1
-            if not complete or counted != len(views):
+            if counted != len(views):
                 continue
             representative_scores[key] = total / counted
             representative_states[key] = representative
-        representative_phase_capped = capped
+            completed_hypotheses += 1
         representatives_complete = len(representative_scores) == len(shape_keys)
-        if capped and not representative_scores:
-            break
+        if not representative_scores:
+            # No complete hypothesis fitted; do not confuse this with a
+            # scored-and-rejected cell.
+            cell_result["status"] = "budget_unvisited"
+            budget_unvisited_cells += 1
+            continue
 
         ranked: list[tuple[float, float, float, BlockState | None]] = [
             (air_score, air_score, air_score, None)
@@ -863,14 +956,13 @@ def _fit_states_sequential(
             for state in material_candidates[:MAX_MATERIAL_REFINEMENTS_PER_SHAPE]:
                 if state == representative:
                     continue
-                if (
-                    max_candidate_renders is not None
-                    and render_counts["candidate_renders"] >= max_candidate_renders
-                ):
+                if not reserve_usable_views(len(views)):
                     capped = True
                     unresolved_budget_exits.append({
                         "coordinate": coordinate,
                         "phase": "material_refinement",
+                        "usable_views": len(views),
+                        "remaining_candidate_renders": remaining_candidate_renders(),
                     })
                     break
                 table = colours.get(state.name, {})
@@ -878,15 +970,7 @@ def _fit_states_sequential(
                     continue
                 total, counted = 0.0, 0
                 candidate_blocks = {**context_blocks, coordinate: state}
-                complete = True
                 for frame_id, camera, usable in views:
-                    if (
-                        max_candidate_renders is not None
-                        and render_counts["candidate_renders"] >= max_candidate_renders
-                    ):
-                        capped = True
-                        complete = False
-                        break
                     height, width = frames[frame_id].shape[:2]
                     rendered, _face_index = timed_stage(
                         "render", render_result, candidate_blocks, scene, camera,
@@ -894,11 +978,6 @@ def _fit_states_sequential(
                         occluding_slots=occluding_slots, model_faces=model_faces,
                     )
                     count("candidate_renders")
-                    if (
-                        max_candidate_renders is not None
-                        and render_counts["candidate_renders"] >= max_candidate_renders
-                    ):
-                        capped = True
                     material_refinements.append(state.name)
                     painted = rendered.colour * gains[frame_id]
                     score = _score_image(
@@ -907,11 +986,9 @@ def _fit_states_sequential(
                     if score is not None:
                         total += score
                         counted += 1
-                # A hypothesis scored on only a prefix of the views is not a
-                # candidate: selective-view acceptance can manufacture a win.
-                if not complete or counted != len(views):
-                    continue
-                if not counted:
+                # The whole usable-view set was reserved before the first render,
+                # so a prefix can no longer be scored by construction.
+                if counted != len(views):
                     continue
                 plain = total / counted
                 score = plain
@@ -920,6 +997,7 @@ def _fit_states_sequential(
                     if position is not None:
                         score += texture_weight * float(texture_cost[position])
                 material_results.append((state, plain, score))
+                completed_hypotheses += 1
             # Choose one material per geometry using that material's own rendered
             # score. The representative is a geometry probe, never a tie-breaker
             # that can override a refined material on insertion order.
@@ -977,20 +1055,25 @@ def _fit_states_sequential(
         )
         if any(entry["coordinate"] == coordinate for entry in unresolved_budget_exits):
             cell_result["status"] = "partly_tested"
-        if capped:
+        if budget_exhausted():
+            # The shared cap is fully spent: no later cell can render anything.
             break
     if diagnostics is not None:
         diagnostics.update({
             f"shape_fit_{name}": value for name, value in render_counts.items()
         })
         diagnostics["shape_fit_candidate_render_cap"] = max_candidate_renders
-        diagnostics["shape_fit_candidate_render_cap_reached"] = capped
+        diagnostics["shape_fit_candidate_render_cap_reached"] = (
+            capped or budget_exhausted()
+        )
         diagnostics["shape_fit_render_work"] = sum(render_counts.values())
         diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
         diagnostics["shape_fit_considered_shapes"] = list(considered_shapes)
         diagnostics["shape_fit_representative_fallbacks"] = list(representative_fallbacks)
         diagnostics["shape_fit_material_refinements"] = list(material_refinements)
         diagnostics["shape_fit_unresolved_budget_exits"] = list(unresolved_budget_exits)
+        diagnostics["shape_fit_completed_hypotheses"] = completed_hypotheses
+        diagnostics["shape_fit_budget_unvisited_cells"] = budget_unvisited_cells
         diagnostics["shape_fit_cell_results"] = list(cell_results)
         diagnostics["shape_fit_supporting_frames"] = {
             str(coordinate): frames
@@ -1019,8 +1102,16 @@ def fit_states(
     A single cell keeps the detailed sequential path. With multiple cells and
     a bounded cap, divide the remaining candidate budget across sorted cells,
     apply each completed decision before the next cell, and aggregate the same
-    diagnostics. This prevents the first proposal from consuming all material
-    work while preserving context invalidation through the updated block map.
+    diagnostics. Work is scheduled in whole usable-view sets: a hypothesis is
+    only started when its complete view set fits the remaining cap, so a
+    partial-view score can never enter the comparison and a scarce budget is
+    never spent one render per cell. A refused cell is reported as
+    ``budget_unvisited`` and its share rolls to the next cell. Once every later
+    cell has had its turn, any budget still unspent is offered back to the
+    refused cells, so a cell that only needed more than its fair share for one
+    complete view set is not starved by the division. This prevents the first
+    proposal from consuming all material work while preserving context
+    invalidation through the updated block map.
     """
     max_candidate_renders = kwargs.get(
         "max_candidate_renders", DEFAULT_MAX_CANDIDATE_RENDERS,
@@ -1039,10 +1130,21 @@ def fit_states(
     supporting_frames: dict[BlockCoordinate, Sequence[str]] = {}
     remaining = int(max_candidate_renders)
     aggregate: MutableMapping[str, object] = {}
-    cell_diags: list[dict[str, object]] = []
-    for index, coordinate in enumerate(ordered_cells):
-        slots_left = len(ordered_cells) - index
-        allocation = (remaining + slots_left - 1) // slots_left
+    final_diags: dict[BlockCoordinate, dict[str, object]] = {}
+    attempts: list[dict[str, object]] = []
+
+    def cell_status(local_diag: Mapping[str, object]) -> object:
+        results = local_diag.get("shape_fit_cell_results", [])
+        if results:
+            entry = results[-1]
+            if isinstance(entry, Mapping):
+                return entry.get("status")
+        return None
+
+    def run_cell(
+        coordinate: BlockCoordinate, allocation: int,
+    ) -> tuple[dict[str, object], int]:
+        """Run one cell with ``allocation`` candidate renders and apply its edits."""
         local_kwargs = dict(kwargs)
         local_kwargs["max_candidate_renders"] = allocation
         local_diag: dict[str, object] = {}
@@ -1052,7 +1154,6 @@ def fit_states(
             *args, **local_kwargs,
         )
         used = int(local_diag.get("shape_fit_candidate_renders", 0))
-        remaining = max(0, remaining - used)
         for key, state in result.items():
             chosen[key] = state
             if state is None:
@@ -1061,7 +1162,37 @@ def fit_states(
                 working_blocks[key] = state
             if key in result.supporting_frames:
                 supporting_frames[key] = result.supporting_frames[key]
-        cell_diags.extend(local_diag.get("shape_fit_cell_results", []))
+        attempts.append(local_diag)
+        final_diags[coordinate] = local_diag
+        return local_diag, used
+
+    # First pass: divide the remaining budget across the cells still waiting so
+    # no single hypothesis can consume the whole shared cap.  A cell whose fair
+    # share cannot hold one complete usable-view set is refused atomically and
+    # its share rolls to the next, possibly cheaper, cell.
+    deferred: list[BlockCoordinate] = []
+    for index, coordinate in enumerate(ordered_cells):
+        slots_left = len(ordered_cells) - index
+        allocation = (remaining + slots_left - 1) // slots_left
+        local_diag, used = run_cell(coordinate, allocation)
+        remaining = max(0, remaining - used)
+        if remaining > 0 and cell_status(local_diag) == "budget_unvisited":
+            deferred.append(coordinate)
+
+    # Second pass: a cell refused above may simply have needed more than its
+    # fair share for one complete usable-view set.  Once every later cell has
+    # had its turn, offer the still-unspent budget to those cells in order.
+    # Without this the shared cap can starve: a two-view cell followed by a
+    # three-view cell at cap two would render nothing, even though the
+    # two-view cell's whole set fits the cap.  The atomic reservation still
+    # refuses a view set that does not fit, so nothing partial is rendered.
+    for coordinate in deferred:
+        if remaining <= 0:
+            break
+        _local_diag, used = run_cell(coordinate, remaining)
+        remaining = max(0, remaining - used)
+
+    for local_diag in attempts:
         for key, value in local_diag.items():
             if key.startswith("shape_fit_") and key not in {
                 "shape_fit_cell_results", "shape_fit_candidate_render_cap",
@@ -1069,16 +1200,10 @@ def fit_states(
                 "shape_fit_seconds", "shape_fit_considered_shapes",
                 "shape_fit_material_refinements", "shape_fit_unresolved_budget_exits",
                 "shape_fit_supporting_frames", "shape_fit_representative_fallbacks",
+                "shape_fit_budget_unvisited_cells",
             }:
                 if isinstance(value, (int, float)):
                     aggregate[key] = aggregate.get(key, 0) + value
-        for key in (
-            "shape_fit_considered_shapes", "shape_fit_material_refinements",
-            "shape_fit_unresolved_budget_exits", "shape_fit_representative_fallbacks",
-        ):
-            value = local_diag.get(key, [])
-            aggregate.setdefault(key, [])
-            aggregate[key].extend(value)  # type: ignore[union-attr]
         local_stages = local_diag.get("shape_fit_stage_seconds", {})
         if isinstance(local_stages, dict):
             stage_totals = aggregate.setdefault("shape_fit_stage_seconds", {})
@@ -1086,11 +1211,52 @@ def fit_states(
                 for name, value in local_stages.items():
                     if isinstance(value, (int, float)):
                         stage_totals[name] = stage_totals.get(name, 0.0) + float(value)
+
+    # Per-cell results and lists come from each cell's decisive attempt, so a
+    # superseded refusal that the second pass recovered does not survive.  A
+    # retried cell always spent zero candidate renders when it was refused, so
+    # the per-cell totals still sum to the aggregate candidate count.
+    cell_diags: list[dict[str, object]] = []
+    budget_unvisited_cells = 0
+    for key in (
+        "shape_fit_considered_shapes", "shape_fit_material_refinements",
+        "shape_fit_unresolved_budget_exits", "shape_fit_representative_fallbacks",
+    ):
+        aggregate.setdefault(key, [])
+    for coordinate in ordered_cells:
+        local_diag = final_diags.get(coordinate)
+        if not local_diag:
+            continue
+        cell_diags.extend(local_diag.get("shape_fit_cell_results", []))
+        for key in (
+            "shape_fit_considered_shapes", "shape_fit_material_refinements",
+            "shape_fit_unresolved_budget_exits", "shape_fit_representative_fallbacks",
+        ):
+            aggregate[key].extend(local_diag.get(key, []))
+        budget_unvisited_cells += int(
+            local_diag.get("shape_fit_budget_unvisited_cells", 0)
+        )
+    aggregate["shape_fit_budget_unvisited_cells"] = budget_unvisited_cells
+
     diagnostics = kwargs.get("diagnostics")
     if diagnostics is not None:
         diagnostics.update(aggregate)
         diagnostics["shape_fit_candidate_render_cap"] = max_candidate_renders
-        diagnostics["shape_fit_candidate_render_cap_reached"] = remaining == 0
+        refused_for_budget = any(
+            isinstance(item, Mapping) and item.get("status") == "budget_unvisited"
+            for item in cell_diags
+        )
+        refused_hypothesis_work = bool(
+            aggregate.get("shape_fit_unresolved_budget_exits")
+        )
+        # The cap limited the search if it was fully spent, a whole usable-view
+        # set was refused, or a representative/refinement was refused for
+        # budget.  A per-cell run can hit a refusal while the shared budget has
+        # leftovers, so the aggregate must mirror the per-cell reach flags
+        # instead of only comparing the leftover balance to zero.
+        diagnostics["shape_fit_candidate_render_cap_reached"] = (
+            remaining == 0 or refused_for_budget or refused_hypothesis_work
+        )
         diagnostics["shape_fit_render_work"] = sum(
             int(value) for key, value in aggregate.items()
             if key.endswith("_renders") and isinstance(value, (int, float))
@@ -1098,8 +1264,8 @@ def fit_states(
         diagnostics["shape_fit_seconds"] = round(time.perf_counter() - started, 6)
         diagnostics["shape_fit_cell_results"] = cell_diags
         diagnostics["shape_fit_supporting_frames"] = {
-            str(coordinate): list(frames)
-            for coordinate, frames in supporting_frames.items()
+            str(coordinate): list(frames_)
+            for coordinate, frames_ in supporting_frames.items()
         }
         stage_totals = aggregate.get("shape_fit_stage_seconds", {})
         if isinstance(stage_totals, dict):

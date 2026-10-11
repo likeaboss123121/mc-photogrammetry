@@ -1,0 +1,60 @@
+DS-IMG-B0PRIME-ENDPOINT-PROOF-20261005
+Test-only synthetic raw-producer diagnostic; stop at target V2-B partial.
+
+The previous exploratory eight-reading fixture was not saved. This test reconstructs an authentic eight-reading raw fixture and a nine-reading variant before generating P0 at final canonical indexes. The original raw PlaneMatch is byte-value equal in both pools and remains same_axis_mismatch. No claim is made that its .869071951 score reproduces the earlier unpinned .8500 measurement.
+All nine readings/signatures, raw image hashes, P0 digests and all 11 pre-filter admitted candidates are retained. A0(.5)-B0(.5) and A0(.5)-B0prime(1) both have normal displacement 1 and cell shift (4,3); both are genuinely admitted and filter-dropped in the extended pool. Gates .90/.15/.02 and the same-axis filter are unchanged. The unconstrained full pool refuses ambiguous_quadrant; every rival quadrant is retained in each label solve.
+
+Finite label model: each frame must retain its singleton axis-1 and axis-2 readings; enumerate every nonempty subset of the two A axis-0 readings and three B axis-0 readings. Exactly 21 identity/b labels, one induced row set per label, no row subset search or outcome-based label selection. Complete b maps use authentic singleton reading alternatives. All nine canonical readings/signatures remain in downstream calls; P0 source keys equal each active endpoint identity set exactly. Missing/extra/duplicate source joins refuse; an authentic extra source also makes public V2-B refuse p1b_source_mismatch.
+
+All 21 outcomes (A/B canonical axis-0 indexes; mandatory other axes implicit):
+A{0} B{0}: C2RB=ready; V2A=endpoint_multiple; V2B=abstained; V2B_reason=endpoint_multiple
+A{0} B{1}: C2RB=ready; V2A=endpoint_unique; V2B=partial; V2B_reason=partial
+A{0} B{2}: C2RB=ready; V2A=endpoint_unique; V2B=partial; V2B_reason=partial
+A{0} B{0,1}: C2RB=review_required; V2A=None; V2B=abstained; V2A_refusal=gate_not_ready; V2B_reason=input_gate_not_unique
+A{0} B{0,2}: C2RB=ready; V2A=endpoint_unique; V2B=partial; V2B_reason=partial
+A{0} B{1,2}: C2RB=review_required; V2A=None; V2B=abstained; V2A_refusal=gate_not_ready; V2B_reason=input_gate_not_unique
+A{0} B{0,1,2}: solver=ambiguous_quadrant
+A{1} B{0}: C2RB=review_required; V2A=None; V2B=abstained; V2A_refusal=gate_not_ready; V2B_reason=input_gate_not_unique
+A{1} B{1}: C2RB=ready; V2A=endpoint_unique; V2B=determined; V2B_reason=determined
+A{1} B{2}: C2RB=review_required; V2A=None; V2B=abstained; V2A_refusal=gate_not_ready; V2B_reason=input_gate_not_unique
+A{1} B{0,1}: C2RB=review_required; V2A=None; V2B=abstained; V2A_refusal=gate_not_ready; V2B_reason=input_gate_not_unique
+A{1} B{0,2}: C2RB=review_required; V2A=None; V2B=abstained; V2A_refusal=gate_not_ready; V2B_reason=input_gate_not_unique
+A{1} B{1,2}: C2RB=review_required; V2A=None; V2B=abstained; V2A_refusal=gate_not_ready; V2B_reason=input_gate_not_unique
+A{1} B{0,1,2}: solver=ambiguous_quadrant
+A{0,1} B{0}: solver=insufficient_axis_coverage
+A{0,1} B{1}: solver=ambiguous_quadrant
+A{0,1} B{2}: solver=insufficient_axis_coverage
+A{0,1} B{0,1}: solver=ambiguous_quadrant
+A{0,1} B{0,2}: solver=insufficient_axis_coverage
+A{0,1} B{1,2}: solver=ambiguous_quadrant
+A{0,1} B{0,1,2}: solver=ambiguous_quadrant
+
+Solver: 12 accepted, 6 ambiguous_quadrant, 3 insufficient_axis_coverage. All 12 accepted labels build C1/P1-D/P1-B/vector/C2-R-B/V2-A/V2-B with authentic producers/replays. Seven have C2RB review_required; one half-only label has endpoint_multiple; three half-containing labels have endpoint_unique and partial V2-B; one full-b1 label has endpoint_unique and determined V2-B.
+Requested A{0} B{0,2}: C2RB complete/ready, one exhaustive unique_validated translation class B=(1,3,4); V2-A complete/endpoint_unique/exhaustive, assignment_count=1. V2-B partial: X determined at 0, Y/Z abstained no_seam_evidence. The genuine half-b observations at the zero hypothesis have boundary/interior equality and margin (0,1), below the frozen 1/8 margin. This is the current target seam, not endpoint_multiple. Source: plane_phase_anchor._classify_axis uses all observations and returns no_seam_evidence for no accepted hypothesis among multiple hypotheses; no D impulses or endpoint gates were changed.
+The sole all-axis V2-B determined rival is A{1} B{1}, b=1, C2RB B=(2,3,4). Its V2-B result is f485b5fe84a3a06f589e90ad79077833830c37cd29d83334cff15d7105f025ee. Four provenance-distinct labels are endpoint_unique; two at B=(1,3,4) differ by inclusion of B0 and remain distinct. No support maximization, translation merging, label promotion or production accuracy claim is made.
+Geometry from this diagnostic is unavailable. No placement or volume function is called by the new proof. Existing XYZ adjacent control tests exercise their own placement/volume fixture only.
+
+Validation:
+- Focused module independently rerun: 3 passed in 4.37s; deterministic proof digest unchanged.
+- test_plane_phase_anchor.py -q -k xyz_period_p0_produces_exact_g_phase_and_held_out_d_evidence: 1 passed.
+- test_plane_placement.py -q -k xyz_producer_bound: 2 passed.
+- Whole focused + adjacent phase-anchor + placement modules: 318 passed, 4 failed, 71 errors in 29.14s. Errors observed at existing small-island match_plane_pair(None) fixtures in phase-anchor:259 and placement:322; three nonzero-quadrant assertions fail after C2RB review_required. An isolated phase-anchor -x run reproduces 3 passed/1 error without the focused module. This is an observed adjacent failure; no clean baseline pin is claimed and no unrelated fixture is repaired.
+- Scoped diff-check and py_compile pass.
+- Canonical matcher equality holds with/without observation sink and reversed readings/signatures. All 21 predeclared label maps are unique and unchanged by reversed index insertion order.
+- Atomic planned label cap (20<21) returns a typed refusal before producers. The main proof measures producer/replay entries and checks the 60s/2MB publication limits and call/row counters with cooperative assertions. These are measurement/publication guards, not hard runtime containment or universal typed overflow refusals at nested calls; an individual call can overrun before control returns. Publication occurs only after all labels and checks finish.
+
+Frozen plan: {"downstream_chains": 21, "elapsed_seconds": 60, "encoded_bytes": 2000000, "induced_rows": 231, "labels": 21, "nested_producer_calls": 1000, "primary_solver_calls": 23, "quadrant_assignments": 92}
+Observed producer/replay entries: {"analyze_endpoint_provenance": 17, "analyze_phase_anchor": 13, "build_axis_support": 12, "build_lateral_vector_domains": 49, "build_shift_domains": 12, "match_plane_graph": 4, "plane_signature": 17, "produce_split_phase_evidence": 17, "solve_component": 23, "solve_relative_translation_graph": 27, "validate_split_phase_evidence": 67}
+Total charged producer/replay entries: 258
+The JSON serializes full C2-R-B, V2-A and V2-B result records, captured candidate row payloads, and per-label maps/outcomes. C1, P1-D, P1-B and vector/A4 stages are serialized as digests only; their complete result records are not retained in this artifact. Regenerate with .venv/Scripts/python.exe -m pytest tests/test_evaluation_same_axis_continuation.py -s; pytest prints its own temporary JSON path. The durable JSON below is an exact copy of a completed test publication, not a resealed or annotated payload.
+
+Pins:
+Test tests\test_evaluation_same_axis_continuation.py: 23562 bytes; SHA256 68ed8036081b2ac931f7df856da0bbd7e54bc07815dbe40b1a7dafce4ffa622b
+Unchanged module src\mc_photogrammetry\evaluation_same_axis_continuation.py: 10254 bytes; SHA256 69483d14c4efbb5d528780541fa735881a9535f71071d0b62b9b7b73ba60feeb
+Proof docs\reports\DS-IMG-B0PRIME-ENDPOINT-PROOF-20261005.json: 416445 bytes; SHA256 341aa61ca4d9bd1d8101361fd3ba2b17573f043f62ba28ce4072acf555df20a9
+Target C2RB fbabc23ecdcc221bbfde56573521c74008e4850a721522e2f8d2ac168e7fcaa0
+Target V2A dcfa6b9b2b2a8e36b242dd69cf51ea34352c7cd708c36939ed52c737462ae520
+Target V2B 8cede70d2667519f20a84005497513c8a70148295b1b95c91c030e4c8811f65e
+Canonical source digest 915307263588f4f6b2f99acc61b3061b52e78e411eff905df021f5b0e3c83380
+
+Owned changes: focused test file, durable proof JSON, this report, byte-preserving AGENT_COMMS append. No production edits, protected payload reads, screenshots/Minecraft/UI, filter/gate changes or placement/volume diagnostic work.

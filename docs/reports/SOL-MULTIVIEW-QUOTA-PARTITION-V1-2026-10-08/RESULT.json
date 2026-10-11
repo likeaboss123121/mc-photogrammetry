@@ -1,0 +1,18 @@
+{
+  "task_id": "SOL-MULTIVIEW-QUOTA-PARTITION-V1",
+  "status": "terminal-development-refusal; validator-repaired; review-pending",
+  "development_invocations": 1,
+  "development_exit_code": 1,
+  "development_elapsed_seconds": 4.0846701,
+  "development_output_exists": false,
+  "development_cases_published": 0,
+  "development_input_sha256": null,
+  "development_result_sha256": null,
+  "decision": "no-go; no accuracy conclusion",
+  "failure": "ValueError: malformed deterministic fit/holdout partition",
+  "cause": "track replay imposed legacy modulo-5 fit/held membership on an accepted quota-sha256 model after pair telemetry had correctly recomputed quota roles",
+  "repair": "track replay now uses exact accepted-attempt evidence; calibration replay enforces the exact dev seed-family-kind roster",
+  "repair_tests": "19 focused passed; 211 combined new and historical passed",
+  "retry_performed": false,
+  "next_gate": "independent Astra, Luna, and lead review; any further development evaluation requires a separately authorized task"
+}

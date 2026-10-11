@@ -1,0 +1,105 @@
+{
+  "manifest_schema": 1,
+  "purpose": "Reviewed expected identity for each acceptance fixture role. A role stays unpinned and its per-run gate stays ineligible until every field below is explicitly populated and reviewed=true. A fixture folder name and a run's own recorded observed hashes are never pins.",
+  "field_semantics": {
+    "fixture": "Folder name of the fixture role; must equal the declared role fixture.",
+    "subset": "Optional frozen subset name from docs/reports/M3-frozen-subsets.json.",
+    "reviewed": "Set true only after a reviewer has populated and checked every field.",
+    "reference_sha256": "sha256 of the evaluation-only reference litematic.",
+    "frames": "Ordered list (sorted by frame name) of {name, sha256} for each input image's content digest.",
+    "usable_masks": "List of {frame, domain_sha256, optional file_sha256} for the frozen evaluator-owned scored boolean mask domain and its mask file."
+  },
+  "roles": {
+    "template-2": {
+      "fixture": "templates 2",
+      "subset": null,
+      "reviewed": true,
+      "reference_sha256": "519034a6a439ab98145aa820792d5afc588b5d697ecad961c14c36cbef2f3416",
+      "frames": [
+        {
+          "name": "2026-09-02_13.22.14.png",
+          "sha256": "eb22541171e030ff94d6839a6626e7160c69ae3a780f07aec0298322be665d46"
+        },
+        {
+          "name": "2026-09-02_13.24.24.png",
+          "sha256": "e2fd9fd6c83bf9005fe0973987da9e46d213a4351ec91393ce578f8e6d3961ae"
+        },
+        {
+          "name": "2026-09-02_13.24.33.png",
+          "sha256": "35d9debb206c2505f65d3be29183f4a4f3d2bf3f9c05644ce75570f48381d1fc"
+        }
+      ],
+      "usable_masks": [
+        {
+          "frame": "2026-09-02_13.22.14.png",
+          "domain_sha256": "c1536420ce3f3b7fe9c4cf92a2221313b712542752c20dcec51184dd0ca08245",
+          "file_sha256": "2b0e18cfc26d225c6bb5cb1043792cdcc252983215b5fb7fd09480e88622850e"
+        },
+        {
+          "frame": "2026-09-02_13.24.24.png",
+          "domain_sha256": "dfe16f05ded6a89bd5a6d354798afb0757baf26787d2b174dea184f7b593f685",
+          "file_sha256": "068c7fe623e66d770e77af98538916eafe34a7f4e7b0f3d7080ed5fa5d5687c7"
+        },
+        {
+          "frame": "2026-09-02_13.24.33.png",
+          "domain_sha256": "f8260d647a2bb338eda1b8deee09bdad06aaada5ac07e6850bf9fe876fe89b31",
+          "file_sha256": "212a5d7e49b66d14eed26a829f75440e15b20b8281b433907c7f4319fd830dd2"
+        }
+      ]
+    },
+    "template-6": {
+      "fixture": "templates 6",
+      "subset": null,
+      "reviewed": true,
+      "reference_sha256": "874b198098dc56b0694d57258ec337b19174817f437cc706679d8f65c41b7d6e",
+      "frames": [
+        {
+          "name": "2026-09-05_18.01.09.png",
+          "sha256": "7b0d90457290e225d0f05eb1a3672a6d64f045d5927af73c8fe98829f6e4508c"
+        },
+        {
+          "name": "2026-09-05_18.01.14.png",
+          "sha256": "89ffbcdf5534728fa89f4a13dc4ce6f51a09e96d14f4ad85be9338bb83823a55"
+        },
+        {
+          "name": "2026-09-05_18.01.18.png",
+          "sha256": "d149071bfe5f826327c90697acd09472253cde6f36c50c715cca497f147f7af8"
+        },
+        {
+          "name": "2026-09-05_18.01.22.png",
+          "sha256": "fbf37c58fa418e3d6be1b41b22c1ab2fa68000b1eafc5faf28d89d8983a9d0e7"
+        }
+      ],
+      "usable_masks": [
+        {
+          "frame": "2026-09-05_18.01.09.png",
+          "domain_sha256": "99f4611f41fb788689a8892d4674b5bbe4ea7d5595f37bacbad24bbaa4d8ec38",
+          "file_sha256": "3c436164642b3d2606453e2014107489cfc7dbabdd968052cc1a5928761b03b0"
+        },
+        {
+          "frame": "2026-09-05_18.01.14.png",
+          "domain_sha256": "30b5f03a26870d3cf941504d67c728404032761f446f2f7d5e4fe247d253df22",
+          "file_sha256": "a0f2808766e3349e8aa40114651003df9f470323b39322cfd3bc1d2c20d80054"
+        },
+        {
+          "frame": "2026-09-05_18.01.18.png",
+          "domain_sha256": "28fd3c63257d02e6359a7a8087c36f54791f313de60668e4334843b421c17662",
+          "file_sha256": "7c72a6e5a01872ac38f190e1d0affd7f3928e8a20115a062614029adff0a8974"
+        },
+        {
+          "frame": "2026-09-05_18.01.22.png",
+          "domain_sha256": "28fd3c63257d02e6359a7a8087c36f54791f313de60668e4334843b421c17662",
+          "file_sha256": "7c72a6e5a01872ac38f190e1d0affd7f3928e8a20115a062614029adff0a8974"
+        }
+      ]
+    },
+    "frozen-small-template-3": {
+      "fixture": "templates 3",
+      "subset": "t3-sparse-8",
+      "reviewed": false,
+      "reference_sha256": null,
+      "frames": [],
+      "usable_masks": []
+    }
+  }
+}

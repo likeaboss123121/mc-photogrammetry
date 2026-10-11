@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "mc_photo_capture",
+  "version": "${version}",
+  "name": "MC Photogrammetry Capture",
+  "description": "Developer-only deterministic capture harness for the mc-photogrammetry dataset factory. It stays completely inert unless config/mc-photo-capture/armed.json explicitly names a validated plan, never runs commands, and refuses anything that is not an integrated singleplayer world.",
+  "authors": [
+    "mc-photogrammetry"
+  ],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.mcphotogrammetry.capture.McPhotoCaptureClient"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "mc-photo-capture.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "minecraft": "~1.21.5",
+    "java": ">=21"
+  }
+}

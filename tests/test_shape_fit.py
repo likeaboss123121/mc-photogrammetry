@@ -467,7 +467,14 @@ def test_shape_fit_reports_render_work_and_honours_a_candidate_cap():
     assert diagnostics["shape_fit_seconds"] >= 0.0
 
 
-def test_candidate_render_cap_is_global_and_rejects_partial_multiview_hypotheses():
+def test_candidate_render_cap_below_view_count_reserves_no_partial_hypothesis():
+    """A cap below the usable-view count spends no candidate render at all.
+
+    The previous scheduler rendered a prefix of the views and then discarded the
+    incomplete hypothesis, spending the scarce budget without ever evaluating a
+    complete one.  The whole view set is reserved instead, so the cell is left
+    explicitly unvisited and its discovery work is counted separately.
+    """
     slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
     carpet = _entry("white_carpet", (160, 160, 160), CARPET)
     palette = (carpet, slab)
@@ -493,10 +500,274 @@ def test_candidate_render_cap_is_global_and_rejects_partial_multiview_hypotheses
         diagnostics=diagnostics, max_candidate_renders=1,
     )
 
-    assert diagnostics["shape_fit_candidate_renders"] == 1
-    assert diagnostics["shape_fit_candidate_renders"] <= 1
+    results = diagnostics["shape_fit_cell_results"]
+    assert results[0]["usable_views"] == 3
+    assert results[0]["status"] == "budget_unvisited"
+    assert results[0]["candidate_renders"] == 0
+    assert diagnostics["shape_fit_candidate_renders"] == 0
+    assert diagnostics["shape_fit_completed_hypotheses"] == 0
     assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
+    # Discovery work keeps its own counter; it is never disguised as candidate work.
+    assert diagnostics["shape_fit_probe_renders"] >= 1
+    assert diagnostics["shape_fit_context_renders"] == 0
     assert target not in fitted
+
+
+def test_zero_cap_reports_every_cell_budget_unvisited_without_rendering():
+    """cap=0 must not build the palette or render background/context/probe."""
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (160, 160, 160), CARPET)
+    palette = (carpet, slab)
+    cells = [(0, 0, 0), (2, 0, 0)]
+    scene = SceneTransform((0, 0, 0), (4, 2, 2))
+    camera = CameraModel((1.5, 0.5, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    frame = np.zeros((120, 120, 3), dtype=np.uint8)
+    diagnostics = {}
+
+    fitted = fit_states(
+        cells, {}, scene, {"a.png": camera}, {"a.png": frame}, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        diagnostics=diagnostics, max_candidate_renders=0,
+    )
+
+    assert fitted == {}
+    for name in ("background_renders", "context_renders", "probe_renders",
+                 "ownership_renders", "current_renders", "candidate_renders"):
+        assert diagnostics[f"shape_fit_{name}"] == 0, name
+    assert diagnostics["shape_fit_render_work"] == 0
+    assert diagnostics["shape_fit_completed_hypotheses"] == 0
+    assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
+    assert diagnostics["shape_fit_considered_shapes"] == []
+    assert diagnostics["shape_fit_budget_unvisited_cells"] == 2
+    results = diagnostics["shape_fit_cell_results"]
+    assert [item["status"] for item in results] == ["budget_unvisited"] * 2
+    assert [item["candidate_renders"] for item in results] == [0, 0]
+
+
+def test_atomic_view_reservation_below_equal_and_above_cap():
+    """One hypothesis needs its whole two-view set; the cap cannot be shaved.
+
+    below -> no candidate render at all (cell budget_unvisited)
+    equal -> exactly one complete hypothesis
+    above -> one complete hypothesis, then a refinement refused atomically
+    full  -> the representative plus one complete refinement
+    """
+    aaa = _entry("aaa_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    bbb = _entry("bbb_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    palette = (aaa, bbb)
+    target = (0, 0, 0)
+    scene = SceneTransform((0, 0, 0), (2, 2, 2))
+    camera = CameraModel((0.5, 0.25, -3.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0)
+    cameras = {"a.png": camera, "b.png": camera}
+    photo, _owner, _index, _depth = render_volume(
+        {target: bbb.state}, scene, camera, 120, 120, face_colours(palette),
+        face_shapes(palette), scale=1.0, ambient=True,
+        occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+    )
+    frames = {name: np.rint(photo).astype(np.uint8) for name in cameras}
+
+    observed = {}
+    refusals = {}
+    for cap in (1, 2, 3, 4):
+        diagnostics = {}
+        fit_states(
+            [target], {}, scene, cameras, frames, palette,
+            scale=1.0, edge_weight=0.0, texture_weight=0.0,
+            diagnostics=diagnostics, max_candidate_renders=cap,
+        )
+        observed[cap] = (
+            diagnostics["shape_fit_candidate_renders"],
+            diagnostics["shape_fit_completed_hypotheses"],
+            diagnostics["shape_fit_cell_results"][0]["status"],
+        )
+        refusals[cap] = list(diagnostics["shape_fit_unresolved_budget_exits"])
+        assert diagnostics["shape_fit_candidate_render_cap_reached"] is True, cap
+
+    assert observed[1] == (0, 0, "budget_unvisited")
+    assert observed[2] == (2, 1, "partly_tested")
+    assert observed[3] == (2, 1, "partly_tested")
+    assert observed[4] == (4, 2, "accepted")
+    # cap=3 is one render short of the refinement: it is refused, never partial.
+    assert any(
+        entry["phase"] == "material_refinement" for entry in refusals[3]
+    )
+    assert refusals[1][0]["phase"] == "reserve_usable_view_set"
+
+
+def test_two_cells_two_views_cap_two_completes_one_hypothesis_only():
+    """Never spend one render per cell: reserve both for one complete one."""
+    slab = _entry("quartz_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (120, 120, 120), CARPET)
+    stone = _entry("stone", (120, 120, 120), ())
+    palette = (slab, carpet, stone)
+    scene = SceneTransform((0, 0, 0), (4, 2, 2))
+    cameras = {
+        "front": CameraModel((1.5, 0.5, -5.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+        "back": CameraModel((1.5, 0.5, 5.0), 180.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+    }
+    target_blocks = {(0, 0, 0): slab.state, (2, 0, 0): carpet.state}
+    frames = {}
+    for frame_id, camera in cameras.items():
+        photo, _owner, _index, _depth = render_volume(
+            target_blocks, scene, camera, 160, 120, face_colours(palette),
+            face_shapes(palette), scale=1.0, ambient=True,
+            occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+        )
+        frames[frame_id] = np.rint(photo).astype(np.uint8)
+
+    diagnostics = {}
+    fitted = fit_states(
+        [(0, 0, 0), (2, 0, 0)], {}, scene, cameras, frames, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        diagnostics=diagnostics, max_candidate_renders=2,
+    )
+
+    results = diagnostics["shape_fit_cell_results"]
+    assert diagnostics["shape_fit_candidate_renders"] == 2
+    assert sum(item["candidate_renders"] for item in results) == 2
+    assert diagnostics["shape_fit_completed_hypotheses"] == 1
+    assert [item["status"] for item in results] == ["budget_unvisited", "partly_tested"]
+    # Exactly one cell was decided; the other is explicitly unsearched.
+    assert (2, 0, 0) in fitted
+    assert (0, 0, 0) not in fitted
+
+
+def test_uneven_view_costs_let_the_cheaper_cell_use_a_scarce_cap():
+    """A one-view cell is eligible at cap1 where the two-view cell is not."""
+    stone = _entry("stone", (120, 120, 120), ())
+    carpet = _entry("white_carpet", (240, 240, 240), CARPET)
+    slab = _entry("quartz_slab", (160, 160, 160), SLAB, (("type", "bottom"),))
+    palette = (carpet, slab, stone)
+    scene = SceneTransform((0, 0, 0), (2, 2, 3))
+    cameras = {
+        "front": CameraModel((0.5, 0.5, -5.0), 0.0, 0.0, fov_degrees=70.0, eye_height=0.0),
+        "back": CameraModel((0.5, 0.5, 7.0), 180.0, 0.0, fov_degrees=70.0, eye_height=0.0),
+    }
+    target_blocks = {(0, 0, 0): stone.state, (0, 0, 1): carpet.state}
+    frames = {}
+    for frame_id, camera in cameras.items():
+        photo, _owner, _index, _depth = render_volume(
+            target_blocks, scene, camera, 160, 160, face_colours(palette),
+            face_shapes(palette), scale=1.0, ambient=True,
+            occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+        )
+        frames[frame_id] = np.rint(photo).astype(np.uint8)
+
+    diagnostics = {}
+    fitted = fit_states(
+        [(0, 0, 0), (0, 0, 1)], {(0, 0, 0): stone.state}, scene, cameras, frames, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        diagnostics=diagnostics, max_candidate_renders=1,
+    )
+
+    results = {
+        tuple(item["coordinate"]): item
+        for item in diagnostics["shape_fit_cell_results"]
+    }
+    assert results[(0, 0, 0)]["usable_views"] == 2
+    assert results[(0, 0, 0)]["status"] == "budget_unvisited"
+    assert results[(0, 0, 0)]["candidate_renders"] == 0
+    assert results[(0, 0, 1)]["usable_views"] == 1
+    assert results[(0, 0, 1)]["candidate_renders"] == 1
+    assert diagnostics["shape_fit_candidate_renders"] == 1
+    assert diagnostics["shape_fit_completed_hypotheses"] == 1
+    assert fitted[(0, 0, 1)] == carpet.state
+
+
+def test_two_view_then_three_view_cap_two_does_not_starve_the_budget():
+    """Leftover budget returns to a cell refused only by the fair-share split.
+
+    The first cell sees two cameras and the second three.  A cap of two cannot
+    pay for one complete three-view hypothesis, but it pays exactly for the
+    two-view cell.  Dividing the cap before the view counts are known gives
+    each cell one render, refusing both and spending nothing; the leftover
+    budget must return to the two-view cell instead of going unused.
+    """
+    slab = _entry("quartz_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    palette = (slab,)
+    scene = SceneTransform((0, 0, 0), (8, 2, 2))
+    cameras = {
+        "front": CameraModel((2.0, 0.5, -5.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+        "back": CameraModel((2.0, 0.5, 5.0), 180.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+        # Close to the right cell and looking away from the left one, which
+        # falls outside this camera's frustum.
+        "right": CameraModel((4.5, 0.5, -1.5), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+    }
+    target_blocks = {(0, 0, 0): slab.state, (4, 0, 0): slab.state}
+    frames = {}
+    for frame_id, camera in cameras.items():
+        photo, _owner, _index, _depth = render_volume(
+            target_blocks, scene, camera, 160, 120, face_colours(palette),
+            face_shapes(palette), scale=1.0, ambient=True,
+            occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+        )
+        frames[frame_id] = np.rint(photo).astype(np.uint8)
+    diagnostics = {}
+
+    fitted = fit_states(
+        [(0, 0, 0), (4, 0, 0)], {}, scene, cameras, frames, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        diagnostics=diagnostics, max_candidate_renders=2,
+    )
+
+    results = {
+        tuple(item["coordinate"]): item
+        for item in diagnostics["shape_fit_cell_results"]
+    }
+    assert results[(0, 0, 0)]["usable_views"] == 2
+    assert results[(4, 0, 0)]["usable_views"] == 3
+    assert results[(0, 0, 0)]["status"] == "accepted"
+    assert results[(0, 0, 0)]["candidate_renders"] == 2
+    assert results[(4, 0, 0)]["status"] == "budget_unvisited"
+    assert results[(4, 0, 0)]["candidate_renders"] == 0
+    assert diagnostics["shape_fit_candidate_renders"] == 2
+    assert diagnostics["shape_fit_completed_hypotheses"] == 1
+    assert diagnostics["shape_fit_budget_unvisited_cells"] == 1
+    assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
+    assert fitted[(0, 0, 0)] == slab.state
+    assert (4, 0, 0) not in fitted
+
+
+def test_two_cell_cap_seven_reports_the_shared_cap_as_reached():
+    """A refused refinement must not leave the aggregate cap flag false.
+
+    Both cells spend part of the shared seven-render cap and are then refused
+    an atomic reference/refinement hypothesis, leaving renders unspent.  The
+    aggregate must still report that the cap limited the search, exactly as
+    each per-cell run does, instead of comparing the leftover balance to zero.
+    """
+    slab = _entry("quartz_slab", (120, 120, 120), SLAB, (("type", "bottom"),))
+    carpet = _entry("white_carpet", (120, 120, 120), CARPET)
+    stone = _entry("stone", (120, 120, 120), ())
+    palette = (slab, carpet, stone)
+    scene = SceneTransform((0, 0, 0), (4, 2, 2))
+    cameras = {
+        "front": CameraModel((1.5, 0.5, -5.0), 0.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+        "back": CameraModel((1.5, 0.5, 5.0), 180.0, 0.0, fov_degrees=90.0, eye_height=0.0),
+    }
+    target_blocks = {(0, 0, 0): slab.state, (2, 0, 0): carpet.state}
+    frames = {}
+    for frame_id, camera in cameras.items():
+        photo, _owner, _index, _depth = render_volume(
+            target_blocks, scene, camera, 160, 120, face_colours(palette),
+            face_shapes(palette), scale=1.0, ambient=True,
+            occluding_slots=face_occluding_slots(palette), model_faces=face_model_faces(palette),
+        )
+        frames[frame_id] = np.rint(photo).astype(np.uint8)
+    diagnostics = {}
+
+    fit_states(
+        [(0, 0, 0), (2, 0, 0)], {}, scene, cameras, frames, palette,
+        scale=1.0, edge_weight=0.0, texture_weight=0.0,
+        diagnostics=diagnostics, max_candidate_renders=7,
+    )
+
+    results = diagnostics["shape_fit_cell_results"]
+    assert diagnostics["shape_fit_candidate_renders"] == 6
+    assert sum(item["candidate_renders"] for item in results) == 6
+    assert [item["status"] for item in results] == ["partly_tested", "partly_tested"]
+    assert diagnostics["shape_fit_unresolved_budget_exits"]
+    assert diagnostics["shape_fit_candidate_render_cap_reached"] is True
 
 
 def test_shape_balanced_schedule_reaches_partial_shapes_before_cube_materials():

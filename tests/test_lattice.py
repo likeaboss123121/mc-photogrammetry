@@ -4,17 +4,22 @@ The distance a period implies is only as good as the period, so these check the
 measurement against signals whose spacing is set by construction, then check the
 rectification against a plane placed by construction.
 """
+from typing import get_type_hints
+
 import numpy as np
 import pytest
 
 from mc_photogrammetry.reconstruction.calibration import axis_directions
+from mc_photogrammetry.reconstruction import lattice
 from mc_photogrammetry.reconstruction.lattice import (
+    PeriodEstimate,
     measure_plane,
     TEXELS_PER_BLOCK,
     estimate_period,
     period_hypotheses,
     plane_basis,
     rectify_plane,
+    rectified_pixel_step,
     rectified_pixel_to_plane_coordinates,
     plane_coordinates_to_camera_point,
     camera_point_to_pixel,
@@ -27,6 +32,75 @@ def _striped(size, period, phase=0.0, along=0):
     line = ((coordinate - phase) % period < 1.0).astype(np.float32)
     field = np.repeat(line[None, :], size, axis=0)
     return field if along == 0 else field.T
+
+
+@pytest.mark.parametrize("along", (0, 1))
+@pytest.mark.parametrize("weighted", (False, True))
+@pytest.mark.parametrize("values,expected", (
+    ([255, 0], [255]), ([1, 0], [1]), ([0, 255], [255]),
+    ([0, 255, 0, 1, 0], [255, 255, 1, 1]),
+))
+def test_integer_profile_preserves_signed_edge_magnitudes(along, weighted, values, expected):
+    patch = np.tile(np.array(values, dtype=np.uint8), (4, 1))
+    if along:
+        patch = patch.T
+    weights = np.full(patch.shape, 2., dtype=np.float64) if weighted else None
+    before = patch.tobytes()
+    weight_before = weights.tobytes() if weighted else None
+    actual = lattice._profile(patch, along, weights)
+    np.testing.assert_array_equal(actual, expected)
+    np.testing.assert_array_equal(actual, lattice._profile(patch.astype(np.float64), along, weights))
+    np.testing.assert_array_equal(actual, lattice._profile(255 - patch, along, weights))
+    np.testing.assert_array_equal(actual, lattice._profile(np.repeat(patch[..., None], 3, axis=2), along, weights))
+    assert actual.dtype == np.float64 and patch.tobytes() == before
+    assert not weighted or weights.tobytes() == weight_before
+
+
+@pytest.mark.parametrize("dtype", (np.float32, np.float64))
+@pytest.mark.parametrize("along", (0, 1))
+@pytest.mark.parametrize("weighted", (False, True))
+def test_float_profile_is_exactly_the_original_arithmetic(dtype, along, weighted):
+    patch = np.random.default_rng(440).normal(size=(17, 19)).astype(dtype)
+    weights = np.random.default_rng(441).random(patch.shape).astype(dtype) if weighted else None
+    before = patch.tobytes()
+    gradient = np.abs(np.diff(patch, axis=1 - along))
+    if weights is None:
+        expected = gradient.mean(axis=along)
+    else:
+        mask = weights[:, :-1] if along == 0 else weights[:-1, :]
+        total = mask.sum(axis=along)
+        covered = (gradient * mask).sum(axis=along)
+        expected = np.divide(covered, total, out=np.zeros_like(covered), where=total > 0)
+    actual = lattice._profile(patch, along, weights)
+    np.testing.assert_array_equal(actual, expected)
+    assert actual.dtype == expected.dtype == dtype and patch.tobytes() == before
+
+
+@pytest.mark.parametrize("along", (0, 1))
+def test_uint8_period_phase_and_hypotheses_equal_float_patch(along):
+    patch = (_striped(256, 16., phase=3., along=along) * 255).astype(np.uint8)
+    before = patch.tobytes()
+    integer = lattice.estimate_period(patch, along=along)
+    floating = lattice.estimate_period(patch.astype(np.float64), along=along)
+    assert integer is not None and integer == floating
+    assert integer.period_pixels == pytest.approx(16., rel=.02)
+    assert lattice.period_hypotheses(integer, extent=1., samples=256) == lattice.period_hypotheses(
+        floating, extent=1., samples=256)
+    assert patch.tobytes() == before
+
+
+def test_uint8_harmonic_reconciliation_and_coarse_support_equal_float():
+    patch = (np.maximum(_striped(256, 16., along=0),
+                        _striped(256, 32., along=1)) * 255).astype(np.uint8)
+    integer = lattice._plane_period_with_direction(patch)
+    floating = lattice._plane_period_with_direction(patch.astype(np.float64))
+    assert integer is not None and integer == floating
+    assert integer[0].period_pixels == pytest.approx(16., rel=.02)
+    textured = (_texelled(512, 4.) * 160).astype(np.uint8)
+    integer = lattice.estimate_period(textured)
+    floating = lattice.estimate_period(textured.astype(np.float64))
+    assert integer is not None and integer == floating
+    assert integer.period_pixels == pytest.approx(4., rel=.05) and integer.coarse_support > .5
 
 
 def test_a_known_stripe_spacing_is_recovered():
@@ -73,12 +147,47 @@ def test_both_the_block_and_the_texel_reading_are_kept():
 
 
 def test_the_distance_a_period_implies_inverts_correctly():
-    # One output pixel spans 2*extent/samples = 4/512 world units at unit
-    # distance, so a 32-pixel period is 0.25 world units, and reading that as one
-    # block puts the plane four units away.
+    # The measured period is close to 32 pixels, and its scale must use the
+    # endpoint-inclusive 4/511 world-unit grid interval.
     base = estimate_period(_striped(512, 32.0))
     enriched = period_hypotheses(base, extent=2.0, samples=512)
-    assert enriched.best.plane_distance == pytest.approx(4.0, rel=0.03)
+    expected = 1.0 / (base.period_pixels * rectified_pixel_step(2.0, 512))
+    assert enriched.best.plane_distance == pytest.approx(expected, rel=1e-14)
+
+
+@pytest.mark.parametrize("samples", (2, 3, 7, 64, 512))
+def test_endpoint_inclusive_pixel_step_matches_linspace(samples):
+    extent = 1.375
+    coordinates = np.linspace(-extent, extent, samples)
+    step = rectified_pixel_step(extent, samples)
+    assert coordinates[0] == -extent
+    assert coordinates[-1] == extent
+    assert step == pytest.approx(float(np.diff(coordinates)[0]), rel=1e-14, abs=1e-14)
+    assert step == pytest.approx(2.0 * extent / (samples - 1), rel=1e-14)
+
+
+@pytest.mark.parametrize("extent,samples", ((0.0, 2), (1.0, 1), (float("inf"), 4),
+                                               (True, 4), (1.0, True), (1.0, 2.5)))
+def test_endpoint_inclusive_pixel_step_rejects_invalid_dimensions(extent, samples):
+    with pytest.raises(ValueError):
+        rectified_pixel_step(extent, samples)
+
+
+def test_plane_window_annotation_declares_the_four_value_contract():
+    from mc_photogrammetry.reconstruction.lattice import plane_window
+
+    assert get_type_hints(plane_window)["return"] == (tuple[float, float, float, float] | None)
+
+
+@pytest.mark.parametrize("samples", (3, 17, 64, 512))
+def test_period_hypotheses_use_exact_endpoint_spacing(samples):
+    period_pixels = 5.25
+    extent = 1.375
+    base = PeriodEstimate(period_pixels=period_pixels, phase_pixels=0.0,
+                          strength=0.8)
+    found = period_hypotheses(base, extent=extent, samples=samples)
+    expected_distance = 1.0 / (period_pixels * rectified_pixel_step(extent, samples))
+    assert found.best.plane_distance == pytest.approx(expected_distance, rel=1e-14)
 
 
 def test_the_plane_basis_is_orthonormal_and_excludes_its_own_normal():
@@ -295,6 +404,99 @@ def test_an_empty_mask_has_no_window():
 
     axes = axis_directions(0.0, 0.0)
     assert plane_window(np.zeros((50, 50), np.float32), 2, axes, 100.0) is None
+
+
+def test_plane_window_and_coordinates_share_normalized_incidence_and_keep_mapping_values():
+    from dataclasses import fields
+    from mc_photogrammetry.reconstruction.lattice import (
+        GRAZING_INCIDENCE, PlaneRayAbstention, PlaneRayMap, _map_rays_to_unit_plane,
+        plane_coordinates, plane_window,
+    )
+
+    # The estimate remains a public period/phase/support record; winning profile
+    # direction is private measurement context and does not change its fields.
+    assert [field.name for field in fields(type(estimate_period(_striped(64, 8))))] == [
+        "period_pixels", "phase_pixels", "strength", "block_supports",
+        "coarse_support", "hypotheses",
+    ]
+
+    matrix = np.asarray(((1.0, 0.02, 0.0), (0.0, 1.0, 0.01), (0.0, 0.0, 1.0)))
+    points = np.asarray(((30.0, 35.0), (70.0, 65.0)))
+    result = _map_rays_to_unit_plane(points, 2, matrix, 100.0, (100, 100), None,
+                                     require_all=True)
+    assert isinstance(result, PlaneRayMap)
+    assert np.all(result.incidence[result.stable] > GRAZING_INCIDENCE)
+    pixels = np.atleast_2d(points).astype(float)
+    rays = np.stack(((pixels[:, 0] - 50.0) / 100.0,
+                     -(pixels[:, 1] - 50.0) / 100.0,
+                     np.ones(len(points))), axis=1)
+    projection = rays @ matrix[2]
+    side = 1.0 if np.count_nonzero(projection > 0) >= np.count_nonzero(projection < 0) else -1.0
+    old_points = rays / (projection * side)[:, None]
+    expected = np.stack((old_points @ matrix[0], old_points @ matrix[1]), axis=1)
+    np.testing.assert_allclose(result.coordinates, expected, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(plane_coordinates(
+        points, 2, matrix, 100.0, (100, 100)), expected, rtol=0.0, atol=1e-12)
+
+    fronto = np.zeros((100, 100), dtype=np.float32)
+    fronto[30:70, 30:70] = 1.0
+    window = plane_window(fronto, 2, np.eye(3), 100.0)
+    assert window is not None and window[3] == 1.0
+
+
+def test_near_grazing_window_and_vanishing_line_constraints_abstain_consistently():
+    from mc_photogrammetry.reconstruction.lattice import (
+        PlaneRayAbstention, PlaneRayMap, _map_rays_to_unit_plane,
+        plane_coordinates, plane_window,
+    )
+
+    # Axis zero is horizontal in this camera. A narrow stripe at the image
+    # centre carries only near-parallel rays; spanning the vanishing line gives
+    # a window on the dominant side but cannot define a two-point constraint.
+    narrow = np.zeros((100, 100), dtype=np.float32)
+    narrow[20:80, 49:52] = 1.0
+    assert plane_window(narrow, 0, np.eye(3), 100.0) is None
+    near = _map_rays_to_unit_plane(((49.0, 50.0), (51.0, 50.0)), 0,
+                                   np.eye(3), 100.0, (100, 100), None,
+                                   require_all=True)
+    assert isinstance(near, PlaneRayAbstention)
+    assert plane_coordinates(((49.0, 50.0), (51.0, 50.0)), 0,
+                             np.eye(3), 100.0, (100, 100)) is None
+
+    crossing = np.zeros((20, 100), dtype=np.float32)
+    crossing[:, :] = 1.0
+    crossing_window = plane_window(crossing, 0, np.eye(3), 100.0,
+                                   principal_point=(50.0, 50.0))
+    assert crossing_window is not None
+    mapped = _map_rays_to_unit_plane(
+        np.column_stack((np.arange(100, dtype=float), np.full(100, 10.0))),
+        0, np.eye(3), 100.0, (100, 100), (50.0, 50.0), require_all=False)
+    assert isinstance(mapped, PlaneRayMap)
+    assert np.all(mapped.incidence[mapped.stable] * mapped.side > 0.05)
+    assert plane_coordinates(((10.0, 10.0), (90.0, 10.0)), 0,
+                             np.eye(3), 100.0, (100, 100),
+                             principal_point=(50.0, 50.0)) is None
+
+
+def test_anisotropic_period_winner_carries_private_direction_without_public_shape_change():
+    from mc_photogrammetry.reconstruction.lattice import _plane_period_with_direction
+
+    height = width = 128
+    x = (((np.arange(width) % 8) < 1).astype(np.float32) * 80.0)
+    y = (((np.arange(height) % 13) < 1).astype(np.float32) * 45.0)
+    horizontal = y[:, None] + x[None, :]
+    x_wide_period = (((np.arange(width) % 13) < 1).astype(np.float32) * 45.0)
+    y_narrow_period = (((np.arange(height) % 8) < 1).astype(np.float32) * 80.0)
+    vertical = y_narrow_period[:, None] + x_wide_period[None, :]
+    first = _plane_period_with_direction(horizontal)
+    second = _plane_period_with_direction(vertical)
+    assert first is not None and second is not None
+    first_estimate, first_direction = first
+    second_estimate, second_direction = second
+    assert first_direction == 0
+    assert second_direction == 1
+    assert first_estimate.period_pixels == pytest.approx(estimate_period(horizontal, 0).period_pixels)
+    assert second_estimate.period_pixels == pytest.approx(estimate_period(vertical, 1).period_pixels)
 
 
 def test_measure_plane_reports_the_extent_it_actually_used():

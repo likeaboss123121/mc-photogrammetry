@@ -166,3 +166,54 @@ verification is backlog and does not interrupt this repair.
 ## Next
 
 Returning this for review.
+
+---
+
+## Errata, 2026-09-12 (DS-1 coverage audit, per lead review five)
+
+Appended by the bounded DS-1 audit; the statements above are retained as
+originally written. These entries correct numbers the lead review five found
+stale and record newly reproduced evidence. Full contract analysis is in
+[DS-1-coverage-audit-2026-09-12.md](DS-1-coverage-audit-2026-09-12.md).
+
+1. **Test totals.** The header's "522 tests, green ... 513 baseline + 9 new F4
+   controls" was an agent-measured total at the time and does not match the
+   current tree. The lead-verified baseline at `c6dba2c` is **514 passed in
+   224.84 s** against a prior baseline of **499** at `f180ff3` - not 513. The
+   522 figure is not reproducible from this HEAD.
+2. **The "0.3482" lower bound is withdrawn.** It was not measured on the cell
+   size the sentence claims. `_rectangle_cell`'s `distance=10` default made the
+   "toy 1-pixel" cell 0.1 px on a side while its docstring said 1 px. Current
+   measurements:
+   - 0.1 px cell (the size the old test actually used): certified lower
+     **0.47499999999996795**, upper **0.6287999999999576**.
+   - true 1 px cell (`distance=1`, `period=1`, `focal=1`, principal point
+     `(2.2,3.2)`): certified lower **0.5379726573**, upper **0.5612121130**
+     (the lead review's recorded values, independently reproduced here).
+   Neither value is 0.3482. Both sizes still never clear the 0.6 threshold, so
+   the decision conclusion is unchanged.
+3. **Well-resolved 55% figure.** The "0.5452" quoted above measures
+   **0.5454030471** on current code (100 px cell, certified lower bound). The
+   companion 59/60/61/100% lower bounds are **0.5852977839 / 0.5957963989 /
+   0.6052451524 / 0.9947437673**, matching lead review five's own reproduction.
+4. **Missing utility reference.** `scripts/verify_boundary_targets_v3.py` does
+   not exist in the workspace and must not be cited as reproducible verification
+   (the path is referenced in the v3 annotation JSON's note, not in this
+   report). The existing reproducible replacement is
+   `.\.venv\Scripts\python.exe -m pytest tests/test_boundary_scoring.py::test_f3_v3_annotation_anchors_match_the_composed_masks -q -p no:cacheprovider -o addopts=`
+   (`tests/test_boundary_scoring.py:170`).
+5. **Scope of the v3 evidence.** "This confirms again, against a materially
+   different (not just more generous) annotation, that C2's failure is not an
+   annotation artifact" overstates the evidence and is retracted. The
+   hash-frozen v3 test proves the JSON continues to encode those labels, not
+   that the labels are correct, and lead review five found remaining semantic
+   errors (frame 1 `(1150,740)` is visible wall resolving negative; frame 3's
+   positive target joins the left and far walls). Saved-C2 v3 0/3 therefore
+   remains provisional and annotation-dependent; v3 does not by itself prove
+   the failure independent of annotation error.
+6. **Allocation-bound wording.** `MAX_SUPERSAMPLED_CELLS` bounds one mask's
+   allocation, not a cell's total memory or total work. `_tile_area_sums`
+   builds up to eight such masks per band and every region is re-rasterized per
+   band, so peak aggregate memory is a small multiple of the budget and total
+   tiled work grows with crop area at supersample 1. Do not promise a 4M
+   total-work or total-memory bound.

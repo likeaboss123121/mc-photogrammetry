@@ -1,0 +1,9 @@
+# Joint endpoint selector observation
+
+The diagnostic now records a separate joint-selector observation from the exact `EndpointSelectionCertificate` after its single graph call. Its record binds certificate and graph digests, candidate count and digest, reading binding digest, proof digest/accounting, factor source-row indices, and representative source-row indices. The validator regenerates that record from the graph after source-row certificate validation. Exhaustive `no` and `unique` close; `multiple` remains incomplete and `budget_refused` remains refused. Raw matcher differences are not reported as legacy solver conflicts.
+
+The legacy `solve_component` endpoint-conflict observer and its v1 validator remain available with unchanged semantics. The diagnostic's normal run publishes the joint record; an explicit legacy observer context still uses the v1 path in focused controls. The observer is diagnostic only and does not alter selection, geometry evaluation, thresholds, or graph/attribution digests.
+
+Synthetic verification: `.venv\Scripts\python.exe -B -m pytest tests/test_diagnose_image_geometry_failure.py tests/test_image_derived_endpoint_selection.py tests/test_diagnostic_joint_graph_digest.py --override-ini addopts= --tb=short -q` passed 86/86. Byte-cap refusal is atomic. No ordinary image run was performed. The certificate validates source joins and structural accounting; observation is not an independent rerun of the selector's full search.
+
+Follow-up coverage after Astra's exact review: a named `unresolved_evidence` control verifies its exhaustive proof remains incomplete, and a full-record byte-cap control accepts exact equality while refusing a record one byte over. The same focused command passed 88/88; source is unchanged. No ordinary image run was performed.

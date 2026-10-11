@@ -1,0 +1,63 @@
+{
+  "task": "M4-C3 bounded image-only plane-proposal recall repair",
+  "frozen_at_utc": "2026-09-12T20:07:11.391531+00:00",
+  "pre_score_source_sha256": "c015bffc5df0efd0a77f928527577c451e0fbc0a14680ee0969715a7fc2636ed",
+  "source_files_sha256": {
+    "src/mc_photogrammetry/reconstruction/boundary_candidates.py": "95e550a44bd65a19044b2a35a99d9a503b389d066085dccb464b0f18fa89216c",
+    "src/mc_photogrammetry/reconstruction/surfaces.py": "888ebf1ab837baccd845b85256fb2cc7b2cf518352c371eac58fbc48264ec11c",
+    "src/mc_photogrammetry/reconstruction/calibration.py": "095fb0b853c43f885b1eba1a8998215c5bd3df28f737189d34f07a66dc842ef7",
+    "tests/test_boundary_candidates.py": "6e78986150e8d2d734c282efe1f20a99ef6bfd64630693a3609f87086312fec5",
+    "tests/test_surfaces.py": "ac8163082cbf7bd79954c0389f5eea21971c01627648f39cd42749b14ab27cc9",
+    "tests/test_calibration.py": "79fcbb68e902cfd9b5d651453c1e7a5aacd4308201a0e800dae40addbb15db90",
+    "docs/reports/M4-C3-image-plane-proposals-2026-09-12/evaluate_frozen_v4.py": "9b1b1317f0886492622e30482c3623fba9a462d530b843c304dc631e372c5c2e"
+  },
+  "v4_target_sha256_expected_from_accepted_audit": "f4a0f86938561b3fc81b096fc614d1ae404c1372e65c925811c1368ce56a0da5",
+  "algorithm_constants": {
+    "max_proposals_per_frame": 32,
+    "chain_pool_total": 36,
+    "chains_per_axis": 12,
+    "region_tile_sizes_pixels": [
+      24,
+      48,
+      96
+    ],
+    "region_candidates_per_scale": 12,
+    "minimum_region_area_pixels": 13824,
+    "minimum_usable_fraction": 0.2,
+    "minimum_calibration_inliers": 12,
+    "minimum_usable_line_run_pixels": 24.0,
+    "same_axis_side_dedup_iou": 0.55,
+    "proposal_coverage_strata": "axis x calibration-derived signed side x 3x3 centroid cell",
+    "region_score": "confidence * sqrt(min(1, mask_area / (2 * minimum_region_area)))",
+    "closure_score": "closure_strength / max_closure_strength * sqrt(min(1, mask_area / minimum_region_area))",
+    "overlap_evidence_bonus": "min(1, prior_strength + 0.10 * supporting_strength)",
+    "proposal_mask_union": false
+  },
+  "synthetic_and_focused_test_run": {
+    "command": ".\\.venv\\Scripts\\python.exe -m pytest tests\\test_boundary_candidates.py tests\\test_calibration.py tests\\test_surfaces.py -q -p no:cacheprovider -o addopts=",
+    "result": "60 passed in 88.02s",
+    "py_compile": "passed for boundary_candidates.py, surfaces.py, and evaluate_frozen_v4.py"
+  },
+  "evaluation_preregistration": {
+    "target_frames": [
+      "2026-09-02_13.22.14.png",
+      "2026-09-02_13.24.24.png",
+      "2026-09-02_13.24.33.png"
+    ],
+    "frame_denominator": 3,
+    "usable_mask": "not create_gui_mask(height, width), standard debug-area off",
+    "calibration": "fresh estimate_session over the three screenshot pixel arrays only",
+    "proposal_recall_at_k": "maximum individual candidate recall in top K, K=1,5,10,32; no candidate unions",
+    "best_candidate": "highest individual IoU, evaluator-only tie-break by lower rank",
+    "top1": "rank 0 from image-only proposer, reported separately",
+    "continuation": "candidate exists in all 3; maximum individual recall >=0.50 all 3; best-IoU precision >=0.50 on at least 2/3; zero candidate-mask unions"
+  },
+  "evaluation_only_loader_correction": {
+    "reason": "accepted v4 target JSON records frame and pixel masks but no per-target source_image_sha256 field; evaluator now checks the accepted-audit-pinned screenshot hashes",
+    "production_source_tests_constants_changed": false,
+    "previous_attempt_scored": false,
+    "previous_attempt_marker_written": false,
+    "evaluation_count_before_one_shot": 0,
+    "source_hashes_recomputed": true
+  }
+}

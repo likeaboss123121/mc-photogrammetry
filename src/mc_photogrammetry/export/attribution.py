@@ -19,6 +19,8 @@ catch-all.
 from __future__ import annotations
 
 import base64
+import hashlib
+import json
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -33,6 +35,7 @@ from mc_photogrammetry.reconstruction.camera import CameraModel, project_clipped
 from mc_photogrammetry.reconstruction.lighting import ambient_occlusion
 from mc_photogrammetry.reconstruction.scene import SceneTransform
 from mc_photogrammetry.pipeline.contracts import RenderResult
+from mc_photogrammetry.reconstruction import lattice
 
 RENDER_SCALE = 0.35
 """Fraction of the source resolution the diagnostic renders at."""
@@ -50,6 +53,82 @@ PHANTOM = "phantom"
 MATERIAL = "material"
 DISPLACED = "displaced"
 SILHOUETTE = "silhouette"
+
+
+@dataclass(frozen=True, slots=True)
+class RendererOwnerRowV1:
+    owner_id: int
+    block_coordinate: tuple[int, int, int]
+    block_state: str
+    source_kind: str
+    source_ordinal: int
+    slot: str
+    world_vertices: tuple[tuple[float, float, float], ...]
+    normal: tuple[float, float, float]
+    geometry_sha256: str
+    alpha_sha256: str
+    physical_plane_key: tuple[int, int, int, int] | None
+
+
+@dataclass(frozen=True, slots=True)
+class RendererOwnershipWitnessV1:
+    schema: str
+    scale: float
+    alpha_cutoff: float
+    depth_policy: str
+    draw_policy: str
+    owners: tuple[RendererOwnerRowV1, ...]
+    witness_sha256: str = ""
+
+    def __post_init__(self) -> None:
+        if (self.schema != "mc-photogrammetry-renderer-ownership-witness-v1"
+                or self.alpha_cutoff != 0.5
+                or self.depth_policy != "strict-nearer-inverse-depth-v1"
+                or self.draw_policy != "face-order-stable-v1"
+                or tuple(row.owner_id for row in self.owners) != tuple(range(len(self.owners)))):
+            raise ValueError("renderer ownership witness is malformed")
+        digest = hashlib.sha256(json.dumps(
+            self.to_record(include_digest=False), sort_keys=True,
+            separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+        if self.witness_sha256 not in ("", digest):
+            raise ValueError("renderer ownership witness digest mismatch")
+        object.__setattr__(self, "witness_sha256", digest)
+
+    def to_record(self, *, include_digest=True):
+        rows = []
+        for value in self.owners:
+            row = {name: getattr(value, name) for name in value.__dataclass_fields__}
+            rows.append(row)
+        result = {"schema": self.schema, "scale": self.scale,
+                  "alpha_cutoff": self.alpha_cutoff,
+                  "depth_policy": self.depth_policy,
+                  "draw_policy": self.draw_policy, "owners": rows}
+        if include_digest:
+            result["witness_sha256"] = self.witness_sha256
+        return result
+
+
+def _owner_metadata(coordinate, state, source_kind, ordinal, slot, vertices,
+                    normal, alpha):
+    vertices = np.asarray(vertices, dtype=np.float64)
+    normal = np.asarray(normal, dtype=np.float64)
+    geometry_hash = hashlib.sha256(vertices.tobytes(order="C")
+                                   + normal.tobytes(order="C")).hexdigest()
+    alpha_hash = "" if alpha is None else hashlib.sha256(
+        np.ascontiguousarray(alpha).tobytes()).hexdigest()
+    key = None
+    nonzero = np.flatnonzero(np.abs(normal) > 1e-12)
+    if (len(nonzero) == 1 and abs(abs(float(normal[nonzero[0]])) - 1.0) <= 1e-12
+            and np.all(vertices[:, nonzero[0]] == vertices[0, nonzero[0]])):
+        axis = int(nonzero[0]); coordinate_value = float(vertices[0, axis])
+        numerator, denominator = coordinate_value.as_integer_ratio()
+        key = (axis, 1 if normal[axis] > 0 else -1, numerator, denominator)
+    state_value = json.dumps({"name": state.name,
+                              "properties": list(state.properties)},
+                             sort_keys=True, separators=(",", ":"))
+    return (tuple(map(int, coordinate)), state_value, source_kind, int(ordinal), slot,
+            tuple(tuple(map(float, row)) for row in vertices),
+            tuple(map(float, normal)), geometry_hash, alpha_hash, key)
 
 _AXIS_WALL = {
     "up": (1, 1, 1.0), "down": (1, 0, 0.0), "east": (0, 1, 1.0),
@@ -195,6 +274,8 @@ def render_volume(
     occluding_slots: Mapping[object, frozenset[str]] | None = None,
     model_faces: Mapping[object, tuple] | None = None,
     include_uv: bool = False,
+    witness_sink=None,
+    witness_budget: lattice.WitnessBudgetV1 | None = None,
 ):
     """Painter render, with the cell and depth behind every pixel.
 
@@ -227,7 +308,7 @@ def render_volume(
         centre = np.asarray(scene.to_world(coordinate), dtype=float) + 0.5
         exact_faces = () if model_faces is None else model_faces.get(state, model_faces.get(state.name, ()))
         if exact_faces:
-            for record in exact_faces:
+            for face_ordinal, record in enumerate(exact_faces):
                 slot, corners, normal, cull_slot = record[:4]
                 alpha = _alpha_mask(record[4] if len(record) > 4 else None)
                 normal = np.asarray(normal, dtype=float)
@@ -244,9 +325,9 @@ def render_volume(
                         )
                     ):
                         continue
+                world_vertices = centre + np.asarray(corners)
                 projected, face_uv = project_clipped_polygon_uv(
-                    centre + np.asarray(corners), camera, width=width, height=height
-                )
+                    world_vertices, camera, width=width, height=height)
                 if len(projected) < 3:
                     continue
                 colour = colours.get(state, colours.get(state.name, {})).get(slot, np.asarray((128.0, 128.0, 128.0)))
@@ -256,10 +337,12 @@ def render_volume(
                 faces.append((
                     projected[:, :2].astype(np.float32) * scale, projected[:, 2],
                     np.asarray(colour, dtype=float) * shade, (coordinate, slot), alpha, face_uv,
+                    _owner_metadata(coordinate, state, "model_face", face_ordinal,
+                                    slot, world_vertices, normal, alpha),
                 ))
             continue
         boxes = CUBE if shapes is None else shapes.get(state, shapes.get(state.name, CUBE))
-        for low, high in boxes:
+        for box_ordinal, (low, high) in enumerate(boxes):
             for slot in FACE_SLOTS:
                 normal = np.asarray(FACE_BASIS[slot][0], dtype=float)
                 if float(normal @ (eye - centre)) <= 0.05:
@@ -278,9 +361,9 @@ def render_volume(
                         )
                     ):
                         continue
+                world_vertices = centre + box_face_corners(low, high, slot)
                 projected, face_uv = project_clipped_polygon_uv(
-                    centre + box_face_corners(low, high, slot), camera, width=width, height=height,
-                )
+                    world_vertices, camera, width=width, height=height)
                 if len(projected) < 3:
                     continue
                 quad = projected[:, :2].astype(np.float32) * scale
@@ -297,12 +380,31 @@ def render_volume(
                     (coordinate, slot),
                     None,
                     face_uv,
+                    _owner_metadata(coordinate, state, "shape_box", box_ordinal,
+                                    slot, world_vertices, normal, None),
                 ))
 
     # Each entry is (cell, slot): the residual pass needs the face's own normal to
     # know which way to propose, and a cell alone cannot say.
     index: list[tuple[BlockCoordinate, str]] = []
-    for quad, depths, colour, owned, alpha, face_uv in faces:
+    owner_rows = []
+    capture_witness = witness_sink is not None
+    if capture_witness:
+        budget = witness_budget or lattice.WitnessBudgetV1()
+        vertex_count = sum(len(face[6][5]) for face in faces)
+        payload = len(faces) * 1024 + vertex_count * 24
+        exhaustion = (("owner_faces", budget.max_owner_faces, len(faces))
+                      if len(faces) > budget.max_owner_faces else
+                      (("owner_vertices", budget.max_owner_vertices, vertex_count)
+                       if vertex_count > budget.max_owner_vertices else
+                       (("owner_payload_bytes", budget.max_payload_bytes, payload)
+                        if payload > budget.max_payload_bytes else None)))
+        if exhaustion is not None:
+            stage, limit, planned = exhaustion
+            witness_sink.append(lattice.WitnessRefusalV1(
+                "refused", "budget_exhausted", stage, limit, planned, 0))
+            capture_witness = False
+    for quad, depths, colour, owned, alpha, face_uv, metadata in faces:
         stamp = np.zeros((rows, columns), dtype=np.uint8)
         cv2.fillConvexPoly(stamp, quad.astype(np.int32), 1)
         mask = stamp.astype(bool)
@@ -350,6 +452,13 @@ def render_volume(
             if uv_buffer is not None:
                 uv_buffer[chosen_rows, chosen_columns] = pixel_uv[nearer]
         index.append(owned)
+        if capture_witness:
+            owner_rows.append(RendererOwnerRowV1(len(index) - 1, *metadata))
+    if capture_witness:
+        witness_sink.append(RendererOwnershipWitnessV1(
+            "mc-photogrammetry-renderer-ownership-witness-v1", float(scale), 0.5,
+            "strict-nearer-inverse-depth-v1", "face-order-stable-v1",
+            tuple(owner_rows)))
     if include_uv:
         return canvas, owner, index, depth_buffer, uv_buffer
     return canvas, owner, index, depth_buffer
@@ -361,12 +470,16 @@ def render_result(
     shapes: Mapping[object, tuple] | None = None, scale: float = RENDER_SCALE,
     ambient: bool = False, occluding_slots: Mapping[object, frozenset[str]] | None = None,
     model_faces: Mapping[object, tuple] | None = None,
+    witness_sink=None,
+    witness_budget: lattice.WitnessBudgetV1 | None = None,
 ) -> tuple[RenderResult, list[tuple[BlockCoordinate, str]]]:
     """Contract-shaped rendering result plus the face table used by ownership IDs."""
+    kwargs = {"include_uv": True}
+    if witness_sink is not None:
+        kwargs.update(witness_sink=witness_sink, witness_budget=witness_budget)
     colour, ownership, index, depth, uv = render_volume(
-        blocks, scene, camera, width, height, colours, shapes, scale, ambient, occluding_slots, model_faces,
-        include_uv=True,
-    )
+        blocks, scene, camera, width, height, colours, shapes, scale, ambient,
+        occluding_slots, model_faces, **kwargs)
     return RenderResult(colour=colour, depth=depth, ownership=ownership, uv=uv, valid_pixels=ownership >= 0), index
 
 

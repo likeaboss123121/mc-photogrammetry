@@ -1,0 +1,21 @@
+{
+  "task_id": "SOL-MULTIVIEW-QUOTA-PARTITION-V2-NEW-DEV-PANEL",
+  "calibration_invocation_count": 0,
+  "commands": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m pytest tests/test_diagnose_multiview_mnn_quota_v2.py -q --override-ini addopts= --tb=short",
+      "exit_code": 0,
+      "passed": 16
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m pytest tests/test_diagnose_multiview_mnn_quota_v2.py tests/test_diagnose_multiview_mnn_quota_v1.py tests/test_diagnose_multiview_plane_tracks_quota_v1.py tests/test_diagnose_multiview_plane_tracks.py tests/test_diagnose_multiview_mnn_proposals.py tests/test_diagnose_multiview_mnn_proposals_v2.py -q --override-ini addopts= --tb=short",
+      "exit_code": 0,
+      "passed": 227,
+      "elapsed_seconds": 24.28
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m py_compile scripts/evaluation/diagnose_multiview_mnn_quota_v2.py tests/test_diagnose_multiview_mnn_quota_v2.py",
+      "exit_code": 0
+    }
+  ]
+}

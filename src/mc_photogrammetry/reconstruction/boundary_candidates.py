@@ -33,12 +33,13 @@ occupancy gate, and no plane distance: this is 2D-only, by design.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
 
 import numpy as np
 
 from .calibration import (
+    CalibrationResult,
     INLIER_PIXELS,
     detect_segments,
     enhance,
@@ -55,6 +56,16 @@ applied along the direction's pencil rather than across a single line."""
 
 MAX_CHAINS = 12
 MAX_BOUNDARY_CANDIDATES = 8
+MAX_IMAGE_PLANE_PROPOSALS = 32
+IMAGE_PLANE_CHAIN_POOL = 36
+IMAGE_PLANE_CHAINS_PER_AXIS = 12
+IMAGE_PLANE_SCALES = (24, 48, 96)
+IMAGE_PLANE_MINIMUM_AREA = 6 * 48 * 48
+IMAGE_PLANE_REGIONS_PER_SCALE = 12
+IMAGE_PLANE_MINIMUM_USABLE_FRACTION = 0.20
+IMAGE_PLANE_MINIMUM_CALIBRATION_INLIERS = 12
+IMAGE_PLANE_MINIMUM_MASK_IOU = 0.55
+IMAGE_PLANE_MINIMUM_SEGMENT_RUN = 24.0
 CORNER_CONNECTIVITY_TOLERANCE = 20.0
 """How far, in pixels, a candidate's corner may sit beyond a chain's own
 observed along-line extent before the corner is judged unsupported by any
@@ -117,6 +128,35 @@ class BoundaryCandidate:
     plane's own visible crop happens to touch, not an observed wall edge."""
     complete: bool
     """True only when all four sides came from real, detected chains."""
+
+
+@dataclass(frozen=True)
+class PlaneProposal:
+    """One deterministic, image-derived candidate plane.
+
+    `axis` is the missing calibrated Manhattan direction, and `side` is the
+    sign of that direction's component along the calibrated camera ray through
+    the candidate centroid. `mask` is the pixel support used for evaluation;
+    it is read-only to prevent an evaluator from changing the proposal in place.
+    """
+
+    axis: int
+    side: int
+    polygon: tuple[tuple[float, float], ...]
+    mask: np.ndarray = field(compare=False, repr=False)
+    strength: float = 0.0
+    sources: tuple[str, ...] = ()
+    coverage: float = 0.0
+
+
+@dataclass(frozen=True)
+class PlaneProposalResult:
+    """Typed outcome, including abstentions when image evidence is unusable."""
+
+    status: str
+    reason: str
+    proposals: tuple[PlaneProposal, ...] = ()
+    stats: dict = field(default_factory=dict, compare=False)
 
 
 def _to_grey(image: np.ndarray) -> np.ndarray:
@@ -205,6 +245,29 @@ def find_chains(
     if not len(segments):
         return []
     weights = structural_weights(grey, segments)
+    return _chains_from_evidence(
+        grey, segments, weights, focal=focal, yaw_degrees=yaw_degrees,
+        pitch_degrees=pitch_degrees, roll_degrees=roll_degrees,
+        principal_point=principal_point, threshold=threshold,
+        chain_gap=chain_gap, max_chains=max_chains,
+    )
+
+
+def _chains_from_evidence(
+    grey: np.ndarray,
+    segments: np.ndarray,
+    weights: np.ndarray,
+    *,
+    focal: float,
+    yaw_degrees: float,
+    pitch_degrees: float,
+    roll_degrees: float,
+    principal_point: tuple[float, float] | None,
+    threshold: float = INLIER_PIXELS,
+    chain_gap: float = CHAIN_GAP_PIXELS,
+    max_chains: int = MAX_CHAINS,
+) -> list[Chain]:
+    """Build chains from already-detected, optionally mask-clipped evidence."""
     height, width = grey.shape[:2]
     points = vanishing_points(focal, yaw_degrees, pitch_degrees, width, height,
                               roll_degrees, principal_point)
@@ -519,3 +582,332 @@ def _region_key(candidate: "BoundaryCandidate", width: int, height: int) -> tupl
     column = min(2, max(0, int(3.0 * centroid_x / max(width, 1))))
     row = min(2, max(0, int(3.0 * centroid_y / max(height, 1))))
     return (candidate.axis_pair, row, column)
+
+
+def _clip_segments_to_usable_mask(
+    segments: np.ndarray,
+    usable_mask: np.ndarray,
+    *,
+    sample_step: float = 4.0,
+    minimum_run: float = IMAGE_PLANE_MINIMUM_SEGMENT_RUN,
+) -> np.ndarray:
+    """Split structural lines at excluded pixels and keep supported runs only."""
+    height, width = usable_mask.shape
+    kept: list[tuple[float, float, float, float]] = []
+    for segment in np.asarray(segments, dtype=float).reshape((-1, 4)):
+        x0, y0, x1, y1 = segment
+        length = float(np.hypot(x1 - x0, y1 - y0))
+        steps = max(2, int(np.ceil(length / sample_step)) + 1)
+        fractions = np.linspace(0.0, 1.0, steps)
+        xs = np.clip(np.rint(x0 + fractions * (x1 - x0)).astype(int), 0, width - 1)
+        ys = np.clip(np.rint(y0 + fractions * (y1 - y0)).astype(int), 0, height - 1)
+        valid = usable_mask[ys, xs]
+        starts = np.flatnonzero(valid & np.r_[True, ~valid[:-1]])
+        ends = np.flatnonzero(valid & np.r_[~valid[1:], True])
+        for start, end in zip(starts, ends):
+            if end <= start:
+                continue
+            ax, ay, bx, by = xs[start], ys[start], xs[end], ys[end]
+            if float(np.hypot(bx - ax, by - ay)) >= minimum_run:
+                kept.append((float(ax), float(ay), float(bx), float(by)))
+    if not kept:
+        return np.empty((0, 4), dtype=float)
+    return np.asarray(kept, dtype=float)
+
+
+def _polygon_mask(polygon, height: int, width: int, usable: np.ndarray) -> np.ndarray:
+    import cv2
+
+    mask = np.zeros((height, width), dtype=np.uint8)
+    points = np.rint(np.asarray(polygon, dtype=float)).astype(np.int32)
+    if len(points) >= 3:
+        cv2.fillPoly(mask, [points.reshape((-1, 1, 2))], 1)
+    return (mask != 0) & usable
+
+
+def _mask_polygon(mask: np.ndarray) -> tuple[tuple[float, float], ...]:
+    import cv2
+
+    contours, _hierarchy = cv2.findContours(
+        mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return ()
+    contour = max(contours, key=lambda item: (cv2.contourArea(item), -len(item)))
+    perimeter = float(cv2.arcLength(contour, True))
+    simplified = cv2.approxPolyDP(contour, max(1.0, perimeter * 0.002), True)
+    return tuple((float(point[0][0]), float(point[0][1])) for point in simplified)
+
+
+def _mask_iou(mask_a: np.ndarray, mask_b: np.ndarray) -> float:
+    intersection = int(np.count_nonzero(mask_a & mask_b))
+    if intersection == 0:
+        return 0.0
+    union = int(np.count_nonzero(mask_a | mask_b))
+    return intersection / union if union else 0.0
+
+
+def _plane_side(
+    axis: int,
+    polygon: tuple[tuple[float, float], ...],
+    calibration: CalibrationResult,
+    width: int,
+    height: int,
+) -> int:
+    from .calibration import axis_directions
+
+    centre_x = float(np.mean([point[0] for point in polygon]))
+    centre_y = float(np.mean([point[1] for point in polygon]))
+    principal_x, principal_y = calibration.principal_point or (width / 2.0, height / 2.0)
+    ray = np.asarray([(centre_x - principal_x) / calibration.focal_pixels,
+                      (principal_y - centre_y) / calibration.focal_pixels,
+                      1.0], dtype=float)
+    direction = axis_directions(calibration.yaw_degrees, calibration.pitch_degrees,
+                                calibration.roll_degrees)[axis]
+    signed = float(np.dot(direction, ray))
+    if abs(signed) <= 1e-9:
+        return 0
+    return 1 if signed > 0.0 else -1
+
+
+def _proposal_key(proposal: PlaneProposal, width: int, height: int) -> tuple:
+    ys, xs = np.nonzero(proposal.mask)
+    if len(xs):
+        x, y = float(xs.mean()), float(ys.mean())
+    else:
+        x, y = width / 2.0, height / 2.0
+    column = min(2, max(0, int(3.0 * x / max(width, 1))))
+    row = min(2, max(0, int(3.0 * y / max(height, 1))))
+    return proposal.axis, proposal.side, row, column
+
+
+def _limit_planar_regions(regions, width: int, height: int, cap: int):
+    """Bound per-scale memory while retaining axis and image-area coverage."""
+    ranked = sorted(regions, key=lambda region: (
+        -region.confidence, -region.area_tiles, region.axis,
+        region.centroid()[1], region.centroid()[0], region.tiles,
+    ))
+    groups: dict[tuple, list] = {}
+    for region in ranked:
+        x, y = region.centroid()
+        column = min(2, max(0, int(3.0 * x / max(width, 1))))
+        row = min(2, max(0, int(3.0 * y / max(height, 1))))
+        groups.setdefault((region.axis, row, column), []).append(region)
+    selected = []
+    cursors = {key: 0 for key in sorted(groups)}
+    while len(selected) < cap:
+        changed = False
+        for key in sorted(groups):
+            cursor = cursors[key]
+            if cursor < len(groups[key]):
+                selected.append(groups[key][cursor])
+                cursors[key] = cursor + 1
+                changed = True
+                if len(selected) >= cap:
+                    break
+        if not changed:
+            break
+    return selected
+
+
+def _empty_plane_result(reason: str, stats: dict | None = None) -> PlaneProposalResult:
+    return PlaneProposalResult(status="abstain", reason=reason, proposals=(),
+                               stats={} if stats is None else dict(stats))
+
+
+def propose_image_planes(
+    image: np.ndarray,
+    usable_mask: np.ndarray,
+    calibration: CalibrationResult | None,
+    *,
+    max_candidates: int = MAX_IMAGE_PLANE_PROPOSALS,
+) -> PlaneProposalResult:
+    """Propose diverse planes from pixels, a derived usable mask, and calibration.
+
+    The detector runs once. Three bounded tile scales vote for regions whose
+    missing Manhattan direction is their normal; the same mask-clipped segment
+    set forms supported line chains and axis-compatible quadrilateral closures.
+    Overlapping evidence may strengthen a proposal, but proposal masks are never
+    unioned: spatially distinct and orthogonal surfaces remain distinct records.
+    """
+    from .surfaces import planar_regions
+
+    if not isinstance(image, np.ndarray) or image.ndim not in (2, 3):
+        raise ValueError("image must be a 2D or 3D numpy array")
+    grey = _to_grey(image)
+    height, width = grey.shape[:2]
+    usable = np.asarray(usable_mask, dtype=bool)
+    if usable.shape != (height, width):
+        raise ValueError("usable_mask must match the image height and width")
+    if max_candidates < 1:
+        raise ValueError("max_candidates must be positive")
+    cap = min(int(max_candidates), MAX_IMAGE_PLANE_PROPOSALS)
+    usable_count = int(usable.sum())
+    usable_fraction = usable_count / max(height * width, 1)
+    stats = {
+        "usable_fraction": float(usable_fraction),
+        "detected_segments": 0,
+        "usable_segments": 0,
+        "region_candidates": 0,
+        "chains": 0,
+        "closures": 0,
+        "proposals_before_cap": 0,
+        "proposals_returned": 0,
+    }
+    if calibration is None:
+        return _empty_plane_result("missing_calibration", stats)
+    if not isinstance(calibration, CalibrationResult):
+        return _empty_plane_result("invalid_or_mismatched_calibration", stats)
+    numeric = (calibration.focal_pixels, calibration.yaw_degrees,
+               calibration.pitch_degrees, calibration.roll_degrees,
+               calibration.median_residual)
+    principal_valid = (
+        calibration.principal_point is None
+        or (len(calibration.principal_point) == 2
+            and all(np.isfinite(value) for value in calibration.principal_point))
+    )
+    if (not all(np.isfinite(value) for value in numeric)
+            or not principal_valid
+            or calibration.focal_pixels <= 0.0
+            or calibration.width != width or calibration.height != height):
+        return _empty_plane_result("invalid_or_mismatched_calibration", stats)
+    if calibration.inliers < IMAGE_PLANE_MINIMUM_CALIBRATION_INLIERS:
+        return _empty_plane_result("insufficient_calibration_inliers", stats)
+    if usable_fraction < IMAGE_PLANE_MINIMUM_USABLE_FRACTION:
+        return _empty_plane_result("insufficient_usable_coverage", stats)
+    if usable_count == 0:
+        return _empty_plane_result("insufficient_usable_coverage", stats)
+
+    raw_segments = detect_segments(enhance(grey))
+    stats["detected_segments"] = int(len(raw_segments))
+    if not len(raw_segments):
+        return _empty_plane_result("no_detected_segments", stats)
+    segments = _clip_segments_to_usable_mask(raw_segments, usable)
+    stats["usable_segments"] = int(len(segments))
+    if not len(segments):
+        return _empty_plane_result("no_usable_segments", stats)
+    reverse = ((segments[:, 0] > segments[:, 2])
+               | ((segments[:, 0] == segments[:, 2])
+                  & (segments[:, 1] > segments[:, 3])))
+    segments[reverse] = segments[reverse][:, [2, 3, 0, 1]]
+    segment_order = np.lexsort((segments[:, 3], segments[:, 2],
+                                segments[:, 1], segments[:, 0]))
+    segments = segments[segment_order]
+    segment_weights = structural_weights(grey, segments)
+
+    provisional: list[PlaneProposal] = []
+    for tile in IMAGE_PLANE_SCALES:
+        minimum_tiles = max(1, int(np.ceil(IMAGE_PLANE_MINIMUM_AREA / float(tile * tile))))
+        regions = planar_regions(
+            segments, calibration.focal_pixels, calibration.yaw_degrees,
+            calibration.pitch_degrees, width, height, tile=tile,
+            minimum_tiles=minimum_tiles,
+            roll_degrees=calibration.roll_degrees,
+        )
+        regions = _limit_planar_regions(
+            regions, width, height, IMAGE_PLANE_REGIONS_PER_SCALE)
+        for region in regions:
+            mask = (region.mask(height, width) > 0.0) & usable
+            area = int(mask.sum())
+            if area < IMAGE_PLANE_MINIMUM_AREA:
+                continue
+            polygon = _mask_polygon(mask)
+            if len(polygon) < 3:
+                continue
+            side = _plane_side(region.axis, polygon, calibration, width, height)
+            area_factor = min(1.0, area / float(IMAGE_PLANE_MINIMUM_AREA * 2))
+            strength = float(region.confidence * np.sqrt(area_factor))
+            mask.setflags(write=False)
+            provisional.append(PlaneProposal(
+                axis=region.axis, side=side, polygon=polygon, mask=mask,
+                strength=strength, sources=(f"region_tile_{tile}",),
+                coverage=area / max(usable_count, 1),
+            ))
+    stats["region_candidates"] = len(provisional)
+
+    all_chains = _chains_from_evidence(
+        grey, segments, segment_weights,
+        focal=calibration.focal_pixels, yaw_degrees=calibration.yaw_degrees,
+        pitch_degrees=calibration.pitch_degrees,
+        roll_degrees=calibration.roll_degrees,
+        principal_point=calibration.principal_point,
+        max_chains=10_000,
+    )
+    chains: list[Chain] = []
+    for axis in range(3):
+        axis_chains = [chain for chain in all_chains if chain.axis == axis]
+        axis_chains.sort(key=lambda chain: (
+            -chain.strength, chain.offset, chain.point[1], chain.point[0]))
+        chains.extend(_distribute(
+            axis_chains,
+            key=lambda chain: _chain_region_key(chain, width, height),
+            cap=IMAGE_PLANE_CHAINS_PER_AXIS,
+        ))
+    chains.sort(key=lambda chain: (chain.axis, -chain.strength, chain.offset,
+                                   chain.point[1], chain.point[0]))
+    chains = chains[:IMAGE_PLANE_CHAIN_POOL]
+    stats["chains"] = len(chains)
+
+    closure_stats: dict = {}
+    closures = propose_boundary_candidates(
+        chains, width, height, max_candidates=MAX_IMAGE_PLANE_PROPOSALS,
+        stats=closure_stats,
+    )
+    stats["closure_combinations_tried"] = int(closure_stats.get("combinations_tried", 0))
+    stats["closure_candidates_before_cap"] = int(
+        closure_stats.get("candidates_before_distribution", 0))
+    closure_strength_max = max((candidate.strength for candidate in closures), default=1.0)
+    for candidate in closures:
+        normal_axis = 3 - sum(candidate.axis_pair)
+        mask = _polygon_mask(candidate.polygon, height, width, usable)
+        area = int(mask.sum())
+        if area < max(64, IMAGE_PLANE_MINIMUM_AREA // 8):
+            continue
+        side = _plane_side(normal_axis, candidate.polygon, calibration, width, height)
+        area_factor = min(1.0, area / float(IMAGE_PLANE_MINIMUM_AREA))
+        chain_score = candidate.strength / max(closure_strength_max, 1e-9)
+        strength = float(chain_score * np.sqrt(area_factor))
+        mask.setflags(write=False)
+        provisional.append(PlaneProposal(
+            axis=normal_axis, side=side, polygon=tuple(candidate.polygon),
+            mask=mask, strength=strength, sources=("axis_chain_closure",),
+            coverage=area / max(usable_count, 1),
+        ))
+    stats["closures"] = len(closures)
+
+    provisional.sort(key=lambda proposal: (
+        -proposal.strength, proposal.axis, proposal.side,
+        _proposal_key(proposal, width, height), proposal.sources,
+    ))
+    deduplicated: list[PlaneProposal] = []
+    for proposal in provisional:
+        duplicate_index = next((index for index, prior in enumerate(deduplicated)
+                                if prior.axis == proposal.axis
+                                and prior.side == proposal.side
+                                and _mask_iou(prior.mask, proposal.mask)
+                                >= IMAGE_PLANE_MINIMUM_MASK_IOU), None)
+        if duplicate_index is None:
+            deduplicated.append(proposal)
+            continue
+        prior = deduplicated[duplicate_index]
+        sources = tuple(sorted(set(prior.sources + proposal.sources)))
+        deduplicated[duplicate_index] = PlaneProposal(
+            axis=prior.axis, side=prior.side, polygon=prior.polygon,
+            mask=prior.mask, strength=min(1.0, prior.strength + 0.10 * proposal.strength),
+            sources=sources, coverage=prior.coverage,
+        )
+
+    deduplicated.sort(key=lambda proposal: (
+        -proposal.strength, proposal.axis, proposal.side,
+        _proposal_key(proposal, width, height), proposal.sources,
+    ))
+    stats["proposals_before_cap"] = len(deduplicated)
+    selected = _distribute(
+        deduplicated,
+        key=lambda proposal: _proposal_key(proposal, width, height),
+        cap=cap,
+    )
+    stats["proposals_returned"] = len(selected)
+    if not selected:
+        return _empty_plane_result("no_plane_evidence", stats)
+    return PlaneProposalResult(status="ok", reason="image_evidence", proposals=tuple(selected),
+                               stats=stats)

@@ -1,0 +1,106 @@
+SOL-IMG-P0-PIXEL-BRIDGE-20261005 ? Sol; stop for Luna review
+
+ABSTAIN. Generated RGB reaches an authentic image-only camera -> reader ->
+structural-weight patch -> P0 -> provenance -> signature baseline. A measured
+D-only pixel perturbation cannot preserve this baseline camera/reading/signature
+universe: all are remeasured and change. Its exact old-reading binding refuses.
+This is an obstruction for the tested perturbation, not a universal impossibility.
+No B0prime label is selected; prior nine-reading/21-label reports remain immutable.
+No world anchor, geometry accuracy, placement, volume or production promotion claim.
+
+Links: ../../tests/test_image_derived_p0_pixel_bridge.py
+SOL-IMG-P0-PIXEL-BRIDGE-20261005.json (exact generated proof bytes).
+Context: DS-IMG-B0PRIME-D-REDISTRIBUTION-20261005.txt.
+
+DeepSeek findings resolved against source:
+1. Old B0prime/D redistribution directly builds a 16x16 P0 weights_patch and
+   separately renders signature images; it proves producer/gate behavior only.
+2. tests/test_image_derived_lattice_measure.py::_scene_rgb generates 360x240
+   RGB from the procedural renderer; its old _build_session injects true render
+   calibration into a test solver seam. The new test imports only the generated
+   pixels and one-frame pose helper, and calls build_image_derived_session without
+   monkeypatch, camera estimate, geometry, readings, patch or supplied mask.
+   Production solve_image_cameras -> estimate_session performs both camera fits.
+   Known render geometry is used only to generate pixels, never as production input.
+3. M9-C _frame_weight_image: GUI-masked grayscale -> enhanced segment detection
+   -> structural_weights -> lattice_planes._weight_image line rasterization.
+   Segment weights normalize contrast by frame median (mean fallback), so even
+   a spatially isolated edit does not promise an unchanged weight image.
+   lattice.rectify_plane maps an endpoint-inclusive measured plane grid to float32
+   source maps and OpenCV bilinear sampling. _structural_evidence recomputes exact
+   share and full-patch periodic phase, and refuses unless both equal the reading.
+   P0 G phase is a separate held-out lane measurement; full-patch phase also uses D.
+
+Exact production provenance replay:
+Both RGB variants rebuild session, image-only camera, singleton pose graph, image
+proposals, readings, weight image, structural evidence, fresh P0 and signatures.
+For every retained source the test separately rebuilds the weight image from its
+own retained RGB and calls _structural_evidence; its evidence SHA and complete patch
+values equal the retained structural/P0 source. Public P0 replay validates each
+source against its own float64 patch, own geometry and producer budget. Share and
+full phase equal the fresh reading exactly. No direct patch is a production input.
+
+One declared pixel intervention:
+First canonical reading with an eligible positive D/D sample; rank samples by
+descending measured structural weight, then row/column. Project the sample using
+its measured baseline geometry. Its 5x5 square must lie in derived normal usable
+area and outside conservative G bilinear tap neighbourhoods (floor offsets -1..2).
+Halve RGB uint8 values in that square (integer //2); no successful-arm/location search.
+As run: f0 canonical index1, axis2; rectified (row,column)=(394, 12);
+RGB rows [37,42) columns [350,355); 25 pixels;
+zero overlap with baseline G source taps. Before/after RGB values and rectified D support indices are in JSON; no screenshots
+or user-mask payloads are accessed.
+
+Observed obstruction and fresh baseline:
+Both variants: lattice assembled, signatures assembled, 2 canonical readings.
+Baseline recovered focal171.37776080905377, yaw10.150000000000006,
+pitch-24.950000000000003; intervention focal173.0915384171443,
+yaw10.150000000000006, pitch-25.1. Camera record equality fails first.
+Baseline axes0/2 periods17.456058502197266/4.421804428100586, N367/512;
+intervention periods17.815086364746094/3.6210556030273438, N371/512.
+Complete reading universe and signature content digests change; no old identities
+or evidence are rebound. All retained b alternatives are reported without selection.
+At HELD baseline geometry only: G/u and G/v sample values and normalized hashes
+are identical; D/u and D/v each change exactly1340 samples.
+Full-patch structural_share 0.7690815767713917 -> 0.7601947020067713;
+full-patch phase changes. Calling _structural_evidence(old reading, new RGB-derived
+weight image) raises exact typed provenance_mismatch, field
+structural_weights.reading_binding. This negative control is not an admitted source.
+Fresh production G generation evidence also changes under the remeasured camera/
+geometry; held-geometry G equality must not be mistaken for pipeline G invariance.
+
+D evidence and scope limits:
+JSON retains decoded samples/weights, exact disjoint rational boundary/interior
+masks and energies/margins for u/v and EVERY measured b alternative, both variants.
+Local formula x_i=(b*i/P) mod1, anchors0/half, tau_band1/8. The zero origin is an
+explicit diagnostic convention, not a P1-B leading/world-coordinate claim.
+No C2-R-B/V2-A/V2-B classification runs: this singleton image has no inter-frame
+edges, no endpoint/translation solution and no two-frame anchor support. Matcher
+parity is an explicitly EMPTY-control equality (max_shift_cells32), not nontrivial
+prefilter-pool preservation. This fixture does not realize the old B0prime labels;
+the prior21-label frontier remains unresolved and untouched. No geometry promotion.
+Canonical session/pose/lattice/signature payloads, signature content digests and
+per-source profile evidence retained;
+structural/P0/source records retained as hashes plus source identity/geometry/lanes,
+not full raw patches or complete producer records. All are reproducible from new test.
+1MB publication assertion is cooperative only; no hard runtime containment.
+
+Encoding correction:
+Retained SplitSourceEvidence.to_source() patch is <f8, while rectify_plane outputs
+float32. Comparing their native byte SHA was a new diagnostic error despite equal
+G values. Both lane arrays now explicitly encode <f8, matching P0 held-out patch
+and seam float64 encoding. Numeric equality, normalized G SHA equality, full
+structural share/phase binding and public P0 replay checks are all asserted.
+No verifier, record seal, source hash or production encoding was changed.
+
+Validation:
+.venv/Scripts/python.exe -m pytest tests/test_image_derived_p0_pixel_bridge.py -q -s
+Final focused run exit0, 1 passed; only the new module was run. Earlier developer
+runs found new-test schema errors (signature to_record absent; empty observation
+sink contains one empty pool); only new test expectations corrected.
+
+Test: 20112 bytes SHA256 e800dea4f23b11c7f4d65b4944b3e2b90fb0d1b447991243072eb05dfb174d2b
+Proof JSON: 407804 bytes SHA256 81a3d305a5a1683f8af875c7024c7e3a6f907635c3a33c2692d396045f1770a1
+Fixture source tests/test_image_derived_lattice_measure.py: SHA256 8a8c9c4a36d5f2ad3a8c46a66aa9a8f3b9ffaa4c81bf8bdd4b8659d2a6dca3c2
+Fixture source tests/test_lattice_planes.py: SHA256 cba6aa9cfc382ef5ba4e72adeb8e1bc68bba9e74442b62687dbe50c0ba5581e8
+All prior pins and current production source hashes are carried in JSON and verified unchanged by the test.

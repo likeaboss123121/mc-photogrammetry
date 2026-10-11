@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
-from mc_photogrammetry.domain.models import ScanProject
+from mc_photogrammetry.domain.models import (
+    SCAN_PROJECT_PRODUCTION_SCHEMA_VERSION,
+    ScanProject,
+)
 from mc_photogrammetry.export.anvil import AnvilExporter
-from mc_photogrammetry.export.litematic import LitematicExporter
+from mc_photogrammetry.export.litematic import LitematicExportError, LitematicExporter
 from mc_photogrammetry.export.compare import (
     _add,
     compare_litematics,
@@ -14,7 +18,11 @@ from mc_photogrammetry.export.compare import (
 from mc_photogrammetry.export.validation import validate_litematic
 from mc_photogrammetry.input.image import load_image
 from mc_photogrammetry.input.media import discover_media
-from mc_photogrammetry.project.store import load_project, save_project
+from mc_photogrammetry.project.store import (
+    ProjectStoreError,
+    load_project,
+    save_project,
+)
 from mc_photogrammetry.reconstruction.facade import DEFAULT_PALETTE, reconstruct_facade
 from mc_photogrammetry.blocks.textures import VanillaJarTextureProvider
 from mc_photogrammetry.reconstruction.sfm import SfmSettings, reconstruct_from_calibrated_views
@@ -26,6 +34,39 @@ from mc_photogrammetry.reconstruction.raycast import (
 )
 from mc_photogrammetry.reconstruction.camera import load_camera_manifest
 from mc_photogrammetry.reconstruction.scene import load_scene_transform
+from mc_photogrammetry.pipeline.image_only import (
+    LOCAL_FRAME_ORIGIN,
+    ImageOnlyCameraError,
+    camera_model_from_estimate,
+    solve_image_cameras,
+)
+from mc_photogrammetry.pipeline.image_derived_entry import (
+    DEFAULT_DIRECTION_TOLERANCE,
+    DEFAULT_MAX_CYCLE_CHECKS,
+    DEFAULT_MAX_EDGES,
+    DEFAULT_MAX_FRAMES,
+    DEFAULT_MAX_PAIRS,
+    DEFAULT_MAX_TOTAL_SUPPORT,
+    DEFAULT_ROTATION_TOLERANCE_DEGREES,
+    ImageDerivedEntryError,
+    build_image_derived_entry,
+)
+from mc_photogrammetry.pipeline.image_derived_production import (
+    ImageDerivedProductionResult,
+    derive_image_output_from_paths,
+)
+from mc_photogrammetry.pipeline.image_derived_production_delivery import (
+    ImageDerivedProductionDeliveryResult,
+    derive_and_deliver_image_output,
+)
+from mc_photogrammetry.pipeline.image_derived_delivery import (
+    DeliveryRefusal,
+    deliver_image_derived_litematic,
+)
+from mc_photogrammetry.pipeline.image_derived_production_record import (
+    ProductionEnvelopeError,
+    production_envelope_from_record,
+)
 from mc_photogrammetry.vision.gui_mask import create_gui_mask
 
 
@@ -120,6 +161,90 @@ def build_parser() -> argparse.ArgumentParser:
     )
     surfaces.add_argument("--minecraft-jar", type=Path, help="local Minecraft client JAR for texture palette")
 
+    session = commands.add_parser(
+        "image-derived-session",
+        help="build a schema-2 image-derived session from ordinary images "
+             "(geometry unavailable in normal mode)",
+    )
+    session.add_argument("sources", type=Path, nargs="+")
+    session.add_argument("--project", type=Path, help="output .mcscan path")
+    session.add_argument("--recursive", action="store_true")
+    session.add_argument(
+        "--max-frames", type=int, default=DEFAULT_MAX_FRAMES,
+        help=f"maximum ordinary images to load (default: {DEFAULT_MAX_FRAMES})",
+    )
+    session.add_argument(
+        "--max-pairs", type=int, default=DEFAULT_MAX_PAIRS,
+        help=f"frame-pair budget for the connection graph (default: {DEFAULT_MAX_PAIRS})",
+    )
+    session.add_argument(
+        "--max-total-support", type=int, default=DEFAULT_MAX_TOTAL_SUPPORT,
+        help=("total support budget for the connection graph "
+              f"(default: {DEFAULT_MAX_TOTAL_SUPPORT})"),
+    )
+    session.add_argument(
+        "--max-edges", type=int, default=DEFAULT_MAX_EDGES,
+        help=f"solved-edge budget for the pose graph (default: {DEFAULT_MAX_EDGES})",
+    )
+    session.add_argument(
+        "--max-cycle-checks", type=int, default=DEFAULT_MAX_CYCLE_CHECKS,
+        help=("fundamental-cycle check budget for the pose graph "
+              f"(default: {DEFAULT_MAX_CYCLE_CHECKS})"),
+    )
+    session.add_argument(
+        "--rotation-tolerance-degrees", type=float,
+        default=DEFAULT_ROTATION_TOLERANCE_DEGREES,
+        help=("largest accepted cycle rotation error in degrees "
+              f"(default: {DEFAULT_ROTATION_TOLERANCE_DEGREES})"),
+    )
+    session.add_argument(
+        "--direction-tolerance", type=float, default=DEFAULT_DIRECTION_TOLERANCE,
+        help=("largest accepted cycle direction-hull distance "
+              f"(default: {DEFAULT_DIRECTION_TOLERANCE})"),
+    )
+
+    output = commands.add_parser(
+        "image-derived-output",
+        help="derive typed geometry/state output from ordinary images",
+    )
+    output.add_argument("sources", type=Path, nargs="+")
+    output.add_argument("--project", type=Path, help="output .mcscan audit path")
+    output.add_argument("--recursive", action="store_true")
+    output.add_argument("--max-frames", type=int, default=DEFAULT_MAX_FRAMES)
+    output.add_argument("--max-pairs", type=int, default=DEFAULT_MAX_PAIRS)
+    output.add_argument("--max-total-support", type=int,
+                        default=DEFAULT_MAX_TOTAL_SUPPORT)
+    output.add_argument("--max-edges", type=int, default=DEFAULT_MAX_EDGES)
+    output.add_argument("--max-cycle-checks", type=int,
+                        default=DEFAULT_MAX_CYCLE_CHECKS)
+    output.add_argument("--rotation-tolerance-degrees", type=float,
+                        default=DEFAULT_ROTATION_TOLERANCE_DEGREES)
+    output.add_argument("--direction-tolerance", type=float,
+                        default=DEFAULT_DIRECTION_TOLERANCE)
+
+    deliver = commands.add_parser(
+        "image-derived-deliver",
+        help="derive from ordinary images and deliver exact promoted output",
+    )
+    deliver.add_argument("sources", type=Path, nargs="+")
+    deliver.add_argument("--destination", type=Path, required=True)
+    deliver.add_argument("--name", required=True)
+    deliver.add_argument("--description", required=True)
+    deliver.add_argument("--overwrite", action="store_true")
+    deliver.add_argument("--project", type=Path, help="output .mcscan audit path")
+    deliver.add_argument("--recursive", action="store_true")
+    deliver.add_argument("--max-frames", type=int, default=DEFAULT_MAX_FRAMES)
+    deliver.add_argument("--max-pairs", type=int, default=DEFAULT_MAX_PAIRS)
+    deliver.add_argument("--max-total-support", type=int,
+                         default=DEFAULT_MAX_TOTAL_SUPPORT)
+    deliver.add_argument("--max-edges", type=int, default=DEFAULT_MAX_EDGES)
+    deliver.add_argument("--max-cycle-checks", type=int,
+                         default=DEFAULT_MAX_CYCLE_CHECKS)
+    deliver.add_argument("--rotation-tolerance-degrees", type=float,
+                         default=DEFAULT_ROTATION_TOLERANCE_DEGREES)
+    deliver.add_argument("--direction-tolerance", type=float,
+                         default=DEFAULT_DIRECTION_TOLERANCE)
+
     compare = commands.add_parser("compare", help="compare a candidate to a reference litematic")
     compare.add_argument("reference", type=Path)
     compare.add_argument("candidate", type=Path)
@@ -175,6 +300,48 @@ def build_parser() -> argparse.ArgumentParser:
         help="normal image-only mode, or developer mode for supplied sidecar calibration",
     )
     return parser
+
+
+def _export_schema3_project(args, project) -> int:
+    """Export a schema-3 terminal only through the verified delivery contract.
+
+    A schema-3 project is already an exact-state, digest-bound production
+    terminal, so the generic ``export`` command must not re-materialize its
+    volume directly.  It replays the persisted envelope, then routes the
+    promoted result through the same dense-cell, no-clobber, typed-refusal and
+    readback-verified delivery seam that the image-derived pipeline uses.
+    """
+    if args.format == "world":
+        raise SystemExit(
+            "export refused: a schema-3 image-derived project has no exact-state "
+            "world export; export its verified litematic instead")
+    try:
+        envelope = production_envelope_from_record(
+            project.image_derived_production)
+    except ProductionEnvelopeError as error:
+        raise SystemExit(f"export refused: {error}") from error
+    if envelope.status != "promoted" or envelope.promotion is None:
+        raise SystemExit(
+            "export refused: the stored production terminal is "
+            f"{envelope.status} ({envelope.reason})")
+    output_path = args.output or (
+        Path.cwd() / "exports" / f"{args.project.stem}.litematic")
+    delivered = deliver_image_derived_litematic(
+        envelope.promotion, output_path, name=project.name,
+        description="Reconstructed Minecraft build")
+    if isinstance(delivered, DeliveryRefusal):
+        raise SystemExit(f"export refused: {delivered.reason}")
+    print(f"Created {output_path}")
+    return 0
+
+
+def _print_camera_admission(session) -> None:
+    summary = getattr(session, "admission_summary", None)
+    if summary is None:
+        return
+    print(f"Original frames: {summary['original']}; admitted: {summary['admitted']}; excluded: {summary['excluded']}")
+    for exclusion in summary["exclusions"]:
+        print(f"Excluded {exclusion['frame_id']}: {exclusion['stage']}: {exclusion['reason']}")
 
 
 def main() -> int:
@@ -246,24 +413,155 @@ def main() -> int:
         print(f"Created {args.output} with {len(manifest.frames)} source(s)")
         return 0
 
-    if args.command == "reconstruct":
-        if args.mode == "normal" and (args.camera_manifest or args.scene):
-            raise SystemExit(
-                "camera and scene manifests are developer diagnostics; rerun with --mode developer"
+    if args.command == "image-derived-session":
+        project_path = args.project or (
+            Path.cwd() / "exports" / f"{args.sources[0].stem}.mcscan")
+        try:
+            result = build_image_derived_entry(
+                args.sources,
+                project_path=project_path,
+                recursive=args.recursive,
+                max_frames=args.max_frames,
+                max_pairs=args.max_pairs,
+                max_total_support=args.max_total_support,
+                max_edges=args.max_edges,
+                max_cycle_checks=args.max_cycle_checks,
+                rotation_tolerance_degrees=args.rotation_tolerance_degrees,
+                direction_tolerance=args.direction_tolerance,
             )
+        except ImageDerivedEntryError as error:
+            raise SystemExit(str(error)) from error
+        print(f"Frames: {len(result.session.frames)}")
+        _print_camera_admission(result.session)
+        print(f"Session: {result.session.session_sha256}")
+        print(f"Connections: {result.graph.status if result.graph is not None else 'not_run'}")
+        print(f"Pose graph: {result.pose_graph.status if result.pose_graph is not None else 'not_run'}")
+        print(f"Terminal: {result.terminal}")
+        print("Geometry: unavailable from images alone in normal mode; no V1/V2/V3 "
+              "geometry was fabricated.")
+        print(f"Saved project {result.project_path}")
+        return 0
+
+    if args.command == "image-derived-output":
+        project_path = args.project or (
+            Path.cwd() / "exports" / f"{args.sources[0].stem}.mcscan")
+        try:
+            result = derive_image_output_from_paths(
+                args.sources, project_path=project_path,
+                recursive=args.recursive, max_frames=args.max_frames,
+                max_pairs=args.max_pairs,
+                max_total_support=args.max_total_support,
+                max_edges=args.max_edges,
+                max_cycle_checks=args.max_cycle_checks,
+                rotation_tolerance_degrees=args.rotation_tolerance_degrees,
+                direction_tolerance=args.direction_tolerance)
+        except ImageDerivedEntryError as error:
+            raise SystemExit(str(error)) from error
+        if not isinstance(result, ImageDerivedProductionResult):
+            print("Stage: refusal")
+            print(f"Status: {result.reason}")
+            print(f"Refusal: {result.refusal_sha256}")
+            return 0
+        _print_camera_admission(getattr(getattr(result, "entry", None), "session", None))
+        print(f"Stage: {result.stage}")
+        print(f"Status: {result.status}")
+        print(f"Reason: {result.reason}")
+        print(f"Entry: {result.entry_sha256}")
+        if result.lattice_sha256:
+            print(f"Lattice: {result.lattice_sha256}")
+        if result.geometry_sha256:
+            print(f"Geometry: {result.geometry_sha256}")
+        if result.output_sha256:
+            print(f"Output: {result.output_sha256}")
+        print(f"Production: {result.result_sha256}")
+        return 0
+
+    if args.command == "image-derived-deliver":
+        project_path = args.project or (
+            Path.cwd() / "exports" / f"{args.sources[0].stem}.mcscan")
+        try:
+            result = derive_and_deliver_image_output(
+                args.sources, destination=args.destination, name=args.name,
+                description=args.description, overwrite=args.overwrite,
+                project_path=project_path, recursive=args.recursive,
+                max_frames=args.max_frames, max_pairs=args.max_pairs,
+                max_total_support=args.max_total_support,
+                max_edges=args.max_edges,
+                max_cycle_checks=args.max_cycle_checks,
+                rotation_tolerance_degrees=args.rotation_tolerance_degrees,
+                direction_tolerance=args.direction_tolerance)
+        except ImageDerivedEntryError as error:
+            raise SystemExit(str(error)) from error
+        if not isinstance(result, ImageDerivedProductionDeliveryResult):
+            print(json.dumps({"stage": "refusal", "status": result.reason,
+                              "refusal_sha256": result.refusal_sha256},
+                             sort_keys=True, separators=(",", ":")))
+            return 0
+        admission = getattr(getattr(getattr(getattr(result, "production", None), "entry", None), "session", None), "admission_summary", None)
+        print(json.dumps({
+            "stage": "delivery", "status": result.status,
+            "reason": result.reason,
+            "production_sha256": result.production_sha256,
+            "delivery_sha256": result.delivery_sha256,
+            "result_sha256": result.result_sha256,
+            **({"camera_admission": admission} if admission is not None else {})},
+            sort_keys=True, separators=(",", ":")))
+        return 0
+
+    if args.command == "reconstruct":
+        if args.mode != "developer":
+            manual_inputs = [
+                name
+                for name, supplied in (
+                    ("--horizon", args.horizon is not None),
+                    ("--camera-manifest", args.camera_manifest is not None),
+                    ("--scene", args.scene is not None),
+                )
+                if supplied
+            ]
+            if manual_inputs:
+                raise SystemExit(
+                    "horizon, camera and scene metadata are developer diagnostics; "
+                    "rerun with --mode developer "
+                    f"({', '.join(manual_inputs)})"
+                )
         export_directory = Path.cwd() / "exports"
         output_path = args.output or export_directory / f"{args.image.stem}.litematic"
         image = load_image(args.image)
         mask = create_gui_mask(image.shape[0], image.shape[1])
         camera = None
         scene_transform = None
-        if args.camera_manifest:
-            cameras = load_camera_manifest(args.camera_manifest)
-            camera = cameras.get(args.image.name)
-            if camera is None:
-                raise SystemExit(f"No camera pose found for {args.image.name}")
-        if args.scene:
-            scene_transform = load_scene_transform(args.scene)
+        if args.mode == "developer":
+            # The visibility/compare branches import these names locally, which
+            # makes them local to `main` for the whole function; importing them
+            # here as well keeps this branch off the (shadowed) module binding.
+            if args.camera_manifest:
+                from mc_photogrammetry.reconstruction.camera import load_camera_manifest
+
+                cameras = load_camera_manifest(args.camera_manifest)
+                camera = cameras.get(args.image.name)
+                if camera is None:
+                    raise SystemExit(f"No camera pose found for {args.image.name}")
+            if args.scene:
+                from mc_photogrammetry.reconstruction.scene import load_scene_transform
+
+                scene_transform = load_scene_transform(args.scene)
+        else:
+            frame_id = args.image.name
+            try:
+                solution = solve_image_cameras({frame_id: image})
+                estimate = solution.cameras.get(frame_id)
+                if estimate is None:
+                    raise SystemExit(
+                        f"Image-only camera recovery returned no camera for {frame_id}"
+                    )
+                camera = camera_model_from_estimate(
+                    estimate, position=LOCAL_FRAME_ORIGIN
+                )
+            except ImageOnlyCameraError as error:
+                raise SystemExit(
+                    f"Image-only camera recovery failed for {frame_id}: {error}"
+                ) from error
         palette = DEFAULT_PALETTE
         if args.minecraft_jar:
             provider = VanillaJarTextureProvider()
@@ -279,10 +577,6 @@ def main() -> int:
             columns=args.columns,
             rows=args.rows,
             depth_layers=args.depth_layers,
-            max_color_distance=args.max_color_distance,
-            min_palette_margin=args.min_palette_margin,
-            min_state_agreement=args.min_state_agreement,
-            min_surface_contrast=args.min_surface_contrast,
             horizon=args.horizon,
             camera=camera,
             scene_transform=scene_transform,
@@ -293,14 +587,25 @@ def main() -> int:
         project = ScanProject(name=args.image.stem, source_paths=[str(args.image.resolve())], volume=volume)
         project_path = args.project or output_path.with_suffix(".mcscan")
         save_project(project, project_path)
+        description = (
+            "Visible surface blocks with estimated depth; hidden geometry omitted"
+            if args.mode == "developer"
+            else "Image-only visible surfaces in a local frame; metric scale and "
+            "translation unresolved"
+        )
         LitematicExporter().export(
             volume,
             output_path,
             name=args.image.stem,
-            description="Visible surface blocks with estimated depth; hidden geometry omitted",
+            description=description,
         )
         if args.mode == "developer":
             print("Mode: developer diagnostic (supplied camera/scene metadata)")
+        else:
+            print(
+                "Camera: image-only solve in a local frame; metric scale and "
+                "translation remain unresolved."
+            )
         print(f"Created {output_path} with {len(volume.blocks)} block(s)")
         print("Visible-surface mode: depth estimated per visible block; hidden geometry omitted.")
         print(f"Saved project {project_path}")
@@ -490,7 +795,12 @@ def main() -> int:
         return 0
 
     if args.command == "export":
-        project = load_project(args.project)
+        try:
+            project = load_project(args.project)
+        except ProjectStoreError as error:
+            raise SystemExit(f"export refused: {error}") from error
+        if project.schema_version == SCAN_PROJECT_PRODUCTION_SCHEMA_VERSION:
+            return _export_schema3_project(args, project)
         if args.format == "world":
             output_path = args.output or Path.cwd() / "exports" / f"{args.project.stem}.zip"
             AnvilExporter().export(
@@ -500,7 +810,10 @@ def main() -> int:
             print("Unzip it into your saves folder and open it from the world list.")
             return 0
         output_path = args.output or Path.cwd() / "exports" / f"{args.project.stem}.litematic"
-        LitematicExporter().export(project.volume, output_path, name=project.name)
+        try:
+            LitematicExporter().export(project.volume, output_path, name=project.name)
+        except LitematicExportError as error:
+            raise SystemExit(f"export refused: {error}") from error
         print(f"Created {output_path}")
         return 0
 

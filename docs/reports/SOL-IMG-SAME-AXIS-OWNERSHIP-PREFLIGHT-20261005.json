@@ -1,0 +1,221 @@
+{
+ "bound_witness_count": 66,
+ "cross_tabs": [
+  {
+   "disposition": "kept",
+   "rows": 26,
+   "support_refusal_reason": null,
+   "support_state": "present"
+  },
+  {
+   "disposition": "kept",
+   "rows": 11,
+   "support_refusal_reason": "support_payload_over_cap",
+   "support_state": "refused"
+  },
+  {
+   "disposition": "kept",
+   "rows": 1,
+   "support_refusal_reason": "source_tap_witness_unavailable",
+   "support_state": "refused"
+  },
+  {
+   "disposition": "same_axis_mismatch",
+   "rows": 945,
+   "support_refusal_reason": null,
+   "support_state": "present"
+  },
+  {
+   "disposition": "same_axis_mismatch",
+   "rows": 833,
+   "support_refusal_reason": "support_payload_over_cap",
+   "support_state": "refused"
+  },
+  {
+   "disposition": "same_axis_mismatch",
+   "rows": 112,
+   "support_refusal_reason": "source_tap_witness_unavailable",
+   "support_state": "refused"
+  }
+ ],
+ "detail": "",
+ "digest_page_count": 6,
+ "dropped_row_count": 1890,
+ "endpoint_join": {
+  "bound_unreferenced_count": 7,
+  "endpoint_rows": 1928,
+  "missing_witness_over_cap_count": 412,
+  "missing_witness_refusal_count": 113,
+  "missing_witness_row_count": 525,
+  "raw_cap_provable_count": 102,
+  "referenced_bound_count": 59,
+  "referenced_signature_count": 78,
+  "referenced_unbound_count": 19
+ },
+ "evaluator_payload_read": false,
+ "field": "",
+ "frame_pins": [
+  {
+   "frame_id": "image-0000",
+   "pins": [
+    {
+     "detail": "source_size=[2560, 1369] crop_origin=[0, 0] crop_size=None output_size=None resolved_output_size=[2560, 1369] ingress=6370746f49515bd9",
+     "pin": "source_transform",
+     "source": "record.ingress.transform",
+     "state": "available"
+    },
+    {
+     "detail": "camera_pin_absent_from_frozen_record",
+     "pin": "camera",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "intrinsics_pin_absent_from_frozen_record",
+     "pin": "intrinsics",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "pose_pin_absent_from_frozen_record",
+     "pin": "pose",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "occlusion_convention_absent_from_frozen_record",
+     "pin": "occlusion_convention",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "evaluator_domain_absent_from_frozen_record",
+     "pin": "evaluator_domain",
+     "source": "",
+     "state": "unavailable"
+    }
+   ]
+  },
+  {
+   "frame_id": "image-0001",
+   "pins": [
+    {
+     "detail": "source_size=[2560, 1369] crop_origin=[0, 0] crop_size=None output_size=None resolved_output_size=[2560, 1369] ingress=1e5e3941593ce45c",
+     "pin": "source_transform",
+     "source": "record.ingress.transform",
+     "state": "available"
+    },
+    {
+     "detail": "camera_pin_absent_from_frozen_record",
+     "pin": "camera",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "intrinsics_pin_absent_from_frozen_record",
+     "pin": "intrinsics",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "pose_pin_absent_from_frozen_record",
+     "pin": "pose",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "occlusion_convention_absent_from_frozen_record",
+     "pin": "occlusion_convention",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "evaluator_domain_absent_from_frozen_record",
+     "pin": "evaluator_domain",
+     "source": "",
+     "state": "unavailable"
+    }
+   ]
+  },
+  {
+   "frame_id": "image-0002",
+   "pins": [
+    {
+     "detail": "source_size=[2560, 1369] crop_origin=[0, 0] crop_size=None output_size=None resolved_output_size=[2560, 1369] ingress=339fd8e6b03033fe",
+     "pin": "source_transform",
+     "source": "record.ingress.transform",
+     "state": "available"
+    },
+    {
+     "detail": "camera_pin_absent_from_frozen_record",
+     "pin": "camera",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "intrinsics_pin_absent_from_frozen_record",
+     "pin": "intrinsics",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "pose_pin_absent_from_frozen_record",
+     "pin": "pose",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "occlusion_convention_absent_from_frozen_record",
+     "pin": "occlusion_convention",
+     "source": "",
+     "state": "unavailable"
+    },
+    {
+     "detail": "evaluator_domain_absent_from_frozen_record",
+     "pin": "evaluator_domain",
+     "source": "",
+     "state": "unavailable"
+    }
+   ]
+  }
+ ],
+ "gate_sealed": true,
+ "group_count": 35,
+ "index_page_count": 5,
+ "ingress_frame_ids": [
+  "image-0000",
+  "image-0001",
+  "image-0002"
+ ],
+ "input_bytes": 16896513,
+ "input_sha256": "006e8b6b16a312cdaa61a17b4336ce27c1abac590435645908ea9cfef2e998ee",
+ "json_tokens": 4987420,
+ "kept_row_count": 38,
+ "max_json_depth": 10,
+ "ownership_authorization": "withheld",
+ "ownership_blockers": [
+  "sampling_witness_tap_tables_not_persisted",
+  "camera_pin_absent",
+  "intrinsics_pin_absent",
+  "pose_pin_absent",
+  "occlusion_convention_absent",
+  "evaluator_domain_absent"
+ ],
+ "payload_element_count": 4576118,
+ "payload_elements_allocated": 4576118,
+ "present_row_count": 971,
+ "reason": "",
+ "record_schema": "mc-photogrammetry-route-b-diagnostic-record-v1",
+ "record_status": "complete",
+ "refused_witness_count": 19,
+ "row_count": 1928,
+ "sampling_witness_seam": "signature_witnesses[].witness_sha256 has no persisted SignatureSamplingWitnessV1 payload (cell_rectangles/cell_source_indices/rectification tap tables)",
+ "sampling_witness_state": "unavailable",
+ "schema": "mc-photogrammetry-same-axis-ownership-preflight-v1",
+ "sidecar_entry_count": 971,
+ "sidecar_page_count": 67,
+ "signature_witness_count": 85,
+ "status": "complete",
+ "tap_surface_state": "available",
+ "unknown_row_count": 957
+}

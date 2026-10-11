@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from mc_photogrammetry.domain.models import BlockState
-from mc_photogrammetry.reconstruction.facade import PaletteColor
+from .appearance import PaletteColor
 from .model_atlas import (
     FACE_SLOTS,
     ModelAtlas,

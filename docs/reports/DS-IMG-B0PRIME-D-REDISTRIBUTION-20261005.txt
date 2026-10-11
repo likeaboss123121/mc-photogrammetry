@@ -1,0 +1,129 @@
+DS-IMG-B0PRIME-D-REDISTRIBUTION-20261005
+Sol test-only experiment; stop for Luna review.
+
+Result: ABSTAIN. Target A{0}, B{0,2} changes V2-B partial -> determined,
+with all three alpha values zero, under unchanged gates. Four provenance-distinct
+labels pass V2-B after the intervention, while other competitors remain unresolved.
+No placement/volume was called; geometry is unavailable. This is a synthetic
+producer diagnostic, with no production accuracy or label-selection claim.
+
+Artifacts (relative links):
+../../tests/test_b0prime_d_redistribution.py
+DS-IMG-B0PRIME-D-REDISTRIBUTION-20261005.json
+Baseline: DS-IMG-B0PRIME-ENDPOINT-PROOF-20261005.txt and corresponding JSON.
+
+Controlled input:
+Only A0/B0 (axis 0, b=1/2) P0 synthetic weights_patch entries change:
+(8,8)=4,(12,12)=4 -> (8,8)=8,(12,12)=0. Patch total remains 9,
+and each u/v D profile total remains 8 with sixteen weights all equal to 8.
+G rows and columns [0,8) are byte-identical; both changed pixels lie solely
+in D rows and columns [8,16). Shape, lane plan, periods, geometry, calibration,
+P1-B leading coordinates, nine canonical identities and source-region IDs stay fixed.
+All nine P0 sources are freshly produced and validated against their own patches;
+changed P0/patch/D-profile hashes regenerate, and unchanged seven sources reproduce.
+All nine raw signature images are freshly rendered and hash-identical. All nine
+readings/signatures and complete generation/G evidence are identical to baseline.
+The P0 weight patch is the existing synthetic fixture input, separate from the
+rendered signature image; this does not establish physical image-derived D accuracy.
+
+Frozen comparisons:
+Complete 11-row candidate/disposition pool and canonical matcher result are equal.
+All q=0,1,2,3 rivals remain in induced pools until the unchanged ambiguity solver.
+Gates: integer_tolerance=.15, min_resultant=.90, ambiguous_margin=.02,
+quadrant_constraints=(); V2-B tau_band=1/8, tau_margin=1/8, tau_energy=0,
+min held-out samples=1, min distinct frames=2, unchanged production calibration.
+All 21 nonempty A-axis0 x B-axis0 subset labels are preserved exactly once;
+label enumeration is invariant to reversed index insertion. Primary solver inputs
+are identical in both variants, so the 21 solver results are shared without a
+second solve. Whole-pool and canonical controls add two primary calls (23 total).
+12 accepted labels receive both fresh downstream chains (24 chains total);
+6 ambiguous_quadrant and 3 insufficient_axis_coverage labels stop at first gate.
+Every chain checks exact active P0 source coverage, uniqueness, and complete b-map
+coverage; missing/duplicate/extra joins are rejected by the test-only join guard.
+All C1/P1-D/P1-B/vector digests and complete C2-R-B/V2-A records are equal
+between variants for every one of the 12 accepted labels. No upstream gate changes.
+
+Independent exact D check:
+x_i = (L + b*i/P) mod 1; boundary d1(x_i,a)<=1/8,
+interior d1(x_i,(a+1/2) mod 1)<=1/8; energy is sum(samples)/sum(weights).
+Decoded source arrays and P1-B L are used with Fraction arithmetic; no production
+energy/classifier helper supplies the oracle. Anchor translation modulo one is
+reconstructed from the serialized propagation origin, sign and P1-B L.
+For target half-b sources L=0, P_A=4.000000000000001 (exact binary64 ratio
+4503599627370497/1125899906842624), P_B=4 exactly. True alpha=0 supports:
+A boundary {0,1,8,9}, interior {4,5,12,13}, denominators 32/32;
+B boundary {0,1,7,8,9,15}, interior {3,4,5,11,12,13}, denominators 48/48.
+Masks are disjoint. Baseline B=I: A=4/32=1/8, B=4/48=1/12; margin zero.
+Intervention B=8/32=1/4 (A), 8/48=1/6 (B), I=0; margins exceed 1/8.
+Alpha=1/2 swaps the support sets and gives margins -1/4 and -1/6.
+All 24 target observations per variant are independently checked against the
+actual V2-B rational energies/margins; 8 are half-b (A0/B0 x u/v x alpha0/half).
+Zero baseline margin is balanced D signal on disjoint supports, not support alias.
+
+Global frontier:
+Baseline: V2-B partial=3, abstained=8, determined=1 among 12 downstream labels.
+Intervention: V2-B abstained=8, determined=4; endpoint-unique frontier unchanged.
+Four determined labels: A{0} B{1}; A{0} B{2}; A{0} B{0,2}; A{1} B{1}.
+A{0} B{0} remains endpoint_multiple. Seven C2-R-B review labels remain unresolved.
+No maximum-support rule, translation merging, favorable-arm selection or promotion.
+
+Exact outcomes (axis0 canonical indexes; singleton axis1/2 readings fixed):
+A | B | solver first gate | C2-R-B | V2-A | baseline V2-B -> intervention V2-B
+0 | 0 | accepted | ready | endpoint_multiple | abstained -> abstained
+0 | 1 | accepted | ready | endpoint_unique | partial -> determined
+0 | 2 | accepted | ready | endpoint_unique | partial -> determined
+0 | 0,1 | accepted | review_required | None | abstained -> abstained
+0 | 0,2 | accepted | ready | endpoint_unique | partial -> determined
+0 | 1,2 | accepted | review_required | None | abstained -> abstained
+0 | 0,1,2 | ambiguous_quadrant | -- | -- | --
+1 | 0 | accepted | review_required | None | abstained -> abstained
+1 | 1 | accepted | ready | endpoint_unique | determined -> determined
+1 | 2 | accepted | review_required | None | abstained -> abstained
+1 | 0,1 | accepted | review_required | None | abstained -> abstained
+1 | 0,2 | accepted | review_required | None | abstained -> abstained
+1 | 1,2 | accepted | review_required | None | abstained -> abstained
+1 | 0,1,2 | ambiguous_quadrant | -- | -- | --
+0,1 | 0 | insufficient_axis_coverage | -- | -- | --
+0,1 | 1 | ambiguous_quadrant | -- | -- | --
+0,1 | 2 | insufficient_axis_coverage | -- | -- | --
+0,1 | 0,1 | ambiguous_quadrant | -- | -- | --
+0,1 | 0,2 | insufficient_axis_coverage | -- | -- | --
+0,1 | 1,2 | ambiguous_quadrant | -- | -- | --
+0,1 | 0,1,2 | ambiguous_quadrant | -- | -- | --
+
+Coverage and limits:
+JSON contains full baseline/intervention P0 records and decoded D profiles for all
+nine sources, full candidate pool, every label first-gate record, full C2-R-B/V2-A/
+V2-B records for each downstream chain, and all target rational mask/energy oracles.
+C1/P1-D/P1-B/vector results are serialized only as digests. Nested producer/replay
+calls are not instrumented. The 120-second and 4MB checks are cooperative publication
+assertions/measurements, not hard runtime containment or universal typed overflow
+refusals at each nested call. Measurement counters describe primary work only.
+
+Validation:
+First developer run reached expected target behavior, then failed with KeyError
+alpha_num in the new test assertion; corrected to actual alpha_dyadic schema.
+New module focused run: exit 0, 1 passed; joint focused rerun:
+.venv/Scripts/python.exe -m pytest tests/test_b0prime_d_redistribution.py
+    tests/test_evaluation_same_axis_continuation.py -q -s
+Exit 0; 4 passed (new 1 + original 3). Joint rerun took 9.67s tool wall time.
+Independent artifact replay across both runs: identical byte size and SHA below.
+Original proof reproduced its pinned 416445-byte JSON digest unchanged.
+
+Pins:
+New test: 20341 bytes SHA256 eb6eea92fdb662d457710bb433ed7530e7507c915fd9859828606e3a62715087
+New JSON: 1149502 bytes SHA256 304a67ddde63bf162429a095ddd9b7b7de0e1f84888e677c8728fa7cd7287ee9
+Target baseline V2-B result SHA256 8cede70d2667519f20a84005497513c8a70148295b1b95c91c030e4c8811f65e
+Target intervention V2-B result SHA256 74c2ae9c93a6be2e19a5b99415223233be50f79d38d8152ced00fe71a1d9a005
+Immutable original docs/reports/DS-IMG-B0PRIME-ENDPOINT-PROOF-20261005.json: SHA256 341aa61ca4d9bd1d8101361fd3ba2b17573f043f62ba28ce4072acf555df20a9
+Immutable original docs/reports/DS-IMG-B0PRIME-ENDPOINT-PROOF-20261005.txt: SHA256 3ddccf70f1983493118b6b89f14667d2c61717bc44fcc1dd4091744aa7ba9184
+Immutable original src/mc_photogrammetry/evaluation_same_axis_continuation.py: SHA256 69483d14c4efbb5d528780541fa735881a9535f71071d0b62b9b7b73ba60feeb
+Immutable original tests/test_evaluation_same_axis_continuation.py: SHA256 68ed8036081b2ac931f7df856da0bbd7e54bc07815dbe40b1a7dafce4ffa622b
+Frozen source src/mc_photogrammetry/reconstruction/lattice_planes.py: SHA256 ddf95ff9f0dfb66f3bb2c080643b467652194611eaf6237cd28160d73e002d01
+Frozen source src/mc_photogrammetry/reconstruction/plane_endpoint_provenance.py: SHA256 3cb6aacea4d9e6873d0b10edd4ea7539b1646a1e75475cef2006f81caa3316e7
+Frozen source src/mc_photogrammetry/reconstruction/plane_graph.py: SHA256 f697c2f4ffb512ebb3e7af8f9e497328b4fe828197f62d761b9b0f850ef8972f
+Frozen source src/mc_photogrammetry/reconstruction/plane_phase_anchor.py: SHA256 36d8d24541a856d97476ae440ee37fb43173672cfff18340538ca92b56bdeefc
+Frozen source src/mc_photogrammetry/reconstruction/plane_relative_translation.py: SHA256 6b0d971e1badc4ae25001850670d248d3bd19f342cc4605c0513b3cc758ce113
+Frozen source src/mc_photogrammetry/reconstruction/plane_residue.py: SHA256 a3bc4365aeefb0773ff020685825c1d4e2e21650aaa0515dfd03c9f1280d87a4
+Frozen source src/mc_photogrammetry/reconstruction/plane_vector_domain.py: SHA256 fd60bda08d8304eb378dc7eb568a6ea6365031e69ccd9bd4c3590e01f92411f0
+Frozen source src/mc_photogrammetry/reconstruction/split_phase_calibration.py: SHA256 0bfbf521a780dd52bc3ad5d7dd6c119f3bf6bc3668e30617130c405febb8c319

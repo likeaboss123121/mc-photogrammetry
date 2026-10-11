@@ -1,0 +1,42 @@
+SOL-IMG-FACTORY-CAMERA-PAIR-20261005 - fixed real Minecraft pair, ABSTAIN
+
+Sole focused run: .venv\Scripts\python.exe -m pytest tests/test_image_only_factory_camera_pair.py -q -s
+Exit 0, one test passed. Exactly one default public call, fixed framed Canal Town frames05+06. No retry/sweep, production or prior-pin edits. Original encoded PNG paths and fresh project path are the only public arguments; capture/index remain posthoc oracle and byte/hash binding metadata. No reference/world/litematic payload was read.
+
+First camera gate: cheirality_failed. Raw keypoints3562/3737; boundary dropped210/240; ratio115/101; mutual36; reciprocal top-k7695 candidates (no truncation). Winning q1/mode0 support565 >=floor72, spatial14/14, parallax44.098911deg, singular ratio.622414, ambiguity support gap112 >=2. Cheirality7/565=.01238938053 <.75. No accepted pair pose/yaw/baseline; pose graph has two singleton components. Twelve native modes retained exactly, all have cheirality below .75; no fallback selection.
+
+Posthoc actual-pose oracle: nearest relative quarter3; winner quarter1 is wrong, relative rotation error179.957493deg. All three q3 proposals have relative rotation error.085585924deg but signed baseline errors58.042045/106.462284/47.132563deg and cheirality.187648/.247761/.536082. These remain refused proposals; lower-ranked correct quarters do not justify promotion. Baseline comparisons for wrong quarters are conditional diagnostics, not physical pose estimates.
+
+Formula: R is world-to-camera; oracle relative rotation Rt_right @ Rt_left.T. Native candidate is (Re_right @ Ry90(q)) @ Re_left.T. Rotation angle acos(clip((trace(Rcandidate @ Rtruth.T)-1)/2)). Truth baseline delta=actual_eye_right-actual_eye_left; compare each signed native baseline to normalize(Re_left.T @ Rt_left @ delta) using acos(dot), without absolute-value sign erasure. Nearest q=(round((truth_yaw_right-est_yaw_right)/90)-round((truth_yaw_left-est_yaw_left)/90)) mod4. This classification is conditional on calibration; here small modulo90 errors support it. Native records serialized/frozen before oracle cameras, digest rechecked afterward.
+
+Calibration: shared focal779.129582111px vs recorded779.422863406px, -.0376280%; principal point800/450 exactly recorded. Modulo90 yaw errors+.014370/+.056930deg; pitch errors+.085910/+.095060deg; roll0. Native residuals.158446/.184037px, confidence0 intentionally denotes absent global pose/scale/quadrant certainty, not a success probability. Recorded intrinsics equal900/2/tan(60deg/2); these are capture FOV-based pinhole metadata, not an independent optical calibration. Actual yaw/pitch were rounded capture values. Guard errors eye4.768e-9blocks both; yaw6.29e-7/1.461e-6deg, pitch2.878e-6/8.026e-7deg. No uncertainty interval or population inference.
+
+Actual settings both:1600x900, FOV60, active packs[vanilla], resource_pack_applied=false, shader_pack_applied=false, HUD hidden, gamma1, frozen time6000, clear weather, focused/unpaused/no screen, pose converged after one pose/guard attempt and20 settled ticks. Baseline13.669258349blocks. Same world/scene_group/staging token; metadata region-corner overlap only establishes plausibility, not texture/occlusion identity. Single build/session pair has no held-out generalization.
+
+Default downstream: fresh lattice9 readings/29 signatures; G162 admitted prefilter rows/12 kept with exact object/order join. Frozen solver constraints empty, min_resultant.9, integer_tolerance.15, ambiguous_margin.02. All four quadrant alternatives retained: q2 cost.03206324035, q3 .03689410506, q1 .03768450503, q0 .04072905519. Best gap.00483086471<.02 -> ambiguous_quadrant. Terminal geometry/geometry_unavailable/g_unavailable/ambiguous_quadrant. No output promotion or export. G internal proposed translation is not accepted geometry.
+
+Record coverage: full native feature coordinates/sizes, descriptor hashes only; reciprocal graph all endpoint rows/distances/counters; all native modes/selections/matches/scores; complete public pair/production/session/connection/pose records; all admitted G prefilter/kept rows plus solver kwargs/input/result. No G pre-admission trials, full signature witness arrays, persisted project payload or complete downstream geometry-stage records. Actual selected capture records/intrinsics, PNG byte/RGB hashes and source/prior pins retained. Observers delegated unchanged native objects, assert image/descriptor/mode/G input immutability and kept-row identity, then restored functions. No new production observer.
+
+No correspondence truth evaluation: only real PNGs and metadata were authorized, no world/reference geometry. No occlusion, geometry/block-state accuracy or usable reconstructed baseline claim. ABSTAIN.16MB/call<=256 publication assertions are cooperative measurement, not runtime containment or universal typed overflow. Observed calls pair1/detect2/candidates1/modes1/Gmatcher1/Gsolver1.
+
+Pinned artifact is the exact as-run pytest-temp byte copy; future runs can change temp-path provenance hashes, never reseal/rebind this record.
+JSON docs/reports/SOL-IMG-FACTORY-CAMERA-PAIR-20261005.json: 1123826B SHA256 4e0c810a1a4f1deffad79beddbe951391d70e7b6db308d0b3be23e76fcd1133b
+Test tests/test_image_only_factory_camera_pair.py: 16495B SHA256 97749f12a4a002093404caf5d49684158686007e7bb8f19539966080e808b9cf
+
+Native mode table (q/mode support cheirality rotation-error-deg signed-baseline-error-deg; only first row ranked winner):
+1/0 565 0.012389381 179.957493089 135.934092118
+0/0 453 0.134657837 90.042530979 131.570329156
+3/0 421 0.187648456 0.085585924 58.042044649
+2/0 420 0.033333333 89.957517175 55.871161278
+0/1 338 0.310650888 90.042530979 150.999050826
+3/1 335 0.247761194 0.085585924 106.462283866
+2/1 304 0.230263158 89.957517175 113.458097587
+1/2 299 0.274247492 179.957493089 148.069794219
+1/1 295 0.250847458 179.957493089 47.260814705
+3/2 291 0.536082474 0.085585924 47.132563005
+2/2 275 0.563636364 89.957517175 47.028444295
+0/2 273 0.512820513 90.042530979 84.584027058
+
+Source entrypoints: pipeline/image_derived_production.py derive_image_output_from_paths; image_derived_connections.py _call_matcher; joint_matching.py match_and_solve_pair/match_feature_frames/_score_modes/_world_to_camera/_ry90; reconstruction/camera.py camera_rotation_matrix; reconstruction/plane_graph.py match_plane_graph/solve_component. Exact source hashes are in JSON source_pins. Prior artifact pins and selected asset bytes verified unchanged before/after sole call.
+
+Stop for Luna review.

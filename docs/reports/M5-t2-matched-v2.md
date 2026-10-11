@@ -1,5 +1,7 @@
 # M5 matched Template 2 diagnostic v2 ? 2026-09-09
 
+> Lead review: output hashes verified. The added stair has correct geometry/properties but spruce instead of oak; family matches increase 0 to 1/69, exact remains unchanged and phantoms stay 34. Cap exhaustion can discard completed hypotheses (F1); scheduling/profile work follows. See [current review](LEAD-review-2026-09-09-fourth.md).
+
 This is the single corrected diagnostic required by Astra's D1?D4 review. It is a supplied-camera evaluation run, not a production promotion. The settled baseline and 40-cell proposal inventory are frozen from the earlier diagnostic; because the original processing order was not retained, v2 declares lexicographic `(x,y,z)` order.
 
 ## Preflight and reproducibility
@@ -27,4 +29,4 @@ Only `(1,1,12)` was reached before the global cap and it selected `minecraft:spr
 
 Shape fitting performed **322** total render work, including **256** candidate renders, and took **513.11 s** with a peak Python heap of **368,476,514 bytes**. Cell decision counts are {'not_reached': 39, 'partly_tested': 1}.
 
-The complete palette makes partial recovery eligible for evaluation, but this run still achieved 0/69 exact partial-family recall and added one phantom. It is evidence about the bounded fitter and harness only; no production quality promotion follows.
+The complete palette makes partial recovery eligible for evaluation, but this run still achieved 0/69 exact partial-family recall and added one material-wrong stair at a correct reference coordinate, with no new phantom. It is evidence about the bounded fitter and harness only; no production quality promotion follows.

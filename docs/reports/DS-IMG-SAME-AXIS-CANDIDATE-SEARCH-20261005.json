@@ -1,0 +1,162 @@
+{
+  "assignment": "DS-IMG-SAME-AXIS-CANDIDATE-SEARCH",
+  "date": "2026-10-05",
+  "status": "IMPLEMENTED_PENDING_ASTRA_LUNA_REVIEW",
+  "production_release": "HOLD",
+  "reconstruction_authorized": false,
+  "real_input_provenance_validated": false,
+  "inputs_exercised": "synthetic_typed_readings_candidates_and_camera_evidence_only",
+  "caps": {
+    "candidate_identities": 64,
+    "search_nodes": 4096,
+    "solver_calls": 512,
+    "retained_outcomes": 512,
+    "diagnostic_bytes": 2097152,
+    "readings": 128,
+    "frames": 8,
+    "caps_can_increase": false
+  },
+  "search": {
+    "all_feasible_full_axis_subsets_retained": true,
+    "all_constraint_compatible_quadrant_rivals_retained": true,
+    "failed_full_axis_solver_rivals_retained": true,
+    "score_or_order_selection": false,
+    "chosen_result_field": false,
+    "required_world_axes": [0, 1, 2],
+    "preflight_nodes_formula": "4**free_components * 2**(identities+1)",
+    "preflight_calls_and_outcomes_formula": "4**free_components * (2**identities-1)",
+    "refusal_is_atomic": true
+  },
+  "constraint_boundary": {
+    "type": "ImageDerivedConnectionGraph",
+    "trusted_external_session_and_graph_pins_required": true,
+    "nested_contract_and_digest_replay": true,
+    "arbitrary_quadrant_tuples_accepted": false,
+    "authenticity_prerequisite": "Caller must obtain pins and typed graph from an upstream authenticated image-session path; digest replay alone cannot prove origin.",
+    "upstream_pixels_replayed_in_this_task": false,
+    "future_production_adapter_review_required": true
+  },
+  "tests": [
+    {
+      "module": "tests/test_same_axis_candidate_search.py",
+      "command": ".venv\\Scripts\\python.exe -B -m pytest tests/test_same_axis_candidate_search.py -o addopts= -p no:cacheprovider -q -s",
+      "passed": 78,
+      "seconds": 16.35,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/test_plane_graph.py",
+      "command": ".venv\\Scripts\\python.exe -B -m pytest tests/test_plane_graph.py -o addopts= -p no:cacheprovider -q -k 's1_three_view or s4_single_plane or s5_two_views or solved_camera_quadrant_constraint or incomplete_camera_constraints or malformed_foreign_and_contradictory_quadrant_constraints or wrong_b_is_rejected or bu_cross_edge_scale_alias or s7_frame_relabelling or expanded_cap_is_field_exactly_equal or nine_view_component_abstains'",
+      "passed": 11,
+      "deselected": 99,
+      "seconds": 0.32,
+      "exit_code": 0,
+      "scope": "selected_pure_solver_controls_only"
+    }
+  ],
+  "test_environment": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPATH": "src",
+    "python_bytecode_enabled": false,
+    "pytest_cache_enabled": false,
+    "scratch_files_created": false
+  },
+  "evidence": {
+    "independent_tiny_powerset_quadrant_oracle": "Exact full retained solver-payload set equality, literal axis table; same unchanged numerical solver.",
+    "lower_score_control": {
+      "low_score": 0.3,
+      "high_score": 0.99,
+      "local_filter_drops_low": true,
+      "joint_low_cycle_solver_reason": "",
+      "joint_high_cycle_solver_reason": "plane_integer_residual",
+      "both_outcomes_retained": true
+    },
+    "control_solver_fields_preserved": true,
+    "equal_and_differing_scores_preserve_ambiguity": true,
+    "permutation_and_pair_orientation_invariant": true,
+    "nonzero_quadrants_exercised": [1, 2, 3],
+    "duplicate_and_conflicting_identities_refuse": true,
+    "empty_constraints_and_missing_axes_refuse": true,
+    "constraint_cycle_contradiction_refuses": true,
+    "all_caps_and_attempted_increases_refuse": true,
+    "late_actual_representation_cap_crossing_refuses_atomically": true,
+    "late_synthetic_solver_boundary_fault_refuses_atomically": true,
+    "astra_numerical_correction": {
+      "additional_regression_cases": 31,
+      "signed_face_and_delta_arithmetic_checked_before_solver": true,
+      "scoped_numpy_overflow_invalid_divide_policy": "raise",
+      "caller_numpy_error_policy_restored": true,
+      "all_solver_numeric_fields_and_alternative_objectives_finite_checked": true,
+      "scale_flag_requires_actual_boolean": true,
+      "numeric_refusal_reason": "invalid_solver_output",
+      "exact_extreme_distance_input": {
+        "selected_distance": 1e308,
+        "opposite_side_orders": [[-1, 1], [1, -1]],
+        "refusal_before_solver": true
+      },
+      "exact_extreme_score_input": {
+        "finite_score": 1e308,
+        "three_score_mean_overflow_refuses_atomically": true
+      },
+      "injected_nonfinite_output_values": ["NaN", "positive_infinity", "negative_infinity"],
+      "late_second_call_nonfinite_output_discards_prefix": true,
+      "finite_boundary_controls": [
+        "Opposite sides, distance 8e307, score max_float/4",
+        "Same sides, distance 1e308, score 1e307",
+        "Ordinary finite distances and scores"
+      ],
+      "unchanged_solver_source_and_acceptance_thresholds": true
+    },
+    "largest_tested_control": {
+      "identities": 9,
+      "retained_outcomes": 343,
+      "nodes": 1024,
+      "solver_calls": 343,
+      "diagnostic_resident_bytes": 1344657,
+      "tracemalloc_current_bytes": 1131629,
+      "tracemalloc_peak_bytes": 4385834
+    }
+  },
+  "memory_contract": {
+    "measurement": "CPython sys.getsizeof traversal of unique referenced representation objects",
+    "input_and_each_retained_prefix_measured": true,
+    "complete_output_measured_before_return": true,
+    "hard_peak_or_rss_bound": false,
+    "solver_temporaries_and_measurement_bookkeeping_in_representation": false,
+    "simultaneous_input_plus_output_bound": false,
+    "allocation_counts_environment_dependent": true
+  },
+  "pins": {
+    "src/mc_photogrammetry/reconstruction/_same_axis_candidate_search.py": {
+      "bytes": 17973,
+      "sha256": "5c48c57b9795bf3c2c5a76ffe0b6c7c5523f34417f39b8134ea39f374950e03d"
+    },
+    "tests/test_same_axis_candidate_search.py": {
+      "bytes": 24069,
+      "sha256": "2f490029b83fab2b7e1fa7c121a393734c876e24b0a09f890b285d73ece3cfcf"
+    },
+    "src/mc_photogrammetry/reconstruction/plane_graph.py": {
+      "modified_by_this_task": false,
+      "sha256": "f697c2f4ffb512ebb3e7af8f9e497328b4fe828197f62d761b9b0f850ef8972f"
+    },
+    "src/mc_photogrammetry/pipeline/image_derived_connections.py": {
+      "modified_by_this_task": false,
+      "sha256": "a2d166bf711d6cd77c169f044da5ca28d00073e66e60b9bff992572fb56ba211"
+    }
+  },
+  "scope": {
+    "production_integration": false,
+    "production_policy_edits": false,
+    "input_image_truth_or_frozen_record_access": false,
+    "client_launcher_evaluator_or_real_inference_access": false,
+    "production_accuracy_or_end_to_end_claim": false,
+    "source_footprint_measurement": false
+  },
+  "limits": [
+    "Solver consistency is not correspondence truth.",
+    "Diagnostic representation allocation bound is not a process peak/RSS ceiling.",
+    "Conservative preflight may refuse tractable pruned cases rather than raise limits.",
+    "Authenticated image-origin provenance is an upstream prerequisite, not proved from caller-supplied digests.",
+    "No production adapter or reconstruction release is authorized; pending independent Astra and Luna review."
+  ]
+}

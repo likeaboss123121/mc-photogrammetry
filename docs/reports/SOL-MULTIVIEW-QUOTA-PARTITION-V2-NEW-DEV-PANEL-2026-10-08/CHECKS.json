@@ -1,0 +1,35 @@
+{
+  "task_id": "SOL-MULTIVIEW-QUOTA-PARTITION-V2-NEW-DEV-PANEL",
+  "task_sha256": "933188fe8a1057502f34ca4c109e7cb3112f491729b61fa4fdb0e297c1b4c179",
+  "new_source_sha256": "8d0136b27b2fc0603d5efdeab31c2b3562165502d74cce3c65577f10892efda6",
+  "new_test_sha256": "749494278d97fda023a76b22399016f9441061a4ef8067aff71a285d3ee8f3e6",
+  "new_config_sha256": "0a59e14bdaea04d0c9a8185556f980abae8d5b054d871808d5284d43d066aaba",
+  "geometry_source_sha256": "f1b6b28d7df7bb8c4122fbe5d7cc1749bb0cba33cf2f7230c6ce11f7fd26c836",
+  "v1_evaluator_source_sha256": "5d38a8f5964405ba87bd4565e82df629e60b02b74d560645c27ff570ea244ec6",
+  "v1_test_sha256": "a4ac6ac2bcb952879651111c5b866b958eb3b82fa039be040710156615ad8195",
+  "v1_receipt_sha256": {
+    "CHECKS.json": "6d0a8927854727b3af9201ce11a857190a0c32ae5727782f99cc22cd664bdaf3",
+    "RUN.json": "7a337efffb5b65fcf6c7e463b5317a924120e0484b2ac513a0a1b3ce56d8fcc8",
+    "RESULT.json": "5baf3570b579e1a0a29a5ef66e8236edd60a1ec84068ac955e2ca2a585c06296",
+    "REPORT.md": "3260c6733e383429197f01a4bfc880c0c957a8438b0fb1493f62e75b526aadd8"
+  },
+  "schema": "opencv-mnn-quota-proposals-v2",
+  "calibration_schema": "opencv-mnn-quota-synthetic-calibration-v2",
+  "dev_seeds": [96111, 96121, 96131, 96141],
+  "case_kinds_per_seed": 9,
+  "planned_case_count": 36,
+  "prior_mnn_seed_roster_search": "none of 96111, 96121, 96131, 96141 found in prior MNN development JSON or V1 receipt JSON",
+  "heldout_seeds": [],
+  "feature_cap": 700,
+  "artifact_byte_cap": 96000000,
+  "tests": {
+    "new_scoped": "16 passed",
+    "new_plus_historical": "227 passed"
+  },
+  "compile": "passed",
+  "trailing_whitespace": "none",
+  "calibration_invocations": 0,
+  "development_report_exists": false,
+  "development_input_sha256": null,
+  "development_result_sha256": null
+}

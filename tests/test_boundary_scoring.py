@@ -212,3 +212,66 @@ def test_f3_v3_annotation_anchors_match_the_composed_masks():
     domain = usable_domain(width, height, top_exclude=0, bottom_exclude=0)
     positive, _ = target_masks(frame1, width, height, domain)
     assert positive[600, 400] and positive[600, 600]
+
+
+def test_f3_v4_plane_specific_source_anchors_match_the_composed_masks():
+    """Freeze the visually reviewed, plane-specific v4 labels.
+
+    The source-image judgment is documented in the dated audit report and
+    review overlays; this test guards the frozen JSON encoding and ensures
+    the decisive wall/furniture/corner anchors still compose to their stated
+    positive, negative or unknown labels. It deliberately leaves v1-v3
+    immutable.
+    """
+    import hashlib
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    path = root / "docs/reports/M4-C2-boundary-targets-v4-2026-09-12.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "f4a0f86938561b3fc81b096fc614d1ae404c1372e65c925811c1368ce56a0da5"
+    ), "v4 changed after visual review; re-audit and re-freeze before editing this test"
+    v3_raw = (root / "docs/reports/M4-C2-boundary-targets-v3-2026-09-09.json").read_bytes()
+    assert hashlib.sha256(v3_raw).hexdigest() == (
+        "082ec648845be2354a5324821e6484291ca867563948e0396cecb496e5adf56a"
+    ), "the prior v3 artifact must remain immutable"
+    data = json.loads(raw)
+    targets = data["targets"]
+    assert [t["target_id"] for t in targets] == [
+        "t2_f1_left_wall", "t2_f2_left_wall", "t2_f3_left_wall",
+    ]
+    assert len({t["physical_plane"] for t in targets}) == 1
+    for target in targets:
+        assert len(target["uncertain_polygon_reasons"]) == len(target["uncertain_polygons"])
+        width, height = target["image_size"]
+        domain = usable_domain(width, height, top_exclude=0, bottom_exclude=0)
+        positive, unknown = target_masks(target, width, height, domain)
+        for anchor in target["review_anchors"]:
+            x, y = anchor["point"]
+            actual = "unknown" if unknown[y, x] else "positive" if positive[y, x] else "negative"
+            assert actual == anchor["label"], (target["target_id"], anchor, actual)
+
+    frame1 = next(t for t in targets if t["target_id"] == "t2_f1_left_wall")
+    width, height = frame1["image_size"]
+    domain = usable_domain(width, height, top_exclude=0, bottom_exclude=0)
+    positive4, unknown4 = target_masks(frame1, width, height, domain)
+    assert positive4[740, 1150] and not unknown4[740, 1150]
+    assert unknown4[748, 1200]  # table edge stays unknown
+    assert not positive4[775, 1200] and not unknown4[775, 1200]  # table interior is negative
+
+    v3_data = json.loads(v3_raw)
+    old_frame1 = next(t for t in v3_data["targets"] if t["frame"] == frame1["frame"])
+    positive3, unknown3 = target_masks(
+        old_frame1, width, height, usable_domain(width, height, top_exclude=0, bottom_exclude=0),
+    )
+    assert not positive3[740, 1150] and not unknown3[740, 1150]
+
+    frame3 = next(t for t in targets if t["target_id"] == "t2_f3_left_wall")
+    positive3, unknown3 = target_masks(
+        frame3, width, height, usable_domain(width, height, top_exclude=0, bottom_exclude=0),
+    )
+    assert positive3[300, 600] and not unknown3[300, 600]
+    assert not positive3[300, 1400] and not unknown3[300, 1400]
+    assert unknown3[300, 975]

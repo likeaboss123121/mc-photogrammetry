@@ -1,0 +1,22 @@
+{
+  "baseline_source_sha256": "90a92e9eb345a260a52ea0a765609159652a1019be76c525d27690c0c5254eb2",
+  "current_source_sha256": "97eaac2bdcc09649a2a7e364ff7589f9cd09916ff62922fc8fe52f24bdff8db7",
+  "generated_pixels_only": true,
+  "cases": {
+    "planar3": {
+      "canonical_bytes": 117384,
+      "sha256": "0146a0af563a596f39831e5fb6ac579f13ecff746c7655c2999a0b0988694937",
+      "identical": true
+    },
+    "planar4": {
+      "canonical_bytes": 516099,
+      "sha256": "210c0bd8c6e1b625472db98cd3f573d1d8d49b331ad9372de1e6bf10ab6cd866",
+      "identical": true
+    },
+    "blank8": {
+      "canonical_bytes": 31555,
+      "sha256": "94151ded6c1cbc65a5336b1fe5ecccda30cf72c8dd51dfd3111c5de30acb9469",
+      "identical": true
+    }
+  }
+}

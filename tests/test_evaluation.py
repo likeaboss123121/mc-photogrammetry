@@ -28,6 +28,57 @@ def test_visible_metrics_use_visible_reference_and_all_phantoms():
     assert metrics.geometry_precision == 2 / 3
 
 
+def test_hidden_cells_get_separate_inference_credit_and_are_not_phantoms():
+    metrics = visible_metrics(
+        {(0, 0, 0): STONE, (1, 0, 0): DIRT, (2, 0, 0): STONE},
+        {(0, 0, 0): STONE, (2, 0, 0): STONE, (9, 0, 0): STONE},
+        [(0, 0, 0)],
+    )
+
+    assert metrics.visible_reference_blocks == 1
+    assert metrics.hidden_reference_blocks == 2
+    assert metrics.hidden_inferred_blocks == 1
+    assert metrics.hidden_exact_state_blocks == 1
+    assert metrics.phantom_blocks == 1
+    assert metrics.exact_state_recovery == 1.0
+    assert metrics.geometry_recall == 1.0
+    assert metrics.hidden_inference_recovery == 0.5
+    assert metrics.hidden_exact_state_recovery == 0.5
+
+
+def test_hidden_inference_credit_separates_geometry_from_state():
+    metrics = visible_metrics(
+        {(0, 0, 0): STONE, (1, 0, 0): STONE},
+        {(1, 0, 0): DIRT},
+        [(0, 0, 0)],
+    )
+
+    assert metrics.visible_reference_blocks == 1
+    assert metrics.hidden_reference_blocks == 1
+    assert metrics.hidden_inferred_blocks == 1
+    assert metrics.hidden_exact_state_blocks == 0
+    assert metrics.phantom_blocks == 0
+    assert metrics.geometry_recall == 0.0
+    assert metrics.hidden_inference_recovery == 1.0
+    assert metrics.hidden_exact_state_recovery == 0.0
+
+
+def test_visible_metrics_dict_exposes_hidden_credit_without_touching_visible_terms():
+    metrics = visible_metrics(
+        {(0, 0, 0): STONE, (1, 0, 0): STONE},
+        {(1, 0, 0): STONE},
+        [(0, 0, 0)],
+    )
+    report = metrics.to_dict()
+
+    assert report["hidden_reference_blocks"] == 1
+    assert report["hidden_inferred_blocks"] == 1
+    assert report["hidden_inference_recovery"] == 1.0
+    # Hidden recovery is credited separately and must not leak into visible terms.
+    assert report["geometry_recall"] == 0.0
+    assert report["phantom_blocks"] == 0
+
+
 def test_observation_kind_counts_preserve_observed_and_inferred_outputs():
     volume = BlockVolume()
     volume.set((0, 0, 0), BlockObservation(STONE))

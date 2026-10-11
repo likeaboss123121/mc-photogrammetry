@@ -1,6 +1,7 @@
 ﻿# M5 shape-balanced partial fitting
 
-> Lead follow-up: partial-shape scheduling, material selection, and palette-order controls implemented. Matched Template 2 evidence is evaluation-only; see [the diagnostic](M5-t2-matched-diagnostic.md).
+> Lead review: L1 and demonstrated RGB-order controls accepted. Missing-metadata ordering remains open; the submitted T2 diagnostic used a cube-only palette. Refer to the current lead review for acceptance and next work. See [current review](LEAD-review-2026-09-09-third.md).
+
 
 GPT-5.6 Luna, 2026-09-09.
 
@@ -14,7 +15,7 @@ stable and puts non-full geometry before the full-cube group, independent of
 palette insertion order.
 
 After geometry representatives are scored, rectified texture evidence ranks
-materials within each shape. At most the best material refinement is rendered
+materials within each shape. Up to four material refinements are considered
 per shape under the same global cap; air and the current state remain explicit
 baselines. Diagnostics record considered representative states, material
 refinements, render counts, and unresolved budget exits. A cube-heavy synthetic

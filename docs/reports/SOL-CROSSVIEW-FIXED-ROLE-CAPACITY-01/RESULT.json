@@ -1,0 +1,21 @@
+{
+  "task_id": "SOL-CROSSVIEW-FIXED-ROLE-CAPACITY-01",
+  "status": "lead-NO-GO-corrections-complete; renewed-independent-review-pending",
+  "initial_preflight": "NO-GO; initial 10/237-test source-only pins superseded; no attribution invocation",
+  "correction_controls": {
+    "cumulative_retained_cap": "construction and canonical replay refuse sum over 8 MiB even when each row is under cap",
+    "nonmonotone_coverage": "count-sufficient full-union failure is unresolved with coverage_subset_unassessed",
+    "truth_aggregate_parity": "resealed truth, analysis and outer digest must match sealed per-pair true proposal and accepted-support totals",
+    "excluded_generator_cases": "streamed and discarded without inference or retained report"
+  },
+  "aggregate_parity_limit": "does not cryptographically authenticate unchanged aggregate per-surface label substitutions",
+  "frozen_case_count": 4,
+  "frozen_first_attempt_pair_slots": 12,
+  "baseline_extract": "BASELINE.json",
+  "inference_invocations": 0,
+  "calibration_invocations": 0,
+  "new_annotation_exists": false,
+  "new_pair_capacity_classifications": null,
+  "accuracy_or_production_claim": false,
+  "next_gate": "Astra and lead exact-pin review; any four-case post-seal attribution requires a separate one-shot authorization"
+}

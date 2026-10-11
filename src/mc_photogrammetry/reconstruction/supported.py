@@ -214,11 +214,23 @@ def phase_at_period(profile: np.ndarray, offsets: np.ndarray,
     total = float(profile.sum())
     if total <= 1e-9 or period < 2.0:
         return 0.0
-    angle = 2.0 * np.pi * np.asarray(offsets, dtype=float) / period
-    response = np.sum(profile * np.exp(-1j * angle))
+    response = _periodic_energy_resultant(profile, offsets, period)
     if abs(response) <= 1e-12:
         return 0.0
     return float((-np.angle(response) / (2.0 * np.pi) * period) % period)
+
+
+def _periodic_energy_resultant(
+    profile: np.ndarray, offsets: np.ndarray, period: float,
+) -> complex:
+    """Return the raw first Fourier resultant used by periodic phase readers.
+
+    This intentionally owns no validation, thresholds, sentinels, or phase
+    canonicalization. Those remain with each caller; only the shared complex
+    arithmetic lives here.
+    """
+    angle = 2.0 * np.pi * np.asarray(offsets, dtype=float) / period
+    return np.sum(profile * np.exp(-1j * angle))
 
 
 def _phase_agreement(profile: np.ndarray, offsets: np.ndarray, period: float,
@@ -485,7 +497,7 @@ def plane_from_evidence(
     on real data. Pass `None` for the old plane-wide behaviour.
     """
     from mc_photogrammetry.reconstruction.lattice import (
-        measure_plane,
+        measure_plane, rectified_pixel_step,
         period_hypotheses,
         rectify_plane,
         plane_window,
@@ -553,7 +565,10 @@ def plane_from_evidence(
             coverage = coverage * (seen > 0.5)
 
     # One block, in rectified pixels, at the distance now believed.
-    per_pixel = 2.0 * span / samples
+    try:
+        per_pixel = rectified_pixel_step(span, samples)
+    except ValueError:
+        return None
     block_pixels = (1.0 / distance) / per_pixel
     if block_pixels < 2.0:
         return None

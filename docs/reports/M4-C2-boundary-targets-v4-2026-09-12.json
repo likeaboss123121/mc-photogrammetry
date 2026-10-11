@@ -1,0 +1,1126 @@
+{
+  "note": "Versioned visual audit of the three Template 2 source screenshots. Each target names one physical wall plane before tracing. v1-v3 are preserved. Frame 1 replaces the dining-area bounding rectangle with separate traced furniture silhouettes and an unknown transition band; (1150,740) remains clear wall. Frame 3 narrows the left-wall claim to the visible corner, with the corner band unknown; (600,300) is left wall while (1400,300) is another wall plane. The existing frame 2 plane boundary was reviewed and retained. The target file is evaluation-only; no pose, fixture metadata, reference geometry, or reconstruction output was used to identify planes.",
+  "targets": [
+    {
+      "frame": "2026-09-02_13.22.14.png",
+      "image_size": [
+        2560,
+        1369
+      ],
+      "description": "Left-hand dark-oak panelled wall in the dining view. The broad wall silhouette is retained to the reviewed corner uncertainty band; the dining furniture is traced as individual foreground silhouettes, leaving visible wall around it unmasked.",
+      "positive_polygon": [
+        [
+          0,
+          0
+        ],
+        [
+          1280,
+          0
+        ],
+        [
+          1280,
+          825
+        ],
+        [
+          0,
+          825
+        ]
+      ],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [
+            [
+              0,
+              800
+            ],
+            [
+              788,
+              790
+            ],
+            [
+              850,
+              1040
+            ],
+            [
+              862,
+              1369
+            ],
+            [
+              0,
+              1369
+            ]
+          ],
+          [
+            [
+              1065,
+              755
+            ],
+            [
+              1090,
+              752
+            ],
+            [
+              1125,
+              748
+            ],
+            [
+              1160,
+              750
+            ],
+            [
+              1195,
+              750
+            ],
+            [
+              1230,
+              754
+            ],
+            [
+              1270,
+              760
+            ],
+            [
+              1320,
+              766
+            ],
+            [
+              1375,
+              771
+            ],
+            [
+              1430,
+              777
+            ],
+            [
+              1480,
+              785
+            ],
+            [
+              1515,
+              794
+            ],
+            [
+              1510,
+              805
+            ],
+            [
+              1455,
+              806
+            ],
+            [
+              1390,
+              799
+            ],
+            [
+              1325,
+              792
+            ],
+            [
+              1260,
+              788
+            ],
+            [
+              1200,
+              786
+            ],
+            [
+              1145,
+              783
+            ],
+            [
+              1105,
+              778
+            ],
+            [
+              1080,
+              772
+            ]
+          ],
+          [
+            [
+              1080,
+              772
+            ],
+            [
+              1105,
+              778
+            ],
+            [
+              1145,
+              783
+            ],
+            [
+              1200,
+              786
+            ],
+            [
+              1260,
+              788
+            ],
+            [
+              1325,
+              792
+            ],
+            [
+              1390,
+              799
+            ],
+            [
+              1455,
+              806
+            ],
+            [
+              1500,
+              806
+            ],
+            [
+              1485,
+              825
+            ],
+            [
+              1425,
+              824
+            ],
+            [
+              1360,
+              817
+            ],
+            [
+              1300,
+              812
+            ],
+            [
+              1240,
+              808
+            ],
+            [
+              1185,
+              805
+            ],
+            [
+              1135,
+              800
+            ],
+            [
+              1090,
+              791
+            ]
+          ],
+          [
+            [
+              1115,
+              798
+            ],
+            [
+              1135,
+              800
+            ],
+            [
+              1145,
+              850
+            ],
+            [
+              1123,
+              848
+            ]
+          ],
+          [
+            [
+              1195,
+              804
+            ],
+            [
+              1217,
+              807
+            ],
+            [
+              1227,
+              858
+            ],
+            [
+              1204,
+              855
+            ]
+          ],
+          [
+            [
+              1290,
+              806
+            ],
+            [
+              1312,
+              807
+            ],
+            [
+              1307,
+              859
+            ],
+            [
+              1286,
+              858
+            ]
+          ],
+          [
+            [
+              1370,
+              810
+            ],
+            [
+              1392,
+              812
+            ],
+            [
+              1383,
+              860
+            ],
+            [
+              1363,
+              858
+            ]
+          ],
+          [
+            [
+              1442,
+              693
+            ],
+            [
+              1452,
+              693
+            ],
+            [
+              1456,
+              715
+            ],
+            [
+              1468,
+              716
+            ],
+            [
+              1472,
+              758
+            ],
+            [
+              1450,
+              761
+            ],
+            [
+              1448,
+              735
+            ],
+            [
+              1438,
+              730
+            ]
+          ],
+          [
+            [
+              985,
+              757
+            ],
+            [
+              1012,
+              752
+            ],
+            [
+              1040,
+              760
+            ],
+            [
+              1064,
+              780
+            ],
+            [
+              1055,
+              811
+            ],
+            [
+              1030,
+              824
+            ],
+            [
+              1002,
+              815
+            ],
+            [
+              986,
+              793
+            ]
+          ],
+          [
+            [
+              1690,
+              772
+            ],
+            [
+              1720,
+              764
+            ],
+            [
+              1754,
+              770
+            ],
+            [
+              1784,
+              789
+            ],
+            [
+              1798,
+              827
+            ],
+            [
+              1780,
+              849
+            ],
+            [
+              1746,
+              845
+            ],
+            [
+              1724,
+              824
+            ],
+            [
+              1704,
+              819
+            ]
+          ],
+          [
+            [
+              1288,
+              288
+            ],
+            [
+              1336,
+              288
+            ],
+            [
+              1336,
+              380
+            ],
+            [
+              1288,
+              380
+            ]
+          ],
+          [
+            [
+              1288,
+              388
+            ],
+            [
+              1322,
+              388
+            ],
+            [
+              1322,
+              432
+            ],
+            [
+              1288,
+              432
+            ]
+          ],
+          [
+            [
+              1488,
+              288
+            ],
+            [
+              1532,
+              288
+            ],
+            [
+              1532,
+              382
+            ],
+            [
+              1488,
+              382
+            ]
+          ]
+        ],
+        "opening": [
+          [
+            [
+              1200,
+              0
+            ],
+            [
+              1370,
+              130
+            ],
+            [
+              1230,
+              290
+            ],
+            [
+              1000,
+              150
+            ]
+          ]
+        ]
+      },
+      "uncertain_polygons": [
+        [
+          [
+            900,
+            0
+          ],
+          [
+            1450,
+            0
+          ],
+          [
+            1450,
+            230
+          ],
+          [
+            900,
+            230
+          ]
+        ],
+        [
+          [
+            1260,
+            220
+          ],
+          [
+            1450,
+            220
+          ],
+          [
+            1450,
+            825
+          ],
+          [
+            1260,
+            825
+          ]
+        ],
+        [
+          [
+            1065,
+            748
+          ],
+          [
+            1090,
+            745
+          ],
+          [
+            1125,
+            741
+          ],
+          [
+            1160,
+            743
+          ],
+          [
+            1195,
+            743
+          ],
+          [
+            1230,
+            747
+          ],
+          [
+            1270,
+            753
+          ],
+          [
+            1320,
+            759
+          ],
+          [
+            1375,
+            764
+          ],
+          [
+            1430,
+            770
+          ],
+          [
+            1480,
+            778
+          ],
+          [
+            1515,
+            787
+          ],
+          [
+            1515,
+            794
+          ],
+          [
+            1480,
+            785
+          ],
+          [
+            1430,
+            777
+          ],
+          [
+            1375,
+            771
+          ],
+          [
+            1320,
+            766
+          ],
+          [
+            1270,
+            760
+          ],
+          [
+            1230,
+            754
+          ],
+          [
+            1195,
+            750
+          ],
+          [
+            1160,
+            750
+          ],
+          [
+            1125,
+            748
+          ],
+          [
+            1090,
+            752
+          ],
+          [
+            1065,
+            755
+          ]
+        ]
+      ],
+      "wall_interior_anchors": [
+        [
+          1150,
+          740
+        ],
+        [
+          1000,
+          700
+        ]
+      ],
+      "wall_interior_anchor_reasons": [
+        "Clear left-wall paneling above the dining tabletop; v3's dining rectangle wrongly removed it.",
+        "Visible wall margin left of the table group."
+      ],
+      "negative_anchors": [
+        [
+          1200,
+          775
+        ],
+        [
+          1460,
+          720
+        ],
+        [
+          1750,
+          805
+        ]
+      ],
+      "negative_anchor_reasons": [
+        "Inside the tabletop surface.",
+        "Inside the narrow flower/stem silhouette on the table.",
+        "Inside the separate right-hand bench/chair silhouette."
+      ],
+      "target_id": "t2_f1_left_wall",
+      "physical_plane": "One visible, continuous left-hand wall plane, bounded at its first visible inside corner; repeated wood texture beyond that corner does not continue this target.",
+      "uncertain_polygon_reasons": [
+        "Roof-gap/ceiling transition is dark and low-contrast; the wall-vs-roof edge is uncertain.",
+        "Original inside-corner/support-beam transition; plane ownership is ambiguous in this strip.",
+        "Dining tabletop edge: the dark-oak-to-wood-object transition is antialiased and shadowed; the tabletop interior is traced separately as negative."
+      ],
+      "review_anchors": [
+        {
+          "point": [
+            1150,
+            740
+          ],
+          "label": "positive",
+          "reason": "Clear left-wall paneling above the dining tabletop; v3's dining rectangle wrongly removed it."
+        },
+        {
+          "point": [
+            1000,
+            700
+          ],
+          "label": "positive",
+          "reason": "Visible wall margin left of the table group."
+        },
+        {
+          "point": [
+            1200,
+            748
+          ],
+          "label": "unknown",
+          "reason": "On the traced tabletop transition ribbon."
+        },
+        {
+          "point": [
+            1200,
+            775
+          ],
+          "label": "negative",
+          "reason": "Inside the tabletop surface."
+        },
+        {
+          "point": [
+            1400,
+            780
+          ],
+          "label": "unknown",
+          "reason": "Tabletop overlaps the existing far-corner uncertainty band here; it remains excluded."
+        },
+        {
+          "point": [
+            1460,
+            720
+          ],
+          "label": "negative",
+          "reason": "Inside the narrow flower/stem silhouette on the table."
+        },
+        {
+          "point": [
+            1750,
+            805
+          ],
+          "label": "negative",
+          "reason": "Inside the separate right-hand bench/chair silhouette."
+        }
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.24.png",
+      "image_size": [
+        2560,
+        1369
+      ],
+      "description": "Left-hand wall panelling looking down the room. The far inside-corner boundary is kept as the existing narrow unknown band; the far gable-end wall remains outside this target.",
+      "positive_polygon": [
+        [
+          0,
+          0
+        ],
+        [
+          980,
+          0
+        ],
+        [
+          980,
+          825
+        ],
+        [
+          850,
+          850
+        ],
+        [
+          700,
+          905
+        ],
+        [
+          500,
+          930
+        ],
+        [
+          300,
+          970
+        ],
+        [
+          0,
+          955
+        ]
+      ],
+      "negative_polygons": {
+        "foreground_occlusion": [
+          [
+            [
+              0,
+              955
+            ],
+            [
+              300,
+              970
+            ],
+            [
+              500,
+              930
+            ],
+            [
+              700,
+              905
+            ],
+            [
+              850,
+              850
+            ],
+            [
+              980,
+              825
+            ],
+            [
+              980,
+              1369
+            ],
+            [
+              0,
+              1369
+            ]
+          ],
+          [
+            [
+              980,
+              700
+            ],
+            [
+              1450,
+              700
+            ],
+            [
+              1450,
+              1369
+            ],
+            [
+              980,
+              1369
+            ]
+          ],
+          [
+            [
+              1000,
+              395
+            ],
+            [
+              1350,
+              395
+            ],
+            [
+              1350,
+              570
+            ],
+            [
+              1000,
+              570
+            ]
+          ]
+        ],
+        "opening": [
+          [
+            [
+              990,
+              100
+            ],
+            [
+              1250,
+              100
+            ],
+            [
+              1250,
+              350
+            ],
+            [
+              990,
+              350
+            ]
+          ]
+        ]
+      },
+      "uncertain_polygons": [
+        [
+          [
+            960,
+            135
+          ],
+          [
+            1040,
+            135
+          ],
+          [
+            1040,
+            650
+          ],
+          [
+            960,
+            650
+          ]
+        ]
+      ],
+      "wall_interior_anchors": [
+        [
+          500,
+          300
+        ],
+        [
+          700,
+          700
+        ]
+      ],
+      "wall_interior_anchor_reasons": [
+        "Interior of the left-hand wall, well before the visible corner.",
+        "Left-wall side of the traced lower wall/bench boundary."
+      ],
+      "negative_anchors": [
+        [
+          1200,
+          250
+        ],
+        [
+          1200,
+          850
+        ]
+      ],
+      "negative_anchor_reasons": [
+        "Far gable-end opening; it is not the left-wall plane.",
+        "Far gable-end dining area, beyond the left-wall corner."
+      ],
+      "target_id": "t2_f2_left_wall",
+      "physical_plane": "One visible, continuous left-hand wall plane, bounded at its first visible inside corner; repeated wood texture beyond that corner does not continue this target.",
+      "uncertain_polygon_reasons": [
+        "Visible corner and beam transition between the left wall and far gable-end; do not assign either plane through the occluding beam."
+      ],
+      "review_anchors": [
+        {
+          "point": [
+            500,
+            300
+          ],
+          "label": "positive",
+          "reason": "Interior of the left-hand wall, well before the visible corner."
+        },
+        {
+          "point": [
+            700,
+            700
+          ],
+          "label": "positive",
+          "reason": "Left-wall side of the traced lower wall/bench boundary."
+        },
+        {
+          "point": [
+            1000,
+            300
+          ],
+          "label": "unknown",
+          "reason": "Inside the narrow visible corner transition band."
+        },
+        {
+          "point": [
+            1200,
+            250
+          ],
+          "label": "negative",
+          "reason": "Far gable-end opening; it is not the left-wall plane."
+        },
+        {
+          "point": [
+            1200,
+            850
+          ],
+          "label": "negative",
+          "reason": "Far gable-end dining area, beyond the left-wall corner."
+        }
+      ]
+    },
+    {
+      "frame": "2026-09-02_13.24.33.png",
+      "image_size": [
+        2560,
+        1369
+      ],
+      "description": "Left-hand wall plane in the steep downward view. Its traced right edge stops at the visible room corner; the far wall at (1400,300) is a different plane despite matching wood appearance. The source-visible lower left wall is retained.",
+      "positive_polygon": [
+        [
+          0,
+          0
+        ],
+        [
+          960,
+          0
+        ],
+        [
+          960,
+          1369
+        ],
+        [
+          0,
+          1369
+        ]
+      ],
+      "negative_polygons": {
+        "foreground_occlusion": [],
+        "opening": []
+      },
+      "uncertain_polygons": [
+        [
+          [
+            650,
+            0
+          ],
+          [
+            1900,
+            0
+          ],
+          [
+            1900,
+            100
+          ],
+          [
+            650,
+            100
+          ]
+        ],
+        [
+          [
+            960,
+            100
+          ],
+          [
+            1060,
+            100
+          ],
+          [
+            1060,
+            780
+          ],
+          [
+            960,
+            780
+          ]
+        ]
+      ],
+      "wall_interior_anchors": [
+        [
+          600,
+          300
+        ],
+        [
+          600,
+          1200
+        ],
+        [
+          940,
+          300
+        ]
+      ],
+      "wall_interior_anchor_reasons": [
+        "Interior of the left-hand wall paneling.",
+        "The gamma-boosted crop confirms the left-hand paneling continues to the bottom edge.",
+        "Clear left-wall side immediately before the corner uncertainty band."
+      ],
+      "negative_anchors": [
+        [
+          1100,
+          300
+        ],
+        [
+          1400,
+          300
+        ]
+      ],
+      "negative_anchor_reasons": [
+        "Beyond the corner on a distinct farther wall plane.",
+        "The lead-cited far-wall anchor; same wood appearance does not make it the left-wall plane."
+      ],
+      "target_id": "t2_f3_left_wall",
+      "physical_plane": "One visible, continuous left-hand wall plane, bounded at its first visible inside corner; repeated wood texture beyond that corner does not continue this target.",
+      "uncertain_polygon_reasons": [
+        "Low-contrast ceiling/wall transition; ownership cannot be determined reliably from this view.",
+        "Visible corner/beam transition between the left-hand wall and farther wall planes."
+      ],
+      "review_anchors": [
+        {
+          "point": [
+            600,
+            300
+          ],
+          "label": "positive",
+          "reason": "Interior of the left-hand wall paneling."
+        },
+        {
+          "point": [
+            600,
+            1200
+          ],
+          "label": "positive",
+          "reason": "The gamma-boosted crop confirms the left-hand paneling continues to the bottom edge."
+        },
+        {
+          "point": [
+            940,
+            300
+          ],
+          "label": "positive",
+          "reason": "Clear left-wall side immediately before the corner uncertainty band."
+        },
+        {
+          "point": [
+            975,
+            300
+          ],
+          "label": "unknown",
+          "reason": "Inside the visible corner transition band."
+        },
+        {
+          "point": [
+            1000,
+            300
+          ],
+          "label": "unknown",
+          "reason": "Inside the visible corner transition band."
+        },
+        {
+          "point": [
+            1100,
+            300
+          ],
+          "label": "negative",
+          "reason": "Beyond the corner on a distinct farther wall plane."
+        },
+        {
+          "point": [
+            1400,
+            300
+          ],
+          "label": "negative",
+          "reason": "The lead-cited far-wall anchor; same wood appearance does not make it the left-wall plane."
+        }
+      ]
+    }
+  ],
+  "annotation_id": "M4-F3-plane-specific-targets-v4-2026-09-12",
+  "visual_audit": {
+    "method": "Native 2560x1369 source frames reviewed side-by-side with composed v4 overlays; boundaries traced on source-coordinate grid crops. Plane identity follows visible room-corner lines, not repeated wood texture.",
+    "source_frames": [
+      {
+        "frame": "2026-09-02_13.22.14.png",
+        "sha256": "eb22541171e030ff94d6839a6626e7160c69ae3a780f07aec0298322be665d46",
+        "image_size": [
+          2560,
+          1369
+        ]
+      },
+      {
+        "frame": "2026-09-02_13.24.24.png",
+        "sha256": "e2fd9fd6c83bf9005fe0973987da9e46d213a4351ec91393ce578f8e6d3961ae",
+        "image_size": [
+          2560,
+          1369
+        ]
+      },
+      {
+        "frame": "2026-09-02_13.24.33.png",
+        "sha256": "35d9debb206c2505f65d3be29183f4a4f3d2bf3f9c05644ce75570f48381d1fc",
+        "image_size": [
+          2560,
+          1369
+        ]
+      }
+    ],
+    "unknown_policy": "The listed uncertainty polygons cover only ambiguous boundary strips or occlusion transitions; reasons are listed per target. Unknown area is reported after composition and before HUD/domain exclusions."
+  }
+}

@@ -1,0 +1,72 @@
+# SOL-IMG-STATIC-BLOCK-PAIR-20261005 - version-matched evaluation-asset proxy
+
+This is the resealed posthoc static-block evaluation-asset proxy for the fixed real Canal Town frame05/frame06 pair. It reuses the already-frozen native feature, candidate, and mode rows; no production call, screenshot decode, matcher, solver, renderer, reconstruction, or Minecraft launch occurred.
+
+## Scope and certification status
+
+All reported ray outcomes, candidate dispositions, pair counts, and per-mode metrics are **version-matched Minecraft 1.21.5 evaluation-asset proxy results only**. DeepSeek audited the 22 allowlisted empty-property states against evaluation vanilla JAR SHA-256 `522672ad20b460c02c2e39b6c5035ef6a849af28eb11ab2ac7eb293d395a8c11`: each has full 16x16x16 cube geometry with six faces and referenced textures with minimum alpha 255. The original capture worker metadata names Minecraft 1.21.5 and Fabric Loader 0.16.10. This establishes agreement of version labels and audited evaluation assets, **not** identity of the capture-time effective client/resource assets or their rendering behavior. The capture-time client JAR SHA, effective render-layer behavior, and capture-mod SHA remain unbound.
+
+Accordingly, certified capture-correspondence scoring is unavailable: certified scorable count `0`; certified coverage `0/7328 = 0`; certified pair denominator `0`; certified precision and recall `null`. Existing numeric results below are retained only as evaluation-asset proxy measurements and must not be read as certified truth, screenshot correspondence, or accuracy.
+
+## Inputs and pins
+
+| Input | SHA-256 | Bytes |
+|---|---|---:|
+| SOL-IMG-FACTORY-CAMERA-PAIR-20261005.json | `4e0c810a1a4f1deffad79beddbe951391d70e7b6db308d0b3be23e76fcd1133b` | 1,123,826 |
+| context-ground-truth.json | `180e49099e3e26ee957671dd94c3410a9fbe1124802d4f8976d6a4eac3bf2f8d` | 28,685,500 |
+| capture.json | `c6c44d43408779006854c81742a68d00cfe5b546f506ffa08ea59ba7b812abe6` | 28,051 |
+| ground_truth.json | `36114feebe61d7b358927095a159d56dc5762e02c5a52a52e8a12ae17ce4a35a` | 962,450 |
+| freeze.json | `3c4e8e1b63f73748bde1f072d97dbfb4276ebc90c957889123760edcc6a1c90f` | 25,083,593 |
+| freeze.json.masks.bin | `68277b112b4b7ad755878501c8c04617119477f5ceff76be9dff2c0403bc74db` | 127,087,308 |
+| frame05 PNG (byte hash, no decoding) | `6f844d5e3600e853bf3045fc25b55a271c0b665226053602b6d30c945f0f016b` | 3,896,541 |
+| frame06 PNG (byte hash, no decoding) | `53c38526d378a0597ab6e00fb5e01a6c7aa0e2dc11619c1b7eaa3cfc0ccf8923` | 3,258,563 |
+
+All 4 asset pins, 20 source pins, and 26 prior pins embedded in the fixed camera-pair diagnostic were re-hashed and matched. The context schema/bindings, dense unique 51x71x61 grid, target-state preservation, ordered image inventory, exact 05/06 capture records, and exact selected PNG byte hashes were checked. Both actual eye points are strictly inside the context bounds. The scorer casts from posthoc actual capture eyes/yaw/pitch with capture-recorded intrinsics; metadata is not passed into a production reconstruction call.
+
+## DDA correction and limits
+
+Origin handling: for a ray whose origin lies exactly on a grid plane and whose component points negative, initialization moves into the voxel occupied for positive ray depth and never tests the floor-selected zero-length cell. A ray parallel to a grid plane is typed unknown. Crossing ties use exact equality of represented crossing parameters, not epsilon tolerance. Exact ties advance all tied axes at once, so no zero-length side voxel is visited; if the destination owner has tied face ownership, it is unknown. Near-equal positive crossings are stepped separately, preserving the positive-length side voxel. Depth is checked before occupancy. Domain exit, grid gaps, tied ownership, depth/step cap, and unsupported geometry/render prefixes are unknown, never treated as air or negative.
+
+The 22-name, empty-properties allowlist has audited full-cube geometry and alpha-255 texture support in the pinned evaluation 1.21.5 JAR listed above. This is evaluation-asset evidence only: effective capture-time client render-layer behavior and exact capture asset identity are unbound, so these assumptions support proxy classifications only and no certified hit. Other nonair states, including partial, pane, leaf, fluid, waterlogged, and unknown models, stop the ray as unsupported. Known context first hits outside the target region are retained and excluded from the target scoring denominator. The context contains static blocks only: entities, transient state, transparent/cutout/fluid compositing, resource-pack effects, and unmodelled shape protrusions remain unrepresented. Results therefore describe a version-matched evaluation-asset static-block proxy, never certified capture correspondence or screenshot correctness.
+
+Native recovered camera estimates are kept distinct from the posthoc capture camera. Capture focal length is 779.422863 px; native estimate is 779.129582 px. This calibration/pose difference limits exact feature-ray attribution; the scorer makes no independent optical-calibration claim.
+
+The proxy pair denominator is constructed from all 3,562/3,737 frozen detected feature points after raying every feature in both images. A unique pixel pair enters the proxy same-surface denominator only if both first static hits are supported, in the target region, on the same block cell/face, and within 1/16 block. All 7,695 reciprocal candidate edges are present and untruncated; all 12 stored native mode selections are scored, retaining raw and unique pixel-pair counts. Unknown and outside-target rows are explicit exclusions.
+
+## Proxy results (not certified capture correspondence)
+
+Per-frame rays:
+- frame05: 983 context hits (811 in target, 172 outside target), 1,707 unsupported-prefix unknown, 872 context-exit unknown.
+- frame06: 855 context hits (786 in target, 69 outside target), 1,585 unsupported-prefix unknown, 1,297 context-exit unknown.
+
+Complete candidate graph, classified against the evaluation-asset proxy: 7,695 raw edges, 7,328 unique pixel pairs; 54 correct; 9 same-face out-of-tolerance; 938 same-state/same-slot other-block appearance proxies; 132 wrong surface; 6,064 unknown; 131 outside-target. Proxy same-surface pair denominator: 153. Proxy coverage=0.154612; conditional evaluation-asset proxy precision=0.047661; conditional evaluation-asset proxy recall=0.352941. Certified metrics remain unavailable as stated above.
+
+All native mode selections scored under the evaluation-asset proxy (all retain native `cheirality_failed` refusal):
+
+| Mode | Winner | Raw | Unique | Proxy correct | Proxy same-face OOT | Proxy same-state other block | Proxy wrong | Proxy unknown | Proxy outside target | Proxy coverage | Proxy precision | Proxy recall |
+|---:|:---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | yes | 565 | 540 | 18 | 3 | 131 | 13 | 367 | 8 | 0.305556 | 0.109091 | 0.117647 |
+| 1 | no | 453 | 446 | 3 | 1 | 89 | 19 | 324 | 10 | 0.251121 | 0.026786 | 0.019608 |
+| 2 | no | 421 | 406 | 1 | 0 | 85 | 11 | 304 | 5 | 0.238916 | 0.010309 | 0.006536 |
+| 3 | no | 420 | 411 | 5 | 1 | 102 | 18 | 279 | 6 | 0.306569 | 0.039683 | 0.032680 |
+| 4 | no | 338 | 325 | 0 | 0 | 31 | 4 | 285 | 5 | 0.107692 | 0.000000 | 0.000000 |
+| 5 | no | 335 | 322 | 6 | 1 | 50 | 7 | 252 | 6 | 0.198758 | 0.093750 | 0.039216 |
+| 6 | no | 304 | 287 | 2 | 1 | 63 | 9 | 202 | 10 | 0.261324 | 0.026667 | 0.013072 |
+| 7 | no | 299 | 287 | 2 | 0 | 63 | 2 | 215 | 5 | 0.233449 | 0.029851 | 0.013072 |
+| 8 | no | 295 | 280 | 2 | 2 | 36 | 7 | 229 | 4 | 0.167857 | 0.042553 | 0.013072 |
+| 9 | no | 291 | 285 | 2 | 1 | 43 | 5 | 227 | 7 | 0.178947 | 0.039216 | 0.013072 |
+| 10 | no | 275 | 265 | 2 | 1 | 71 | 9 | 176 | 6 | 0.313208 | 0.024096 | 0.013072 |
+| 11 | no | 273 | 263 | 1 | 0 | 15 | 3 | 239 | 5 | 0.072243 | 0.052632 | 0.006536 |
+
+The evaluation-asset proxy subset remains narrow: 153 unique proxy same-surface pairs and 1,133/7,328 candidate graph pixel identities classified as proxy-scorable in the target domain. Certified scoring remains unavailable (0/7,328 coverage; precision/recall null). Proxy metrics do not estimate native correspondence accuracy on unsupported rows, capture-certified screenshot truth, or reconstruction quality.
+
+## Reproduction
+
+`pytest -q tests/test_evaluation_static_block_pair.py` -> 15 passed. Synthetic cases include the two Sol corrections: negative ray from an exact grid plane ignores the zero-length floor-selected voxel, and a near-tied crossing traverses its positive-length side cell; the exact corner-tie test remains. Other cases cover nearer blocker, max-depth-before-occupancy, boundary exit, missing grid cell, unsupported states, target/context separation, empty/duplicate denominators, classification categories, and full pinned population replay.
+
+- `src/mc_photogrammetry/evaluation_static_block_pair.py`: 40,229 bytes, SHA-256 `652ff3349dfe494b817bd867ec3f5df99693bc0227403b7c7bc14a7e5bdbf883`.
+- `tests/test_evaluation_static_block_pair.py`: 9,325 bytes, SHA-256 `2ac0132c130dba1ac04d2515ab4126e79b29c997e354209078cea09f094bd4bd`.
+- `docs/reports/SOL-IMG-STATIC-BLOCK-PAIR-20261005.json`: 3,800,601 bytes, SHA-256 `5652082f91ab8956f55cd3481a7e5b8ac8067631c0a8104be33e85145d4b2701`, seal `4cd590ea25af80e2831aa643d5902b740eed7545328469ab6b34a1e1e094747f`.
+- This report is bounded to one fixed pair and the exact pinned context/native records; canonical JSON cap is 16,777,216 bytes.
+
+No placement, volume, export, accuracy, or acceptance claim. Stop for Sol re-review.

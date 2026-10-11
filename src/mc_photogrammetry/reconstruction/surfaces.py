@@ -96,6 +96,7 @@ def direction_weights(
     *,
     tile: int = TILE,
     threshold: float = 3.0,
+    roll_degrees: float = 0.0,
 ) -> np.ndarray:
     """Length of segment assigned to each lattice direction, per tile.
 
@@ -116,7 +117,8 @@ def direction_weights(
     if not len(segments):
         return out
 
-    points = vanishing_points(focal, yaw_degrees, pitch_degrees, width, height)
+    points = vanishing_points(focal, yaw_degrees, pitch_degrees, width, height,
+                              roll_degrees)
     residuals = segment_residuals(segments, points)
     owner = residuals.argmin(axis=1)
     closest = residuals.min(axis=1)
@@ -190,6 +192,7 @@ def planar_regions(
     minimum_tiles: int = MINIMUM_TILES,
     minimum_weight: float = MINIMUM_WEIGHT,
     minimum_margin: float = MINIMUM_MARGIN,
+    roll_degrees: float = 0.0,
 ) -> list[PlanarRegion]:
     """Connected groups of tiles that agree on which way their surface faces.
 
@@ -199,7 +202,8 @@ def planar_regions(
     silently spans a discontinuity reads a period that belongs to neither half.
     """
     weights = direction_weights(segments, focal, yaw_degrees, pitch_degrees,
-                                width, height, tile=tile)
+                                width, height, tile=tile,
+                                roll_degrees=roll_degrees)
     axis_map, margin = normal_votes(weights, minimum_weight=minimum_weight,
                                     minimum_margin=minimum_margin)
     seen = np.zeros(axis_map.shape, dtype=bool)

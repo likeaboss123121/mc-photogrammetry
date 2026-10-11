@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.mcphotogrammetry.capture.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MinecraftClientTickMixin",
+    "ServerPlayerTickMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

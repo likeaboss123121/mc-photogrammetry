@@ -1,0 +1,89 @@
+SOL-IMG-MULTIVIEW-GATE-20261005 ? Sol; stop for Luna review
+
+ABSTAIN. One fixed generated two-view pair reaches authentic P0 and signatures,
+but the normal public production path stops at geometry G: status
+geometry_unavailable, reason g_unavailable, detail ambiguous_quadrant.
+The earlier local camera-pair matcher refuses cheirality_failed; production retains
+its rejected evidence while permitting the graph/pose containers and lattice stage.
+No relative geometry/anchor, placement, state output or export is supported here.
+
+Links: ../../tests/test_image_only_multiview_gate.py
+SOL-IMG-MULTIVIEW-GATE-20261005.json (exact as-run proof, durable copy).
+Predecessor: SOL-IMG-P0-PIXEL-BRIDGE-20261005.txt.
+
+Fixed inputs and production boundary:
+Two360x240 RGB views of the existing procedural room (0..12,0..6,0..12).
+Generator positions (3.6,.7,3.6),(5,.7,5); yaw10, pitch-25, FOV70; mixed_material
+and render_room unchanged. Truth is used solely to render pixels and is retained
+in a separate post-hoc JSON field. No camera, position, coordinates, manifest,
+reading, weight patch, mask, scale or material/state truth is passed to production.
+Generated PNGs are written only in pytest temp; RGB/encoded hashes are retained.
+Saved session decoded hashes exactly match both generator RGB hashes.
+
+Exactly one default public call:
+image_derived_production.derive_image_output_from_paths(PNG paths, project_path)
+(the normal CLI boundary, cli.py). No matcher/camera injection, monkeypatch,
+parameter sweep, alternate-pair retry, candidate pruning or gate modification.
+Default connection caps max_pairs66/max_total_support4096; pose max_edges66,
+max_cycle_checks200000, rotation tolerance2degrees, direction tolerance.05.
+Only2 frames and1 unordered pair are actually presented. Frozen geometry calls
+max_shift_cells32/integer_tolerance.15/min_resultant.90/ambiguous_margin.02.
+Production checkpoint cleanup is nonrecursive (two explicit unlinks and rmdir).
+
+Actual call path and first limits:
+1. production -> entry.build_image_derived_entry -> ordinary PNG discover/decode
+   -> build_image_derived_session -> image_only.solve_image_cameras -> default
+   calibration.estimate_session -> default match_and_solve_pair -> connections
+   -> compose_image_derived_pose_graph -> schema2 checkpoint.
+   Camera pair: raw_keypoints194/171, candidate_edges493, mutual_survivors12;
+   selected best support36/match_count36/support_floor8, yawclass2 hypothesis,
+   cheirality0.0, median residual.4418485368307684deg. Best refusal cheirality_failed.
+   All12 hypothesis diagnostics are rejected (10cheirality_failed,2low_spatial_spread).
+   No solved baseline direction/rotation/yaw class is retained. Graph and pose
+   statusok are container validity, not pair success; each has2 singleton components.
+2. measure_image_derived_lattice -> real image proposals/reader -> RGB structural
+   weight image/rectification -> exact share/full-phase bind -> fresh P0 -> bridge.
+   Four readings: image0000 axis0 P5.607682228088379 N512; axis2 P4.215186595916748
+   N512. image0001 axis1 P90.07483673095703 N349; axis2 P7.07865571975708 N512.
+   Every source is replayed from its retained RGB through weight_image and exact
+   structural evidence; full patch/evidence SHA/share/phase match; public P0 replay
+   validates its own source/geometry/budget. No hand-built weights_patch injection.
+3. derive_image_derived_geometry -> F1 signatures (13, assembled) -> G plane
+   matcher/component solve (unavailable, ambiguous_quadrant). Geometry canonical
+   stage prefix is exactly f1,g; no H/J/K/L/M2/N2/O2/P2/Q2/placement/output call.
+   G refused payload deliberately clears matches and component_solution; those
+   empty fields do NOT mean no input matches. The raw solver input candidate rows
+   and cost/quadrant alternatives are not captured by this default API experiment.
+   The recorded ambiguity is production evidence; its internal causal distribution
+   is not inferred or reconstructed from the cleared result.
+4. Production publishes a schema3 terminal mcscan, statusgeometry_unavailable/
+   reason g_unavailable/detail ambiguous_quadrant, promotionNone, zero blocks,
+   output_sha empty. Load_project replays session and production envelope.
+   Export not called because no promoted exact-state/geometry output exists.
+
+Metrics and limits:
+Geometry accuracy and exact-state accuracy are null/unavailable. No coordinates,
+block coverage, correctness, completion or physical production accuracy claim.
+Prior B0prime nine-reading/21-label universe is untouched; this separate image
+fixture establishes no selected label. Stop at measured gate, no forced continuation.
+JSON retains canonical production/entry/session/connection/pose/lattice records,
+canonical f1/g geometry stage payloads and decoded P0 seam profiles/rational local
+D diagnostics. P0/structural sources are retained as hashes/identity/geometry/lanes
+plus profile evidence; raw patches, signature cells and camera matches are hashes/
+counts rather than full arrays. Local D zero-origin diagnostics are not anchors.
+Input PNGs and project are ephemeral pytest-temp artifacts; their paths and file
+hashes are in as-run records. JSON is a durable byte-exact copy, not rebound or
+resealed. Rerunning with a different temp path may change identity-bound record
+digests; deterministic generated pixels and gate outcomes are the reproducible target.
+2MB publication assertion is cooperative, not hard runtime containment.
+
+Validation: one focused full-production run, exit0/1passed:
+.venv/Scripts/python.exe -m pytest tests/test_image_only_multiview_gate.py -q -s
+Post-hoc saved-record checks confirm exact first local/terminal reasons and RGB
+hash parity; no second camera/pose run, parameter sweep or additional tests.
+
+Test: 7400B SHA256 3fe03e23a8cbfbbc11ebf8526c8628e72ce3c3a4c1b5e068404df5000971420f
+Proof JSON: 312145B SHA256 a369b97da7e07787a0c84e663391c8cdcb7f1646002d4d18bdc55cb68a7dd09f
+Production result SHA256 987b06be82b842902043409f3c71a4aaf61f6e61638f69927f8177438365d444
+Persisted project SHA256 e8003dd66a27eb71016cd4af30b6183f4a4f0d6b2c34fff0f85cdcf7b0f9c4e8
+Enumerated prior/production/fixture hashes are in JSON and verified unchanged by test.

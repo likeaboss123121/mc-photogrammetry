@@ -1,0 +1,24 @@
+{
+  "task_id": "SOL-CROSSVIEW-FIXED-ROLE-CAPACITY-01",
+  "source_preparation_only": true,
+  "preflight_review": "initial source-only pins superseded by lead NO-GO; no inference invocation was authorized",
+  "inference_invocation_count": 0,
+  "calibration_invocation_count": 0,
+  "commands": [
+    {
+      "command": ".venv\\Scripts\\python.exe -B -m pytest -q tests/test_diagnose_multiview_fixed_role_capacity_v1.py",
+      "exit_code": 0,
+      "passed": 14
+    },
+    {
+      "command": ".venv\\Scripts\\python.exe -B -m pytest -q --override-ini addopts= --tb=short tests/test_diagnose_multiview_fixed_role_capacity_v1.py tests/test_diagnose_multiview_mnn_quota_v2.py tests/test_diagnose_multiview_mnn_quota_v1.py tests/test_diagnose_multiview_plane_tracks_quota_v1.py tests/test_diagnose_multiview_plane_tracks.py tests/test_diagnose_multiview_mnn_proposals.py tests/test_diagnose_multiview_mnn_proposals_v2.py",
+      "exit_code": 0,
+      "passed": 241,
+      "elapsed_seconds": 24.25
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m py_compile scripts/evaluation/diagnose_multiview_fixed_role_capacity_v1.py tests/test_diagnose_multiview_fixed_role_capacity_v1.py",
+      "exit_code": 0
+    }
+  ]
+}

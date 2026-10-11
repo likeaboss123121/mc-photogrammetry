@@ -1,0 +1,217 @@
+--- prechange-90a92e9.py
++++ scripts\evaluation\diagnose_multiview_plane_tracks.py
+@@ -22,10 +22,15 @@
+ import numpy as np
+ 
+ 
+-MAX_FRAMES = 8
++MAX_FRAMES = 32
++LEGACY_MAX_FRAMES = 8
+ MAX_PIXELS_PER_FRAME = 1_000_000
+ MAX_TOTAL_RGB_BYTES = 24_000_000
+-MAX_PAIRS = 28
++MAX_PAIRS = 64
++EXTENDED_MAX_TOTAL_RGB_BYTES = 96_000_000
++EXTENDED_MAX_DESCRIPTOR_COMPARISONS = 62_720_000
++EXTENDED_MAX_OUTPUT_BYTES = 16_000_000
++PAIR_SCHEDULE = "id-order-cyclic-distance-2-v1"
+ MAX_FEATURES = 700
+ MAX_MODELS_PER_PAIR = 3
+ MAX_MATCHES_PER_PAIR = 700
+@@ -97,10 +102,35 @@
+     return _canonical([left, right]).decode("ascii")
+ 
+ 
++def _pair_schedule(names: Sequence[str]) -> list[tuple[str, str]]:
++    """All pairs through eight frames; larger sets use a bounded cyclic graph.
++
++    ID ordering supplies adjacency, not an inferred camera or overlap ordering.
++    The distance-two ring covers each frame with triangles; omitted pairs have
++    unknown support. At 32 frames it evaluates 64 edges and 32 triangles.
++    """
++    if len(names) <= LEGACY_MAX_FRAMES:
++        return list(itertools.combinations(names, 2))
++    pairs = {tuple(sorted((name, names[(index + step) % len(names)])))
++             for index, name in enumerate(names) for step in (1, 2)}
++    return sorted(pairs)
++
++
++def _scheduled_triangles(names: Sequence[str], pairs: Sequence[tuple[str, str]]
++                         ) -> list[tuple[str, str, str]]:
++    edges = set(pairs)
++    return [(a, b, c) for a, b, c in itertools.combinations(names, 3)
++            if (a, b) in edges and (a, c) in edges and (b, c) in edges]
++
++
++def _output_limit(schema: str) -> int:
++    return EXTENDED_MAX_OUTPUT_BYTES if schema == "projective-plane-tracks-v5" else MAX_OUTPUT_BYTES
++
++
+ def _frame_input(frames: Sequence[tuple[str, np.ndarray]]) -> tuple[list[tuple[str, np.ndarray, str]], int]:
+     if not isinstance(frames, (tuple, list)) or not 3 <= len(frames) <= MAX_FRAMES:
+-        raise ValueError("frame count must be in [3, 8]")
+-    if len(frames) * (len(frames) - 1) // 2 > MAX_PAIRS:
++        raise ValueError("frame count must be in [3, 32]")
++    if len(_pair_schedule([str(i) for i in range(len(frames))])) > MAX_PAIRS:
+         raise ValueError("pair budget exceeded")
+     result = []
+     total = 0
+@@ -117,7 +147,7 @@
+         if h < 64 or w < 64 or h * w > MAX_PIXELS_PER_FRAME:
+             raise ValueError("frame pixel budget exceeded or image too small")
+         total += int(raw.nbytes)
+-        if total > MAX_TOTAL_RGB_BYTES:
++        if total > (EXTENDED_MAX_TOTAL_RGB_BYTES if len(frames) > LEGACY_MAX_FRAMES else MAX_TOTAL_RGB_BYTES):
+             raise ValueError("RGB byte budget exceeded")
+         image = np.ascontiguousarray(raw).copy()
+         digest = _digest_bytes(h.to_bytes(4, "big") + w.to_bytes(4, "big") + image.tobytes())
+@@ -461,17 +491,21 @@
+     data, total_bytes = _frame_input(frames)
+     names = [name for name, _, _ in data]
+     hashes = {name: digest for name, _, digest in data}
++    pairs = _pair_schedule(names)
++    triangles = _scheduled_triangles(names, pairs)
++    extended = len(names) > LEGACY_MAX_FRAMES
++    schema = "projective-plane-tracks-v5" if extended else "projective-plane-tracks-v4"
+     points, descriptors, shapes = {}, {}, {}
+     for name, image, _ in data:
+         shapes[name] = image.shape[:2]
+         points[name], descriptors[name] = _features(image)
+     comparisons = 2 * sum(len(descriptors[a]) * len(descriptors[b])
+-                      for a, b in itertools.combinations(names, 2))
+-    if comparisons > MAX_DESCRIPTOR_COMPARISONS:
++                      for a, b in pairs)
++    if comparisons > (EXTENDED_MAX_DESCRIPTOR_COMPARISONS if extended else MAX_DESCRIPTOR_COMPARISONS):
+         raise ValueError("descriptor work budget exceeded")
+     models = {}
+     pair_telemetry = []
+-    for a, b in itertools.combinations(names, 2):
++    for a, b in pairs:
+         record = {"frame_ids": [a, b], "pair_key": _pair_key(a, b),
+                   "left_feature_count": len(points[a]), "right_feature_count": len(points[b]),
+                   "attempts": []}
+@@ -481,10 +515,10 @@
+         pair_telemetry.append(record)
+     tracks = []
+     combinations = sum(len(models[a, b]) * len(models[b, c]) * len(models[a, c])
+-                       for a, b, c in itertools.combinations(names, 3))
++                       for a, b, c in triangles)
+     if combinations > MAX_CYCLE_COMBINATIONS:
+         raise ValueError("cycle work budget exceeded")
+-    for a, b, c in itertools.combinations(names, 3):
++    for a, b, c in triangles:
+         for ab, bc, ac in itertools.product(models[a, b], models[b, c], models[a, c]):
+             candidate = _track(a, b, c, ab, bc, ac, points, shapes, hashes)
+             if candidate is not None:
+@@ -492,7 +526,7 @@
+     # Preserve separate hypotheses, but deduplicate identical support.
+     unique = {_digest_bytes(_canonical(x["support"])): x for x in tracks}
+     result = {
+-        "schema": "projective-plane-tracks-v4", "status": "supported" if unique else "abstained",
++        "schema": schema, "status": "supported" if unique else "abstained",
+         "abstention": None if unique else "no_coherent_three_view_plane",
+         "frame_ids": names, "frame_sha256": hashes,
+         "frame_dimensions": {name: list(shapes[name]) for name in names},
+@@ -506,11 +540,14 @@
+         "pair_telemetry": pair_telemetry,
+         "tracks": [unique[key] for key in sorted(unique)],
+     }
++    if extended:
++        result["work"].update(pair_schedule=PAIR_SCHEDULE,
++                              omitted_pair_count=len(names) * (len(names) - 1) // 2 - len(pairs))
+     raw = _canonical(result)
+-    if len(raw) > MAX_OUTPUT_BYTES:
++    if len(raw) > _output_limit(result["schema"]):
+         raise ValueError("output budget exceeded; refusing truncation")
+     result["canonical_sha256"] = _digest_bytes(raw)
+-    if len(_canonical(result)) > MAX_OUTPUT_BYTES:
++    if len(_canonical(result)) > _output_limit(result["schema"]):
+         raise ValueError("output budget exceeded; refusing truncation")
+     return result
+ 
+@@ -523,7 +560,7 @@
+     names = payload["frame_ids"]
+     counts = payload["work"]["feature_counts"]
+     records = payload["pair_telemetry"]
+-    pairs = list(itertools.combinations(names, 2))
++    pairs = _pair_schedule(names)
+     if not isinstance(records, list) or len(records) != len(pairs):
+         raise ValueError("malformed pair telemetry")
+     accepted_counts = {}
+@@ -787,9 +824,11 @@
+         raise ValueError("malformed report fields")
+     names = payload["frame_ids"]
+     tracks = payload["tracks"]
+-    if (payload["schema"] != "projective-plane-tracks-v4" or
++    extended = payload["schema"] == "projective-plane-tracks-v5"
++    if (payload["schema"] not in ("projective-plane-tracks-v4", "projective-plane-tracks-v5") or
+             payload["frame_hash_scheme"] != "sha256(u32be(height)||u32be(width)||row-major-rgb-uint8)" or
+             not isinstance(names, list) or not 3 <= len(names) <= MAX_FRAMES or
++            extended != (len(names) > LEGACY_MAX_FRAMES) or
+             not all(isinstance(x, str) and 1 <= len(x) <= 100 and x.isprintable() for x in names) or
+             names != sorted(set(names)) or
+             not isinstance(payload["frame_sha256"], dict) or
+@@ -807,15 +846,18 @@
+     if (payload["status"], payload["abstention"]) != (
+             ("supported", None) if tracks else ("abstained", "no_coherent_three_view_plane")):
+         raise ValueError("malformed report status")
++    pairs = _pair_schedule(names)
++    triangles = _scheduled_triangles(names, pairs)
+     work = payload["work"]
++    schedule_fields = {"pair_schedule", "omitted_pair_count"} if extended else set()
+     if (not isinstance(work, dict) or set(work) != {"input_rgb_bytes", "pair_count", "feature_counts",
+                                                   "descriptor_comparisons", "cycle_model_combinations",
+-                                                  "track_attempt_count"} or
++                                                  "track_attempt_count"} | schedule_fields or
+             not isinstance(work["input_rgb_bytes"], int) or
+-            not 0 < work["input_rgb_bytes"] <= MAX_TOTAL_RGB_BYTES or
+-            work["pair_count"] != len(names) * (len(names) - 1) // 2 or
++            not 0 < work["input_rgb_bytes"] <= (EXTENDED_MAX_TOTAL_RGB_BYTES if extended else MAX_TOTAL_RGB_BYTES) or
++            type(work["pair_count"]) is not int or work["pair_count"] != len(pairs) or len(pairs) > MAX_PAIRS or
+             not isinstance(work["descriptor_comparisons"], int) or
+-            not 0 <= work["descriptor_comparisons"] <= MAX_DESCRIPTOR_COMPARISONS or
++            not 0 <= work["descriptor_comparisons"] <= (EXTENDED_MAX_DESCRIPTOR_COMPARISONS if extended else MAX_DESCRIPTOR_COMPARISONS) or
+             not isinstance(work["cycle_model_combinations"], int) or
+             not 0 <= work["cycle_model_combinations"] <= MAX_CYCLE_COMBINATIONS or
+             type(work["track_attempt_count"]) is not int or
+@@ -825,8 +867,12 @@
+             any(not isinstance(v, int) or not 0 <= v <= MAX_FEATURES
+                 for v in work["feature_counts"].values())):
+         raise ValueError("malformed work accounting")
++    if extended and (work["pair_schedule"] != PAIR_SCHEDULE or
++                     type(work["omitted_pair_count"]) is not int or
++                     work["omitted_pair_count"] != len(names) * (len(names) - 1) // 2 - len(pairs)):
++        raise ValueError("malformed pair schedule accounting")
+     expected_comparisons = 2 * sum(work["feature_counts"][a] * work["feature_counts"][b]
+-                                   for a, b in itertools.combinations(names, 2))
++                                   for a, b in pairs)
+     if work["descriptor_comparisons"] != expected_comparisons:
+         raise ValueError("malformed descriptor work accounting")
+     if work["input_rgb_bytes"] != 3 * sum(h * w for h, w in payload["frame_dimensions"].values()):
+@@ -855,7 +901,7 @@
+ 
+     accepted_counts, accepted_evidence = _validate_pair_telemetry(payload, validate_summary)
+     expected_combinations = sum(accepted_counts[a, b] * accepted_counts[b, c] * accepted_counts[a, c]
+-                                for a, b, c in itertools.combinations(names, 3))
++                                for a, b, c in triangles)
+     if work["cycle_model_combinations"] != expected_combinations:
+         raise ValueError("malformed accepted pair graph")
+ 
+@@ -875,7 +921,7 @@
+                 not MIN_CYCLE_TRIPLES <= track["held_out_triangle_count"] <= track["triangle_count"]):
+             raise ValueError("malformed track support")
+         a, b, c = ids
+-        if any(accepted_counts[pair] == 0 for pair in ((a, b), (b, c), (a, c))):
++        if any(accepted_counts.get(pair, 0) == 0 for pair in ((a, b), (b, c), (a, c))):
+             raise ValueError("track lacks an accepted pair model")
+         pairs = ((a, b), (b, c), (a, c))
+         pair_keys = {_pair_key(*pair): pair for pair in pairs}
+@@ -1041,7 +1087,7 @@
+                 track["cycle_held_out"]["p95_px"] > TRANSFER_PX):
+             raise ValueError("malformed cycle residual")
+     raw = _canonical(report)
+-    if len(raw) > MAX_OUTPUT_BYTES:
++    if len(raw) > _output_limit(payload["schema"]):
+         raise ValueError("output budget exceeded")
+     return raw
+ 

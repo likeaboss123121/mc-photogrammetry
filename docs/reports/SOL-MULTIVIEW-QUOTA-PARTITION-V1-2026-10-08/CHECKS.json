@@ -1,0 +1,42 @@
+{
+  "task_id": "SOL-MULTIVIEW-QUOTA-PARTITION-V1",
+  "original_task_sha256": "a7a4649a77a1a05837dc1378858f28d77147ad5568139f509bc5f87d9d39d718",
+  "amended_task_sha256": "e2d689766ae68c0b4220b23dbab889bb8916aa45f38a33997c2180c6fb0324b1",
+  "failed_run_source_sha256": {
+    "scripts/evaluation/diagnose_multiview_plane_tracks_quota_v1.py": "c03d03a330b0c54cdcf0c0c9c3150486037d9c7dcbd87f98d81bb7a1527fb4e8",
+    "scripts/evaluation/diagnose_multiview_mnn_quota_v1.py": "de23e6b4c61e81bd2db06a9df507f3e82f852e62522de400094e2c15402e9ffb"
+  },
+  "final_source_test_sha256": {
+    "scripts/evaluation/diagnose_multiview_plane_tracks_quota_v1.py": "f1b6b28d7df7bb8c4122fbe5d7cc1749bb0cba33cf2f7230c6ce11f7fd26c836",
+    "scripts/evaluation/diagnose_multiview_mnn_quota_v1.py": "5d38a8f5964405ba87bd4565e82df629e60b02b74d560645c27ff570ea244ec6",
+    "tests/test_diagnose_multiview_plane_tracks_quota_v1.py": "9951df090661445816cb66b2ccdff30bce7ab825375b139f58166c4b788853f0",
+    "tests/test_diagnose_multiview_mnn_quota_v1.py": "a4ac6ac2bcb952879651111c5b866b958eb3b82fa039be040710156615ad8195"
+  },
+  "historical_source_sha256": {
+    "scripts/evaluation/diagnose_multiview_plane_tracks.py": "f69be2ef78e8ae90a2bad09f973ed1ce3ec37d1a3a99f77101ecb68f9b2291b0",
+    "scripts/evaluation/diagnose_multiview_mnn_proposals_v2.py": "0c0f186b5d33123b6553644876cb0cae08b03442300f3a1c721aa1003aa596cb"
+  },
+  "failed_run_config_sha256": "ff75c0ed4e42ce5f1d14911990dea2f64f474bd77e88e8b72975a7584d294b17",
+  "final_config_sha256": "beebb496a1dd9466aa8ed14934a9450c743cd1d6955346ee8cc20536ecd7b262",
+  "quota_policy_config_sha256": "faa9f8e7368a04ca60113bcbae3d2a9d63c466552c1dcc2fd8221887b20c8418",
+  "tests": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m pytest tests/test_diagnose_multiview_plane_tracks_quota_v1.py tests/test_diagnose_multiview_mnn_quota_v1.py -q --override-ini addopts= --tb=short",
+      "passed": 19,
+      "failed": 0,
+      "exit_code": 0
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m pytest tests/test_diagnose_multiview_plane_tracks_quota_v1.py tests/test_diagnose_multiview_mnn_quota_v1.py tests/test_diagnose_multiview_plane_tracks.py tests/test_diagnose_multiview_mnn_proposals.py tests/test_diagnose_multiview_mnn_proposals_v2.py -q --override-ini addopts= --tb=short",
+      "passed": 211,
+      "failed": 0,
+      "exit_code": 0
+    }
+  ],
+  "py_compile": "passed",
+  "trailing_whitespace_check": "passed",
+  "development_invocation_count": 1,
+  "development_report_published": false,
+  "development_input_hashes": null,
+  "development_result_hash": null
+}

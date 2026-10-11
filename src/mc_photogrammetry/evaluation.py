@@ -15,13 +15,22 @@ from mc_photogrammetry.domain.models import BlockCoordinate, BlockState, BlockVo
 
 @dataclass(frozen=True, slots=True)
 class VisibleMetrics:
-    """Metrics defined against the reference cells visible in usable pixels."""
+    """Metrics defined against the reference cells visible in usable pixels.
+
+    Hidden reference cells (reference minus visible) carry their own inference
+    credit: a candidate cell that lands on one is counted as
+    ``hidden_inferred_blocks`` rather than as a phantom, and it never inflates
+    visible recall or visible exact-state recovery.
+    """
 
     visible_reference_blocks: int
     visible_coordinate_matches: int
     visible_exact_state_matches: int
     aligned_candidate_blocks: int
     phantom_blocks: int
+    hidden_reference_blocks: int
+    hidden_inferred_blocks: int
+    hidden_exact_state_blocks: int
 
     @property
     def exact_state_recovery(self) -> float:
@@ -39,6 +48,19 @@ class VisibleMetrics:
     def geometry_f1(self) -> float:
         return _harmonic_mean(self.geometry_precision, self.geometry_recall)
 
+    @property
+    def hidden_inference_recovery(self) -> float:
+        """Recovered hidden cells as a share of the whole hidden reference.
+
+        Separate credit only: hidden blocks are never counted as visible
+        evidence and a hidden recovery is never a phantom.
+        """
+        return _ratio(self.hidden_inferred_blocks, self.hidden_reference_blocks)
+
+    @property
+    def hidden_exact_state_recovery(self) -> float:
+        return _ratio(self.hidden_exact_state_blocks, self.hidden_reference_blocks)
+
     def to_dict(self) -> dict[str, int | float]:
         result: dict[str, int | float] = asdict(self)
         result.update(
@@ -46,6 +68,8 @@ class VisibleMetrics:
             geometry_recall=self.geometry_recall,
             geometry_precision=self.geometry_precision,
             geometry_f1=self.geometry_f1,
+            hidden_inference_recovery=self.hidden_inference_recovery,
+            hidden_exact_state_recovery=self.hidden_exact_state_recovery,
         )
         return result
 
@@ -69,12 +93,20 @@ def visible_metrics(
     matching_coordinates = visible & set(aligned)
     exact_states = sum(reference[coordinate] == aligned[coordinate] for coordinate in matching_coordinates)
     phantoms = len(set(aligned) - set(reference))
+    hidden = set(reference) - visible
+    hidden_inferred = hidden & set(aligned)
+    hidden_exact_states = sum(
+        reference[coordinate] == aligned[coordinate] for coordinate in hidden_inferred
+    )
     return VisibleMetrics(
         visible_reference_blocks=len(visible),
         visible_coordinate_matches=len(matching_coordinates),
         visible_exact_state_matches=exact_states,
         aligned_candidate_blocks=len(aligned),
         phantom_blocks=phantoms,
+        hidden_reference_blocks=len(hidden),
+        hidden_inferred_blocks=len(hidden_inferred),
+        hidden_exact_state_blocks=hidden_exact_states,
     )
 
 
