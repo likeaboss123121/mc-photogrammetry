@@ -30,3 +30,50 @@ tmp_*.txt
 .masks/
 AGENT_COMMS.md
 AGENT_HANDOFF.md
+
+# Local Python environments and generated build/test artifacts.
+.venv*/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.mypy_cache/
+.hypothesis/
+.tox/
+.nox/
+.ipynb_checkpoints/
+
+# Local secrets and machine-specific configuration.
+.env
+.env.*
+!.env.example
+*.local
+
+# Ephemeral agent/runtime state and root-level experiment scratch files.
+.agents/
+.claude/
+.ds31v_probe/
+.tmp-*
+tmp-*
+tmp_*.py
+tmp_*.txt
+_scratch*.py
+probe*.txt
+verification.txt
+mismatch_probe.json
+benchmark_*.txt
+pytest_*.txt
+*.stdout.log
+*.stderr.log
+*.stdout.txt
+*.stderr.txt
+
+# Private agent orchestration templates and local DeepSeek launch configuration.
+agent swarm instantiation template/
+docs/deepseek-*.patch.yml
+docs/deepseek-worker.md
